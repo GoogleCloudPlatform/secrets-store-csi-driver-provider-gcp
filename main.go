@@ -91,7 +91,7 @@ func copyself(ctx context.Context) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(pluginPath, self, 0755); err != nil {
+	if err := ioutil.WriteFile(pluginPath, self, 0754); err != nil {
 		return err
 	}
 
