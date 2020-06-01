@@ -91,8 +91,7 @@ func copyself(ctx context.Context) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(pluginPath, self, 0755)
-	if err != nil {
+	if err := ioutil.WriteFile(pluginPath, self, 0755); err != nil {
 		return err
 	}
 
@@ -106,22 +105,19 @@ func plugin(ctx context.Context) error {
 	var filePermission os.FileMode
 
 	// Everything in the "parameters" section of the SecretProviderClass.
-	err := json.Unmarshal([]byte(*attributes), &attrib)
-	if err != nil {
+	if err := json.Unmarshal([]byte(*attributes), &attrib); err != nil {
 		return fmt.Errorf("failed to unmarshal attributes, err: %v", err)
 	}
 
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
 	// Currently unused.
-	err = json.Unmarshal([]byte(*secrets), &secret)
-	if err != nil {
+	if err := json.Unmarshal([]byte(*secrets), &secret); err != nil {
 		return fmt.Errorf("failed to unmarshal secrets, err: %v", err)
 	}
 
 	// Permissions to apply to all files.
-	err = json.Unmarshal([]byte(*permission), &filePermission)
-	if err != nil {
+	if err := json.Unmarshal([]byte(*permission), &filePermission); err != nil {
 		return fmt.Errorf("failed to unmarshal file permission, err: %v", err)
 	}
 
