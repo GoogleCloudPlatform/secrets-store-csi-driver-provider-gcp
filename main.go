@@ -78,8 +78,7 @@ func copyself(ctx context.Context) error {
 	defer func() {
 		// Attempt to cleanup since we are creating a folder and writing a
 		// binary to a hostPath
-		log.Printf("cleanup %v: %v", pluginPath, os.Remove(pluginPath))
-		log.Printf("cleanup %v: %v", pluginDir, os.Remove(pluginDir))
+		log.Printf("cleanup %v: %v", pluginDir, os.RemoveAll(pluginDir))
 	}()
 
 	if err := os.MkdirAll(filepath.Join(td, "gcp"), 0755); err != nil {
