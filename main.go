@@ -33,7 +33,7 @@ func main() {
 	// This plugin and the github.com/kubernetes-sigs/secrets-store-csi-driver
 	// driver are both installed as DaemonSets that share a common folder on
 	// the host. When the "-daemonset" flag is set this binary copies itself
-	// to the TARGET_DIR folder and sleeps indefinately.
+	// to the TARGET_DIR folder and sleeps indefinitely.
 	if *daemonset {
 		if err := copyself(ctx); err != nil {
 			log.Fatal(err)
