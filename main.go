@@ -23,6 +23,10 @@ var (
 	permission = flag.String("permission", "", "File permissions of the written secrets")
 )
 
+// The "provider" name in the "SecretProviderClass" CRD that this plugin
+// operates on.
+const providerName = "gcp"
+
 func main() {
 	flag.Parse()
 	// TODO: https://github.com/kubernetes-sigs/secrets-store-csi-driver does
@@ -73,15 +77,15 @@ func copyself(ctx context.Context) error {
 		return err
 	}
 
-	pluginDir := filepath.Join(td, "gcp")
-	pluginPath := filepath.Join(pluginDir, "provider-gcp")
+	pluginDir := filepath.Join(td, providerName)
+	pluginPath := filepath.Join(pluginDir, "provider-"+providerName)
 	defer func() {
 		// Attempt to cleanup since we are creating a folder and writing a
 		// binary to a hostPath
 		log.Printf("cleanup %v: %v", pluginDir, os.RemoveAll(pluginDir))
 	}()
 
-	if err := os.MkdirAll(filepath.Join(td, "gcp"), 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0755); err != nil {
 		return err
 	}
 
