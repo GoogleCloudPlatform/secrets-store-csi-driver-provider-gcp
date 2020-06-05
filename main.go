@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 )
 
 var (
@@ -45,8 +45,13 @@ func main() {
 		os.Exit(0)
 	}
 
+	client, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		log.Fatalf("failed to create secretmanager client: %v", err)
+	}
+
 	// Fetch and write secrets.
-	if err := plugin(ctx); err != nil {
+	if err := plugin(ctx, client, *attributes, *secrets, *targetPath, *permission); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -100,35 +105,5 @@ func copyself(ctx context.Context) error {
 
 	<-ctx.Done()
 	log.Printf("terminating")
-	return nil
-}
-
-func plugin(ctx context.Context) error {
-	var attrib, secret map[string]string
-	var filePermission os.FileMode
-
-	// Everything in the "parameters" section of the SecretProviderClass.
-	if err := json.Unmarshal([]byte(*attributes), &attrib); err != nil {
-		return fmt.Errorf("failed to unmarshal attributes, err: %v", err)
-	}
-
-	// The secrets here are the relevant CSI driver (k8s) secrets. See
-	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
-	// Currently unused.
-	if err := json.Unmarshal([]byte(*secrets), &secret); err != nil {
-		return fmt.Errorf("failed to unmarshal secrets, err: %v", err)
-	}
-
-	// Permissions to apply to all files.
-	if err := json.Unmarshal([]byte(*permission), &filePermission); err != nil {
-		return fmt.Errorf("failed to unmarshal file permission, err: %v", err)
-	}
-
-	log.Printf("attributes: %v", attrib)
-	log.Printf("secrets: %v", secret)
-	log.Printf("filePermission: %v", filePermission)
-	log.Printf("targetPath: %v", *targetPath)
-
-	// TODO: actually fetch and write secrets.
 	return nil
 }
