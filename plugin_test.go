@@ -42,11 +42,10 @@ var sampleAttrs = `
 `
 
 func TestHandleMountEvent(t *testing.T) {
-	dir, cleanup := driveMountHelper(t)
-	defer cleanup()
+	dir := driveMountHelper(t)
 
 	want := []byte("My Secret")
-	client, shutdown := mock(t, &mockSecretServer{
+	client := mock(t, &mockSecretServer{
 		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
 			return &secretmanagerpb.AccessSecretVersionResponse{
 				Payload: &secretmanagerpb.SecretPayload{
@@ -55,7 +54,6 @@ func TestHandleMountEvent(t *testing.T) {
 			}, nil
 		},
 	})
-	defer shutdown()
 
 	if got := handleMountEvent(context.Background(), client, &mountParams{
 		attributes:  sampleAttrs,
@@ -76,15 +74,13 @@ func TestHandleMountEvent(t *testing.T) {
 }
 
 func TesthandleMountEventSMError(t *testing.T) {
-	dir, cleanup := driveMountHelper(t)
-	defer cleanup()
+	dir := driveMountHelper(t)
 
-	client, shutdown := mock(t, &mockSecretServer{
+	client := mock(t, &mockSecretServer{
 		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
 			return nil, status.Error(codes.FailedPrecondition, "Secret is Disabled")
 		},
 	})
-	defer shutdown()
 
 	got := handleMountEvent(context.Background(), client, &mountParams{
 		attributes:  sampleAttrs,
@@ -99,10 +95,9 @@ func TesthandleMountEventSMError(t *testing.T) {
 }
 
 func TesthandleMountEventConfigErrors(t *testing.T) {
-	dir, cleanup := driveMountHelper(t)
-	defer cleanup()
+	dir := driveMountHelper(t)
 
-	client, shutdown := mock(t, &mockSecretServer{
+	client := mock(t, &mockSecretServer{
 		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
 			return &secretmanagerpb.AccessSecretVersionResponse{
 				Payload: &secretmanagerpb.SecretPayload{
@@ -111,7 +106,6 @@ func TesthandleMountEventConfigErrors(t *testing.T) {
 			}, nil
 		},
 	})
-	defer shutdown()
 
 	tests := []struct {
 		name   string
@@ -149,24 +143,23 @@ func TesthandleMountEventConfigErrors(t *testing.T) {
 
 // driveMountHelper creates a temporary directory for use by tests as a
 // replacement for the tmpfs directory that the CSI Driver would create for the
-// handleMountEvent. This returns the path and a cleanup function to run at the end of
-// the test.
-func driveMountHelper(t testing.TB) (string, func()) {
+// handleMountEvent. This returns the path.
+func driveMountHelper(t testing.TB) string {
 	t.Helper()
 	dir, err := ioutil.TempDir("", "csi-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	return dir, func() {
+	t.Cleanup(func() {
 		log.Printf("Cleaning up: %s", dir)
 		os.RemoveAll(dir)
-	}
+	})
+	return dir
 }
 
 // mock builds a secretmanager.Client talking to a real in-memory secretmanager
-// GRPC server of the *mockSecretServer. It also returns a function that must
-// be called to shut down the grpc server gracefully.
-func mock(t testing.TB, m *mockSecretServer) (*secretmanager.Client, func()) {
+// GRPC server of the *mockSecretServer.
+func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {
 	t.Helper()
 	l := bufconn.Listen(1024 * 1024)
 	s := grpc.NewServer()
@@ -191,14 +184,16 @@ func mock(t testing.TB, m *mockSecretServer) (*secretmanager.Client, func()) {
 	shutdown := func() {
 		t.Log("shutdown called")
 		conn.Close()
-		s.Stop()
+		s.GracefulStop()
 		l.Close()
 	}
 	if err != nil {
 		shutdown()
 		t.Fatal(err)
 	}
-	return client, shutdown
+
+	t.Cleanup(shutdown)
+	return client
 }
 
 // mockSecretServer matches the secremanagerpb.SecretManagerServiceServer
