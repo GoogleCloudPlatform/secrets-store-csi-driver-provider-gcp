@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -74,9 +75,12 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, params 
 	log.Printf("attributes: %v", attrib)
 	log.Printf("secrets: %v", secret)
 	log.Printf("filePermission: %v", params.permissions)
-	log.Printf("targetPath: %v", targetPath)
+	log.Printf("targetPath: %v", params.targetPath)
 
 	var objects StringArray
+	if _, ok := attrib["secrets"]; !ok {
+		return errors.New("missing required 'secrets' attribute")
+	}
 	if err := yaml.Unmarshal([]byte(attrib["secrets"]), &objects); err != nil {
 		return fmt.Errorf("failed to unmarshal secrets attribute: %v", err)
 	}
@@ -93,11 +97,11 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, params 
 
 		result, err := client.AccessSecretVersion(ctx, req)
 		if err != nil {
-			return fmt.Errorf("failed to access secret version: %v", err)
+			return fmt.Errorf("failed to access secret version (%s): %w", secret.ResourceName, err)
 		}
 
 		if err := ioutil.WriteFile(filepath.Join(params.targetPath, secret.FileName), result.Payload.Data, params.permissions); err != nil {
-			return fmt.Errorf("failed to write %s at %s: %v", secret.ResourceName, params.targetPath, err)
+			return fmt.Errorf("failed to write %s at %s: %w", secret.ResourceName, params.targetPath, err)
 		}
 		log.Printf("secrets-store csi driver wrote %s at %s", secret.ResourceName, params.targetPath)
 	}

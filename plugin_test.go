@@ -94,7 +94,7 @@ func TesthandleMountEventSMError(t *testing.T) {
 	}
 }
 
-func TesthandleMountEventConfigErrors(t *testing.T) {
+func TestHandleMountEventConfigErrors(t *testing.T) {
 	dir := driveMountHelper(t)
 
 	client := mock(t, &mockSecretServer{
@@ -121,7 +121,16 @@ func TesthandleMountEventConfigErrors(t *testing.T) {
 			},
 		},
 		{
-			name: "unparsable secrets",
+			name: "missing secrets attribute",
+			params: &mountParams{
+				attributes:  "{}",
+				kubeSecrets: "{}",
+				targetPath:  dir,
+				permissions: 777,
+			},
+		},
+		{
+			name: "unparsable kubernetes secrets",
 			params: &mountParams{
 				attributes:  sampleAttrs,
 				kubeSecrets: "",
