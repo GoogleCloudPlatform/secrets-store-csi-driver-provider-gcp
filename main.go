@@ -1,3 +1,6 @@
+// Binary secrets-store-csi-driver-provider-gcp is a plugin for the
+// secrets-store-csi-driver for fetching secrets from Google Cloud's Secret
+// Manager API.
 package main
 
 import (
@@ -51,7 +54,7 @@ func main() {
 	}
 
 	// Fetch and write secrets.
-	if err := plugin(ctx, client, *attributes, *secrets, *targetPath, *permission); err != nil {
+	if err := handleMountEvent(ctx, client, *attributes, *secrets, *targetPath, *permission); err != nil {
 		log.Fatal(err)
 	}
 }

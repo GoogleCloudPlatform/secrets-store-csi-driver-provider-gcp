@@ -28,7 +28,7 @@ var sampleAttrs = `
 }
 `
 
-func TestPlugin(t *testing.T) {
+func TestHandleMountEvent(t *testing.T) {
 	dir, cleanup := driveMountHelper(t)
 	defer cleanup()
 
@@ -44,8 +44,8 @@ func TestPlugin(t *testing.T) {
 	})
 	defer shutdown()
 
-	if got := plugin(context.Background(), client, sampleAttrs, "{}", dir, "777"); got != nil {
-		t.Errorf("plugin() got err = %v, want err = nil", got)
+	if got := handleMountEvent(context.Background(), client, sampleAttrs, "{}", dir, "777"); got != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 
 	got, err := ioutil.ReadFile(path.Join(dir, "good1.txt"))
@@ -53,11 +53,11 @@ func TestPlugin(t *testing.T) {
 		t.Errorf("error reading secret. got err = %v, want err = nil", err)
 	}
 	if !bytes.Equal(got, want) {
-		t.Errorf("plugin() wrote unexpected secret value. got = %v, want = %v", got, want)
+		t.Errorf("handleMountEvent() wrote unexpected secret value. got = %v, want = %v", got, want)
 	}
 }
 
-func TestPluginSMError(t *testing.T) {
+func TesthandleMountEventSMError(t *testing.T) {
 	dir, cleanup := driveMountHelper(t)
 	defer cleanup()
 
@@ -68,14 +68,14 @@ func TestPluginSMError(t *testing.T) {
 	})
 	defer shutdown()
 
-	got := plugin(context.Background(), client, sampleAttrs, "{}", dir, "777")
+	got := handleMountEvent(context.Background(), client, sampleAttrs, "{}", dir, "777")
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
-		t.Errorf("plugin() got err = %v, want err = nil", got)
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 
 	}
 }
 
-func TestPluginConfigErrors(t *testing.T) {
+func TesthandleMountEventConfigErrors(t *testing.T) {
 	dir, cleanup := driveMountHelper(t)
 	defer cleanup()
 
@@ -122,9 +122,9 @@ func TestPluginConfigErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := plugin(context.Background(), client, tc.attrs, tc.secrets, tc.dir, tc.perm)
+			got := handleMountEvent(context.Background(), client, tc.attrs, tc.secrets, tc.dir, tc.perm)
 			if got == nil {
-				t.Errorf("plugin() succeeded for malformed input, want error")
+				t.Errorf("handleMountEvent() succeeded for malformed input, want error")
 			}
 		})
 	}
@@ -132,7 +132,7 @@ func TestPluginConfigErrors(t *testing.T) {
 
 // driveMountHelper creates a temporary directory for use by tests as a
 // replacement for the tmpfs directory that the CSI Driver would create for the
-// plugin. This returns the path and a cleanup function to run at the end of
+// handleMountEvent. This returns the path and a cleanup function to run at the end of
 // the test.
 func driveMountHelper(t *testing.T) (string, func()) {
 	t.Helper()
@@ -157,7 +157,7 @@ func mock(t *testing.T, m *mockSecretServer) (*secretmanager.Client, func()) {
 
 	go func() {
 		if err := s.Serve(l); err != nil {
-			t.Logf("server error: %v", err)
+			t.Errorf("server error: %v", err)
 		}
 	}()
 
@@ -168,7 +168,7 @@ func mock(t *testing.T, m *mockSecretServer) (*secretmanager.Client, func()) {
 
 	client, err := secretmanager.NewClient(context.Background(), option.WithGRPCConn(conn))
 	shutdown := func() {
-		log.Println("shutdown called")
+		t.Log("shutdown called")
 		conn.Close()
 		s.Stop()
 		l.Close()

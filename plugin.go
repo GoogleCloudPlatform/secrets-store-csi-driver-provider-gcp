@@ -17,9 +17,11 @@ import (
 // Secret holds the parameters of the SecretProviderClass CRD. Links the GCP
 // secret resource name to a path in the filesystem.
 type Secret struct {
-	// The resource name of the SecretVersion in the format projects/*/secrets/*/versions/*.
+	// ResourceName refers to a SecretVersion in the format
+	// projects/*/secrets/*/versions/*.
 	ResourceName string `json:"resourceName" yaml:"resourceName"`
-	// The filename where the contents of the secret are to be written.
+
+	// FileName is where the contents of the secret are to be written.
 	FileName string `json:"fileName" yaml:"fileName"`
 }
 
@@ -30,10 +32,10 @@ type StringArray struct {
 	Array []string `json:"array" yaml:"array"`
 }
 
-// plugin handles the secret volume mount events generated from the secrets CSI
-// driver. It fetches the secrets from the secretmanager API and writes them to
-// the filesystem based on the SecretProviderClass configuration.
-func plugin(ctx context.Context, client *secretmanager.Client, attributes, secrets, targetPath, permission string) error {
+// handleMountEvent handles the secret volume mount events generated from the
+// secrets CSI driver. It fetches the secrets from the secretmanager API and
+// writes them to the filesystem based on the SecretProviderClass configuration.
+func handleMountEvent(ctx context.Context, client *secretmanager.Client, attributes, secrets, targetPath, permission string) error {
 	var attrib, secret map[string]string
 	var filePermission os.FileMode
 
@@ -54,6 +56,7 @@ func plugin(ctx context.Context, client *secretmanager.Client, attributes, secre
 		return fmt.Errorf("failed to unmarshal file permission: %v", err)
 	}
 
+	// TODO(#4): redact attributes + secrets (or make configurable)
 	log.Printf("attributes: %v", attrib)
 	log.Printf("secrets: %v", secret)
 	log.Printf("filePermission: %v", filePermission)
