@@ -1,3 +1,17 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -7,7 +21,7 @@ import (
 	"log"
 	"net"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -47,7 +61,7 @@ func TestHandleMountEvent(t *testing.T) {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 
-	got, err := ioutil.ReadFile(path.Join(dir, "good1.txt"))
+	got, err := ioutil.ReadFile(filepath.Join(dir, "good1.txt"))
 	if err != nil {
 		t.Errorf("error reading secret. got err = %v, want err = nil", err)
 	}
@@ -133,7 +147,7 @@ func TesthandleMountEventConfigErrors(t *testing.T) {
 // replacement for the tmpfs directory that the CSI Driver would create for the
 // handleMountEvent. This returns the path and a cleanup function to run at the end of
 // the test.
-func driveMountHelper(t *testing.T) (string, func()) {
+func driveMountHelper(t testing.TB) (string, func()) {
 	t.Helper()
 	dir, err := ioutil.TempDir("", "csi-test")
 	if err != nil {
@@ -148,7 +162,7 @@ func driveMountHelper(t *testing.T) (string, func()) {
 // mock builds a secretmanager.Client talking to a real in-memory secretmanager
 // GRPC server of the *mockSecretServer. It also returns a function that must
 // be called to shut down the grpc server gracefully.
-func mock(t *testing.T, m *mockSecretServer) (*secretmanager.Client, func()) {
+func mock(t testing.TB, m *mockSecretServer) (*secretmanager.Client, func()) {
 	t.Helper()
 	l := bufconn.Listen(1024 * 1024)
 	s := grpc.NewServer()

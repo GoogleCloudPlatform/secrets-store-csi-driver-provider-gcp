@@ -1,3 +1,16 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package main
 
 import (
@@ -7,7 +20,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
@@ -82,7 +95,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, attribu
 			return fmt.Errorf("failed to access secret version: %v", err)
 		}
 
-		if err := ioutil.WriteFile(path.Join(targetPath, secret.FileName), result.Payload.Data, filePermission); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(targetPath, secret.FileName), result.Payload.Data, filePermission); err != nil {
 			return fmt.Errorf("failed to write %s at %s: %v", secret.ResourceName, targetPath, err)
 		}
 		log.Printf("secrets-store csi driver wrote %s at %s", secret.ResourceName, targetPath)
