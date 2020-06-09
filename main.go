@@ -1,17 +1,34 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Binary secrets-store-csi-driver-provider-gcp is a plugin for the
+// secrets-store-csi-driver for fetching secrets from Google Cloud's Secret
+// Manager API.
 package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 )
 
 var (
@@ -20,7 +37,7 @@ var (
 	attributes = flag.String("attributes", "", "Secrets volume attributes.")
 	secrets    = flag.String("secrets", "", "Kubernetes secrets passed through the CSI driver node publish interface.")
 	targetPath = flag.String("targetPath", "", "Path to where the secrets should be written")
-	permission = flag.String("permission", "", "File permissions of the written secrets")
+	permission = flag.Uint("permission", 700, "File permissions of the written secrets")
 )
 
 // The "provider" name in the "SecretProviderClass" CRD that this plugin
@@ -45,8 +62,18 @@ func main() {
 		os.Exit(0)
 	}
 
+	client, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		log.Fatalf("failed to create secretmanager client: %v", err)
+	}
+
 	// Fetch and write secrets.
-	if err := plugin(ctx); err != nil {
+	if err := handleMountEvent(ctx, client, &mountParams{
+		attributes:  *attributes,
+		kubeSecrets: *secrets,
+		targetPath:  *targetPath,
+		permissions: os.FileMode(*permission),
+	}); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -100,35 +127,5 @@ func copyself(ctx context.Context) error {
 
 	<-ctx.Done()
 	log.Printf("terminating")
-	return nil
-}
-
-func plugin(ctx context.Context) error {
-	var attrib, secret map[string]string
-	var filePermission os.FileMode
-
-	// Everything in the "parameters" section of the SecretProviderClass.
-	if err := json.Unmarshal([]byte(*attributes), &attrib); err != nil {
-		return fmt.Errorf("failed to unmarshal attributes, err: %v", err)
-	}
-
-	// The secrets here are the relevant CSI driver (k8s) secrets. See
-	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
-	// Currently unused.
-	if err := json.Unmarshal([]byte(*secrets), &secret); err != nil {
-		return fmt.Errorf("failed to unmarshal secrets, err: %v", err)
-	}
-
-	// Permissions to apply to all files.
-	if err := json.Unmarshal([]byte(*permission), &filePermission); err != nil {
-		return fmt.Errorf("failed to unmarshal file permission, err: %v", err)
-	}
-
-	log.Printf("attributes: %v", attrib)
-	log.Printf("secrets: %v", secret)
-	log.Printf("filePermission: %v", filePermission)
-	log.Printf("targetPath: %v", *targetPath)
-
-	// TODO: actually fetch and write secrets.
 	return nil
 }
