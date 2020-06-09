@@ -37,7 +37,7 @@ var (
 	attributes = flag.String("attributes", "", "Secrets volume attributes.")
 	secrets    = flag.String("secrets", "", "Kubernetes secrets passed through the CSI driver node publish interface.")
 	targetPath = flag.String("targetPath", "", "Path to where the secrets should be written")
-	permission = flag.String("permission", "", "File permissions of the written secrets")
+	permission = flag.Uint("permission", 700, "File permissions of the written secrets")
 )
 
 // The "provider" name in the "SecretProviderClass" CRD that this plugin
@@ -68,7 +68,12 @@ func main() {
 	}
 
 	// Fetch and write secrets.
-	if err := handleMountEvent(ctx, client, *attributes, *secrets, *targetPath, *permission); err != nil {
+	if err := handleMountEvent(ctx, client, &mountParams{
+		attributes:  *attributes,
+		kubeSecrets: *secrets,
+		targetPath:  *targetPath,
+		permissions: os.FileMode(*permission),
+	}); err != nil {
 		log.Fatal(err)
 	}
 }

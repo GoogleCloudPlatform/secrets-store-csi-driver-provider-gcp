@@ -57,7 +57,12 @@ func TestHandleMountEvent(t *testing.T) {
 	})
 	defer shutdown()
 
-	if got := handleMountEvent(context.Background(), client, sampleAttrs, "{}", dir, "777"); got != nil {
+	if got := handleMountEvent(context.Background(), client, &mountParams{
+		attributes:  sampleAttrs,
+		kubeSecrets: "{}",
+		targetPath:  dir,
+		permissions: 777,
+	}); got != nil {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 
@@ -81,7 +86,12 @@ func TesthandleMountEventSMError(t *testing.T) {
 	})
 	defer shutdown()
 
-	got := handleMountEvent(context.Background(), client, sampleAttrs, "{}", dir, "777")
+	got := handleMountEvent(context.Background(), client, &mountParams{
+		attributes:  sampleAttrs,
+		kubeSecrets: "{}",
+		targetPath:  dir,
+		permissions: 777,
+	})
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 
@@ -104,38 +114,32 @@ func TesthandleMountEventConfigErrors(t *testing.T) {
 	defer shutdown()
 
 	tests := []struct {
-		name    string
-		attrs   string
-		secrets string
-		dir     string
-		perm    string
+		name   string
+		params *mountParams
 	}{
 		{
-			name:    "unparsable attributes",
-			attrs:   "",
-			secrets: "{}",
-			dir:     dir,
-			perm:    "777",
+			name: "unparsable attributes",
+			params: &mountParams{
+				attributes:  "",
+				kubeSecrets: "{}",
+				targetPath:  dir,
+				permissions: 777,
+			},
 		},
 		{
-			name:    "unparsable secrets",
-			attrs:   sampleAttrs,
-			secrets: "",
-			dir:     dir,
-			perm:    "777",
-		},
-		{
-			name:    "unparsable perm",
-			attrs:   sampleAttrs,
-			secrets: "{}",
-			dir:     dir,
-			perm:    "foobar",
+			name: "unparsable secrets",
+			params: &mountParams{
+				attributes:  sampleAttrs,
+				kubeSecrets: "",
+				targetPath:  dir,
+				permissions: 777,
+			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := handleMountEvent(context.Background(), client, tc.attrs, tc.secrets, tc.dir, tc.perm)
+			got := handleMountEvent(context.Background(), client, tc.params)
 			if got == nil {
 				t.Errorf("handleMountEvent() succeeded for malformed input, want error")
 			}

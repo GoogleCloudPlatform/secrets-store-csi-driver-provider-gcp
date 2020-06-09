@@ -45,34 +45,35 @@ type StringArray struct {
 	Array []string `json:"array" yaml:"array"`
 }
 
-// handleMountEvent handles the secret volume mount events generated from the
-// secrets CSI driver. It fetches the secrets from the secretmanager API and
+// mountParams hold information from the CSI Driver about the mount event.
+type mountParams struct {
+	attributes  string
+	kubeSecrets string
+	targetPath  string
+	permissions os.FileMode
+}
+
+// handleMountEvent fetches the secrets from the secretmanager API and
 // writes them to the filesystem based on the SecretProviderClass configuration.
-func handleMountEvent(ctx context.Context, client *secretmanager.Client, attributes, secrets, targetPath, permission string) error {
+func handleMountEvent(ctx context.Context, client *secretmanager.Client, params *mountParams) error {
 	var attrib, secret map[string]string
-	var filePermission os.FileMode
 
 	// Everything in the "parameters" section of the SecretProviderClass.
-	if err := json.Unmarshal([]byte(attributes), &attrib); err != nil {
+	if err := json.Unmarshal([]byte(params.attributes), &attrib); err != nil {
 		return fmt.Errorf("failed to unmarshal attributes: %v", err)
 	}
 
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
 	// Currently unused.
-	if err := json.Unmarshal([]byte(secrets), &secret); err != nil {
+	if err := json.Unmarshal([]byte(params.kubeSecrets), &secret); err != nil {
 		return fmt.Errorf("failed to unmarshal secrets: %v", err)
-	}
-
-	// Permissions to apply to all files.
-	if err := json.Unmarshal([]byte(permission), &filePermission); err != nil {
-		return fmt.Errorf("failed to unmarshal file permission: %v", err)
 	}
 
 	// TODO(#4): redact attributes + secrets (or make configurable)
 	log.Printf("attributes: %v", attrib)
 	log.Printf("secrets: %v", secret)
-	log.Printf("filePermission: %v", filePermission)
+	log.Printf("filePermission: %v", params.permissions)
 	log.Printf("targetPath: %v", targetPath)
 
 	var objects StringArray
@@ -95,10 +96,10 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, attribu
 			return fmt.Errorf("failed to access secret version: %v", err)
 		}
 
-		if err := ioutil.WriteFile(filepath.Join(targetPath, secret.FileName), result.Payload.Data, filePermission); err != nil {
-			return fmt.Errorf("failed to write %s at %s: %v", secret.ResourceName, targetPath, err)
+		if err := ioutil.WriteFile(filepath.Join(params.targetPath, secret.FileName), result.Payload.Data, params.permissions); err != nil {
+			return fmt.Errorf("failed to write %s at %s: %v", secret.ResourceName, params.targetPath, err)
 		}
-		log.Printf("secrets-store csi driver wrote %s at %s", secret.ResourceName, targetPath)
+		log.Printf("secrets-store csi driver wrote %s at %s", secret.ResourceName, params.targetPath)
 	}
 
 	return nil
