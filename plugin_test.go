@@ -10,7 +10,6 @@ import (
 	"path"
 	"strings"
 	"testing"
-	"time"
 
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -161,7 +160,11 @@ func mock(t *testing.T, m *mockSecretServer) (*secretmanager.Client, func()) {
 		}
 	}()
 
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithDialer(func(string, time.Duration) (net.Conn, error) { return l.Dial() }), grpc.WithInsecure())
+	conn, err := grpc.Dial(l.Addr().String(), grpc.WithContextDialer(
+		func(context.Context, string) (net.Conn, error) {
+			return l.Dial()
+		}),
+		grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("failed to dial: %v", err)
 	}
