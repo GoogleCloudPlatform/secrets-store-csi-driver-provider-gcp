@@ -10,8 +10,6 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 
 ## Build and deploy notes
 
-**WARNING:** These are preliminary notes to aid in development, this plugin is currently not functional.
-
 * Create a new GKE cluster with K8S 1.16+
 * Install [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver) to the cluster.
 ```shell
