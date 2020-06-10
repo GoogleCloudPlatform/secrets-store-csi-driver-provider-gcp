@@ -73,7 +73,7 @@ func TestHandleMountEvent(t *testing.T) {
 	}
 }
 
-func TesthandleMountEventSMError(t *testing.T) {
+func TestHandleMountEventSMError(t *testing.T) {
 	dir := driveMountHelper(t)
 
 	client := mock(t, &mockSecretServer{
