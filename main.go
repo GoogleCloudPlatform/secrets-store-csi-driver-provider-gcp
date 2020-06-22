@@ -29,6 +29,7 @@ import (
 	"syscall"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 )
 
 var (
@@ -67,13 +68,20 @@ func main() {
 		log.Fatalf("failed to create secretmanager client: %v", err)
 	}
 
+	params := &config.MountParams{
+		Attributes:  *attributes,
+		KubeSecrets: *secrets,
+		TargetPath:  *targetPath,
+		Permissions: os.FileMode(*permission),
+	}
+
+	cfg, err := config.Parse(params)
+	if err != nil {
+		log.Fatalf("Failed to parse input params: %v", err)
+	}
+
 	// Fetch and write secrets.
-	if err := handleMountEvent(ctx, client, &mountParams{
-		attributes:  *attributes,
-		kubeSecrets: *secrets,
-		targetPath:  *targetPath,
-		permissions: os.FileMode(*permission),
-	}); err != nil {
+	if err := handleMountEvent(ctx, client, cfg); err != nil {
 		log.Fatal(err)
 	}
 }
