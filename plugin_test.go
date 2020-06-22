@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -35,14 +36,19 @@ import (
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
-var sampleAttrs = `
-{
-	"secrets": "array:\n  - |\n    resourceName: \"projects/project/secrets/test/versions/latest\"\n    fileName: \"good1.txt\"\n"
-}
-`
-
 func TestHandleMountEvent(t *testing.T) {
 	dir := driveMountHelper(t)
+
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+		},
+		TargetPath:  dir,
+		Permissions: 777,
+	}
 
 	want := []byte("My Secret")
 	client := mock(t, &mockSecretServer{
@@ -55,12 +61,7 @@ func TestHandleMountEvent(t *testing.T) {
 		},
 	})
 
-	if got := handleMountEvent(context.Background(), client, &mountParams{
-		attributes:  sampleAttrs,
-		kubeSecrets: "{}",
-		targetPath:  dir,
-		permissions: 777,
-	}); got != nil {
+	if got := handleMountEvent(context.Background(), client, cfg); got != nil {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 
@@ -76,77 +77,27 @@ func TestHandleMountEvent(t *testing.T) {
 func TestHandleMountEventSMError(t *testing.T) {
 	dir := driveMountHelper(t)
 
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+		},
+		TargetPath:  dir,
+		Permissions: 777,
+	}
+
 	client := mock(t, &mockSecretServer{
 		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
 			return nil, status.Error(codes.FailedPrecondition, "Secret is Disabled")
 		},
 	})
 
-	got := handleMountEvent(context.Background(), client, &mountParams{
-		attributes:  sampleAttrs,
-		kubeSecrets: "{}",
-		targetPath:  dir,
-		permissions: 777,
-	})
+	got := handleMountEvent(context.Background(), client, cfg)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 
-	}
-}
-
-func TestHandleMountEventConfigErrors(t *testing.T) {
-	dir := driveMountHelper(t)
-
-	client := mock(t, &mockSecretServer{
-		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
-			return &secretmanagerpb.AccessSecretVersionResponse{
-				Payload: &secretmanagerpb.SecretPayload{
-					Data: []byte("data"),
-				},
-			}, nil
-		},
-	})
-
-	tests := []struct {
-		name   string
-		params *mountParams
-	}{
-		{
-			name: "unparsable attributes",
-			params: &mountParams{
-				attributes:  "",
-				kubeSecrets: "{}",
-				targetPath:  dir,
-				permissions: 777,
-			},
-		},
-		{
-			name: "missing secrets attribute",
-			params: &mountParams{
-				attributes:  "{}",
-				kubeSecrets: "{}",
-				targetPath:  dir,
-				permissions: 777,
-			},
-		},
-		{
-			name: "unparsable kubernetes secrets",
-			params: &mountParams{
-				attributes:  sampleAttrs,
-				kubeSecrets: "",
-				targetPath:  dir,
-				permissions: 777,
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := handleMountEvent(context.Background(), client, tc.params)
-			if got == nil {
-				t.Errorf("handleMountEvent() succeeded for malformed input, want error")
-			}
-		})
 	}
 }
 
