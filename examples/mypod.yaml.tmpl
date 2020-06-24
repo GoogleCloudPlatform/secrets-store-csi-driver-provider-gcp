@@ -3,6 +3,8 @@ kind: ServiceAccount
 metadata:
   name: mypod
   namespace: default
+  annotations:
+    iam.gke.io/gcp-service-account: gke-workload@$PROJECT_ID.iam.gserviceaccount.com
 ---
 apiVersion: v1
 kind: Pod
