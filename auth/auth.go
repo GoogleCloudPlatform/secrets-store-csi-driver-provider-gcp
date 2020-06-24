@@ -35,7 +35,7 @@ import (
 // Caveats:
 //
 // None of the API calls are cached since the plugin binary is executed once per
-// mount event. The tokens are to be used immediatly so no refresh abilities are
+// mount event. The tokens are to be used immediately so no refresh abilities are
 // implemented - blocking Issue #14.
 //
 // This method requires additional K8S API permission for the CSI driver
