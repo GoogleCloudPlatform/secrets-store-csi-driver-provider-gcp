@@ -35,18 +35,18 @@ $ gcloud iam service-accounts create gke-workload
 # Allow "default/mypod" to act as the new service account
 $ gcloud iam service-accounts add-iam-policy-binding \
     --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:$PROJECT_ID.svc.id.goog[default/mypod]" \
+    --member "serviceAccount:$PROJECT_ID.svc.id.goog[default/mypodserviceaccount]" \
     gke-workload@$PROJECT_ID.iam.gserviceaccount.com
 ```
 * Create a secret that the workload identity service account can access
 ```shell
 # Create a secret with 1 active version
 $ echo "foo" > secret.data
-$ gcloud secrets create test --replication-policy=automatic --data-file=secret.data
+$ gcloud secrets create testsecret --replication-policy=automatic --data-file=secret.data
 $ rm secret.data
 
 # grant the new service account permission to access the secret
-$ gcloud secrets add-iam-policy-binding test \
+$ gcloud secrets add-iam-policy-binding testsecret \
     --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
     --role=roles/secretmanager.secretAccessor
 ```
