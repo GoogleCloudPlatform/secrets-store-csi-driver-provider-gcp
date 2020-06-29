@@ -29,11 +29,15 @@ import (
 	"syscall"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"golang.org/x/oauth2"
+	"google.golang.org/api/option"
 )
 
 var (
-	daemonset = flag.Bool("daemonset", false, "Controls whether the plugin executes in the DaemonSet mode, copying itself to TARGET_DIR")
+	daemonset  = flag.Bool("daemonset", false, "Controls whether the plugin executes in the DaemonSet mode, copying itself to TARGET_DIR")
+	kubeconfig = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
 
 	attributes = flag.String("attributes", "", "Secrets volume attributes.")
 	secrets    = flag.String("secrets", "", "Kubernetes secrets passed through the CSI driver node publish interface.")
@@ -63,11 +67,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	client, err := secretmanager.NewClient(ctx)
-	if err != nil {
-		log.Fatalf("failed to create secretmanager client: %v", err)
-	}
-
 	params := &config.MountParams{
 		Attributes:  *attributes,
 		KubeSecrets: *secrets,
@@ -78,6 +77,22 @@ func main() {
 	cfg, err := config.Parse(params)
 	if err != nil {
 		log.Fatalf("Failed to parse input params: %v", err)
+	}
+
+	smOpts := []option.ClientOption{}
+
+	// Build the workload identity auth token if possible (fallback to node ID)
+	token, err := auth.Token(ctx, cfg, *kubeconfig)
+	if err != nil {
+		log.Printf("unable to use workload identity: %v", err)
+	} else {
+		smOpts = append(smOpts, option.WithTokenSource(oauth2.StaticTokenSource(token)))
+	}
+
+	// Build the secret manager client
+	client, err := secretmanager.NewClient(ctx, smOpts...)
+	if err != nil {
+		log.Fatalf("failed to create secretmanager client: %v", err)
 	}
 
 	// Fetch and write secrets.

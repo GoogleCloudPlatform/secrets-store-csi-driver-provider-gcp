@@ -27,6 +27,29 @@ $ ./scripts/build.sh
 ```shell
 $ ./scripts/deploy.sh
 ```
+* Setup the workload identity service account
+```shell
+# Create a service account for workload identity
+$ gcloud iam service-accounts create gke-workload
+
+# Allow "default/mypod" to act as the new service account
+$ gcloud iam service-accounts add-iam-policy-binding \
+    --role roles/iam.workloadIdentityUser \
+    --member "serviceAccount:$PROJECT_ID.svc.id.goog[default/mypodserviceaccount]" \
+    gke-workload@$PROJECT_ID.iam.gserviceaccount.com
+```
+* Create a secret that the workload identity service account can access
+```shell
+# Create a secret with 1 active version
+$ echo "foo" > secret.data
+$ gcloud secrets create testsecret --replication-policy=automatic --data-file=secret.data
+$ rm secret.data
+
+# grant the new service account permission to access the secret
+$ gcloud secrets add-iam-policy-binding testsecret \
+    --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
+    --role=roles/secretmanager.secretAccessor
+```
 * Try it out the example which attempts to mount the secret "test" in `$PROJECT_ID` to `/var/secrets/good1.txt` and `/var/secrets/good2.txt`
 ```shell
 $ ./scripts/example.sh

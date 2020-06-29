@@ -1,8 +1,10 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: mypod
+  name: mypodserviceaccount
   namespace: default
+  annotations:
+    iam.gke.io/gcp-service-account: gke-workload@$PROJECT_ID.iam.gserviceaccount.com
 ---
 apiVersion: v1
 kind: Pod
@@ -10,7 +12,7 @@ metadata:
   name: mypod
   namespace: default
 spec:
-  serviceAccountName: mypod
+  serviceAccountName: mypodserviceaccount
   containers:
   - image: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     imagePullPolicy: IfNotPresent
