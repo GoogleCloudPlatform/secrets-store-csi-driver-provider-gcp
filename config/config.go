@@ -39,13 +39,6 @@ type MountConfig struct {
 	Permissions os.FileMode
 }
 
-// stringArray holds the 'secrets' key of the SecretProviderClass parameters.
-// This is an array of yaml strings. Each string then must be parsed as a
-// 'Secret' struct.
-type stringArray struct {
-	Array []string `json:"array" yaml:"array"`
-}
-
 // MountParams hold unparsed arguments from the CSI Driver from the mount event.
 type MountParams struct {
 	Attributes  string
@@ -87,20 +80,11 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	log.Printf("filePermission: %v", in.Permissions)
 	log.Printf("targetPath: %v", in.TargetPath)
 
-	var objects stringArray
 	if _, ok := attrib["secrets"]; !ok {
 		return nil, errors.New("missing required 'secrets' attribute")
 	}
-	if err := yaml.Unmarshal([]byte(attrib["secrets"]), &objects); err != nil {
+	if err := yaml.Unmarshal([]byte(attrib["secrets"]), &out.Secrets); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal secrets attribute: %v", err)
-	}
-
-	for i, object := range objects.Array {
-		var secret Secret
-		if err := yaml.Unmarshal([]byte(object), &secret); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal secret at index %d: %v", i, err)
-		}
-		out.Secrets = append(out.Secrets, &secret)
 	}
 
 	return out, nil

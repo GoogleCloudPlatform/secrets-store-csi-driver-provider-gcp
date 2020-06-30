@@ -17,7 +17,7 @@ func TestParse(t *testing.T) {
 			in: &MountParams{
 				Attributes: `
 				{
-					"secrets": "array:\n  - |\n    resourceName: \"projects/project/secrets/test/versions/latest\"\n    fileName: \"good1.txt\"\n",
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
 					"csi.storage.k8s.io/pod.namespace": "default",
 					"csi.storage.k8s.io/pod.name": "mypod",
 					"csi.storage.k8s.io/pod.uid": "123"
@@ -48,7 +48,7 @@ func TestParse(t *testing.T) {
 			in: &MountParams{
 				Attributes: `
 				{
-					"secrets": "array:\n  - |\n    resourceName: \"projects/project/secrets/test/versions/latest\"\n    fileName: \"good1.txt\"\n  - |\n    resourceName: \"projects/project/secrets/test2/versions/latest\"\n    fileName: \"good2.txt\"\n",
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n- resourceName: \"projects/project/secrets/test2/versions/latest\"\n  fileName: \"good2.txt\"\n",
 					"csi.storage.k8s.io/pod.namespace": "default",
 					"csi.storage.k8s.io/pod.name": "mypod",
 					"csi.storage.k8s.io/pod.uid": "123"
@@ -121,7 +121,7 @@ func TestParseErrors(t *testing.T) {
 			in: &MountParams{
 				Attributes: `
 				{
-					"secrets": "array:\n  - |\n    resourceName: \"projects/project/secrets/test/versions/latest\"\n    fileName: \"good1.txt\"\n",
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
 					"csi.storage.k8s.io/pod.namespace": "default",
 					"csi.storage.k8s.io/pod.name": "mypod",
 					"csi.storage.k8s.io/pod.uid": "123"
