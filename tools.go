@@ -17,8 +17,11 @@
 // Package tools includes the list of tools used in the project.
 package tools
 
+// NOTE: when adding a new tool remember to include it in TOOLS in Makefile.
+// This is needed for it to be analyzed by go-licenses.
 import (
 	_ "github.com/client9/misspell/cmd/misspell"
+	_ "github.com/google/go-licenses"
 	_ "golang.org/x/tools/cmd/goimports"
 	_ "honnef.co/go/tools/cmd/staticcheck"
 )

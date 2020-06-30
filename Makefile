@@ -15,6 +15,8 @@
 VETTERS = "asmdecl,assign,atomic,bools,buildtag,cgocall,composites,copylocks,errorsas,httpresponse,loopclosure,lostcancel,nilfunc,printf,shift,stdmethods,structtag,tests,unmarshal,unreachable,unsafeptr,unusedresult"
 GOFMT_FILES = $(shell go list -f '{{.Dir}}' ./...)
 
+TOOLS = github.com/client9/misspell/cmd/misspell github.com/google/go-licenses golang.org/x/tools/cmd/goimports honnef.co/go/tools/cmd/staticcheck
+
 fmtcheck:
 	@command -v goimports > /dev/null 2>&1 || go get golang.org/x/tools/cmd/goimports
 	@CHANGES="$$(goimports -d $(GOFMT_FILES))"; \
@@ -39,6 +41,21 @@ staticcheck:
 	@command -v staticcheck > /dev/null 2>&1 || go get honnef.co/go/tools/cmd/staticcheck
 	@staticcheck -checks="all" -tests $(GOFMT_FILES)
 .PHONY: staticcheck
+
+licensescsv:
+	@command -v go-licenses > /dev/null 2>&1 || go get github.com/google/go-licenses
+	@go-licenses csv . $(TOOLS) > licenses.csv
+.PHONY: licensecsv
+
+licensescheck:
+	@command -v go-licenses > /dev/null 2>&1 || go get github.com/google/go-licenses
+	@go-licenses check . $(TOOLS)
+.PHONY: licensecheck
+
+licensessave:
+	@command -v go-licenses > /dev/null 2>&1 || go get github.com/google/go-licenses
+	@go-licenses save . $(TOOLS) --save_path=licenses
+.PHONY: licensessave
 
 test:
 	@go test \

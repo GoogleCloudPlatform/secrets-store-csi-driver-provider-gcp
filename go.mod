@@ -20,6 +20,7 @@ require (
 	cloud.google.com/go v0.60.0
 	github.com/client9/misspell v0.3.4
 	github.com/google/go-cmp v0.5.0
+	github.com/google/go-licenses v0.0.0-20200602185517-f29a4c695c3d
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/tools v0.0.0-20200626171337-aa94e735be7f
 	google.golang.org/api v0.28.0
