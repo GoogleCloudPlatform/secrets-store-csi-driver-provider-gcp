@@ -10,7 +10,7 @@ RUN go get -t ./...
 RUN make licensessave
 RUN go install \
     -trimpath \
-    -ldflags "-extldflags '-static'" \
+    -ldflags "-s -w -extldflags '-static'" \
     github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 
 FROM gcr.io/distroless/static-debian10
