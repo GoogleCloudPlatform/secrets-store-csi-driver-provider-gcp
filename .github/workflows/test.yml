@@ -39,7 +39,7 @@ jobs:
     - name: Get dependencies
       run: go get -t ./...
     - name: Lint
-      run: make fmtcheck staticcheck spellcheck
+      run: make fmtcheck staticcheck spellcheck licensescheck
       if: ${{ matrix.os != 'windows-latest' }}
     - name: Test
       run: make test-acc
