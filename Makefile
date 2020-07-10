@@ -42,7 +42,7 @@ staticcheck:
 
 licensescsv:
 	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go get github.com/google/go-licenses && cd ..)
-	@go-licenses csv . > licenses.csv
+	@go-licenses csv . | sort > licenses.csv
 .PHONY: licensecsv
 
 licensescheck:
