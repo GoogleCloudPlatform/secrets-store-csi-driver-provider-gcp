@@ -21,13 +21,15 @@ $ kubectl apply -f deploy/secrets-store-csi-driver.yaml
 * Use [Google Cloud Build](https://cloud.google.com/run/docs/building/containers#building_using) and [Container Registry](https://cloud.google.com/container-registry/docs/quickstart) to build and host the plugin docker image.
 ```shell
 $ export PROJECT_ID=<your gcp project>
+$ gcloud config set project $PROJECT_ID
 $ ./scripts/build.sh
 ```
 * Deploy the plugin as a DaemonSet to your cluster.
 ```shell
 $ ./scripts/deploy.sh
 ```
-* Setup the workload identity service account
+* Ensure that workload identity is [enabled](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#enable_on_existing_cluster) in your GKE cluster.
+* Setup the workload identity service account.
 ```shell
 # Create a service account for workload identity
 $ gcloud iam service-accounts create gke-workload
