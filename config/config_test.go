@@ -34,7 +34,8 @@ func TestParse(t *testing.T) {
 					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
 					"csi.storage.k8s.io/pod.namespace": "default",
 					"csi.storage.k8s.io/pod.name": "mypod",
-					"csi.storage.k8s.io/pod.uid": "123"
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
 				KubeSecrets: "{}",
@@ -49,9 +50,10 @@ func TestParse(t *testing.T) {
 					},
 				},
 				PodInfo: &PodInfo{
-					Namespace: "default",
-					Name:      "mypod",
-					UID:       "123",
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
 				},
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
@@ -65,7 +67,8 @@ func TestParse(t *testing.T) {
 					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n- resourceName: \"projects/project/secrets/test2/versions/latest\"\n  fileName: \"good2.txt\"\n",
 					"csi.storage.k8s.io/pod.namespace": "default",
 					"csi.storage.k8s.io/pod.name": "mypod",
-					"csi.storage.k8s.io/pod.uid": "123"
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
 				KubeSecrets: "{}",
@@ -84,9 +87,10 @@ func TestParse(t *testing.T) {
 					},
 				},
 				PodInfo: &PodInfo{
-					Namespace: "default",
-					Name:      "mypod",
-					UID:       "123",
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
 				},
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,

@@ -40,9 +40,10 @@ type Secret struct {
 
 // PodInfo includes details about the pod that is receiving the mount event.
 type PodInfo struct {
-	Namespace string
-	Name      string
-	UID       types.UID
+	Namespace      string
+	Name           string
+	UID            types.UID
+	ServiceAccount string
 }
 
 // MountConfig holds the parsed information from a mount event.
@@ -76,9 +77,10 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 
 	out.PodInfo = &PodInfo{
-		Namespace: attrib["csi.storage.k8s.io/pod.namespace"],
-		Name:      attrib["csi.storage.k8s.io/pod.name"],
-		UID:       types.UID(attrib["csi.storage.k8s.io/pod.uid"]),
+		Namespace:      attrib["csi.storage.k8s.io/pod.namespace"],
+		Name:           attrib["csi.storage.k8s.io/pod.name"],
+		UID:            types.UID(attrib["csi.storage.k8s.io/pod.uid"]),
+		ServiceAccount: attrib["csi.storage.k8s.io/serviceAccount.name"],
 	}
 
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
