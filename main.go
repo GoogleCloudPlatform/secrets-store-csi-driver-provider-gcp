@@ -51,8 +51,8 @@ const providerName = "gcp"
 
 func main() {
 	flag.Parse()
-	// TODO: https://github.com/kubernetes-sigs/secrets-store-csi-driver does
-	// not log plugin stderr output.
+	// https://github.com/kubernetes-sigs/secrets-store-csi-driver only logs
+	// stderr if the plugin execution is not successful.
 	log.SetOutput(os.Stdout)
 	ctx := withShutdownSignal(context.Background())
 
