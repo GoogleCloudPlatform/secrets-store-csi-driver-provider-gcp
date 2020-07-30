@@ -8,7 +8,7 @@ the [Secret Store CSI
 Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver). Allows you
 to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 
-## Build and deploy notes
+## Install
 
 * Create a new GKE cluster with K8S 1.16+
 * Install [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver) to the cluster.
@@ -18,6 +18,14 @@ $ kubectl apply -f deploy/csidriver.yaml
 $ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
 $ kubectl apply -f deploy/secrets-store-csi-driver.yaml
 ```
+* Install the plugin DaemonSet & additional RoleBindings
+```shell
+$ kubectl apply -f deploy/workload-id-binding.yaml
+$ kubectl apply -f deploy/provider-gcp-plugin.yaml
+```
+
+## Build and deploy notes
+
 * Use [Google Cloud Build](https://cloud.google.com/run/docs/building/containers#building_using) and [Container Registry](https://cloud.google.com/container-registry/docs/quickstart) to build and host the plugin docker image.
 ```shell
 $ export PROJECT_ID=<your gcp project>
@@ -28,9 +36,14 @@ $ ./scripts/build.sh
 ```shell
 $ ./scripts/deploy.sh
 ```
+
+## Usage
+
 * Ensure that workload identity is [enabled](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#enable_on_existing_cluster) in your GKE cluster.
 * Setup the workload identity service account.
 ```shell
+$ export PROJECT_ID=<your gcp project>
+$ gcloud config set project $PROJECT_ID
 # Create a service account for workload identity
 $ gcloud iam service-accounts create gke-workload
 
