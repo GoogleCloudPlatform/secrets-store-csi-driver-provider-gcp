@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: csi-secrets-store-provider-gcp
+  name: csi-secrets-store-provider-gcp
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: csi-secrets-store-provider-gcp
+  template:
+    metadata:
+      labels:
+        app: csi-secrets-store-provider-gcp
+    spec:
+      containers:
+        - name: provider-gcp-installer
+          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:e8b491a72eb3f3337005565470972f41c52a8de47fc5266d6bf3e2a94d88df26
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+            limits:
+              cpu: 50m
+              memory: 100Mi
+          env:
+            - name: TARGET_DIR
+              value: "/etc/kubernetes/secrets-store-csi-providers"
+          volumeMounts:
+            - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
+              name: providervol
+      volumes:
+        - name: providervol
+          hostPath:
+              path: /etc/kubernetes/secrets-store-csi-providers
+      nodeSelector:
+        beta.kubernetes.io/os: linux
