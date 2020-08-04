@@ -1,0 +1,8 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-admin
+rules:
+  - apiGroups: ["container.cnrm.cloud.google.com"]
+    resources: ["containerclusters"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

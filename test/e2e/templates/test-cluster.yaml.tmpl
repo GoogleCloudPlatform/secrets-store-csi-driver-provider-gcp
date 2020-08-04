@@ -1,0 +1,17 @@
+apiVersion: container.cnrm.cloud.google.com/v1beta1
+kind: ContainerCluster
+metadata:
+  annotations:
+    cnrm.cloud.google.com/project-id: $PROJECT_ID
+    cnrm.cloud.google.com/remove-default-node-pool: "false"
+    # TODO: do we need "deletion-policy: abandon" here to prevent anthos config management
+    # from deleting the resource?
+  name: $CLUSTER_NAME
+spec:
+  location: us-central1-c
+  initialNodeCount: 3
+  loggingService: logging.googleapis.com/kubernetes
+  minMasterVersion: "1.16"
+  monitoringService: monitoring.googleapis.com/kubernetes
+  workloadIdentityConfig:
+    identityNamespace: $PROJECT_ID.svc.id.goog

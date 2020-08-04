@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-cluster-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: configmap-admin
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: test-cluster-sa-configmap-admin
+subjects:
+  - kind: ServiceAccount
+    name: test-cluster-sa
+roleRef:
+  kind: Role
+  name: configmap-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1alpha1
+kind: SecretProviderClass
+metadata:
+  name: gcp-test-secrets
+spec:
+  provider: gcp
+  parameters:
+    secrets: |
+      - resourceName: "projects/$PROJECT_ID/secrets/$TEST_SECRET_ID/versions/latest"
+        fileName: "$TEST_SECRET_ID"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-secret-mounter-job
+spec:
+  template:
+    metadata:
+      name: test-secret-mounter
+    spec:
+      serviceAccountName: test-cluster-sa
+      restartPolicy: OnFailure
+      containers:
+        - name: test-secret-mounter
+          # TODO: pull image from head or from image built from the branch being tested
+          image: gcr.io/test-csi-test-infra/test-secret-mounter:latest
+          env:
+          - name: TEST_SECRET_ID
+            value: $TEST_SECRET_ID
+          volumeMounts:
+          - mountPath: "/var/gcp-test-secrets"
+            name: gcp-test-secrets
+      volumes:
+      - name: gcp-test-secrets
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "gcp-test-secrets"

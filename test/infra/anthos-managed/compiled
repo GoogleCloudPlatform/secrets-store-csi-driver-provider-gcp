@@ -1,0 +1,143 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    configmanagement.gke.io/cluster-name: defaultcluster
+    configmanagement.gke.io/source-path: namespaces/e2e-test/namespace.yaml
+    hnc.x-k8s.io/managedBy: configmanagement.gke.io
+  labels:
+    config-sync-root.tree.hnc.x-k8s.io/depth: "1"
+    e2e-test.tree.hnc.x-k8s.io/depth: "0"
+  name: e2e-test
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    configmanagement.gke.io/cluster-name: defaultcluster
+    configmanagement.gke.io/source-path: namespaces/e2e-test/e2e-test-sa.yaml
+    iam.gke.io/gcp-service-account: e2e-test-sa@test-csi-test-infra.iam.gserviceaccount.com
+  name: e2e-test-sa
+  namespace: e2e-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    configmanagement.gke.io/cluster-name: defaultcluster
+    configmanagement.gke.io/source-path: namespaces/e2e-test/cluster-admin.yaml
+  name: cluster-admin
+  namespace: e2e-test
+rules:
+- apiGroups:
+  - container.cnrm.cloud.google.com
+  resources:
+  - containerclusters
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    configmanagement.gke.io/cluster-name: defaultcluster
+    configmanagement.gke.io/source-path: namespaces/e2e-test/e2e-test-sa-rolebinding.yaml
+  name: e2e-test-sa-cluster-admin
+  namespace: e2e-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: e2e-test-sa
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    configmanagement.gke.io/cluster-name: defaultcluster
+    configmanagement.gke.io/source-path: namespaces/test-csi-test-infra/namespace.yaml
+    hnc.x-k8s.io/managedBy: configmanagement.gke.io
+  labels:
+    config-sync-root.tree.hnc.x-k8s.io/depth: "1"
+    test-csi-test-infra.tree.hnc.x-k8s.io/depth: "0"
+  name: test-csi-test-infra
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicy
+metadata:
+  annotations:
+    configmanagement.gke.io/cluster-name: defaultcluster
+    configmanagement.gke.io/source-path: namespaces/test-csi-test-infra/e2e-test-sa-iam-policy.yaml
+  name: e2e-test-sa-iam-policy
+  namespace: test-csi-test-infra
+spec:
+  bindings:
+  - members:
+    - serviceAccount:test-csi-test-infra.svc.id.goog[e2e-test/e2e-test-sa]
+    role: roles/iam.workloadIdentityUser
+  resourceRef:
+    apiVersion: iam.cnrm.cloud.google.com/v1beta1
+    kind: IAMServiceAccount
+    name: e2e-test-sa
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicy
+metadata:
+  annotations:
+    configmanagement.gke.io/cluster-name: defaultcluster
+    configmanagement.gke.io/source-path: namespaces/test-csi-test-infra/iam-policy.yaml
+  name: iam-policy
+  namespace: test-csi-test-infra
+spec:
+  bindings:
+  - members:
+    - serviceAccount:e2e-test-sa@test-csi-test-infra.iam.gserviceaccount.com
+    role: roles/container.admin
+  - members:
+    - serviceAccount:cnrm-system@test-csi-test-infra.iam.gserviceaccount.com
+    role: roles/owner
+  - members:
+    - user:colinman@google.com
+    role: roles/owner
+  - members:
+    - serviceAccount:service-1012695704554@container-engine-robot.iam.gserviceaccount.com
+    role: roles/container.serviceAgent
+  - members:
+    - serviceAccount:1012695704554-compute@developer.gserviceaccount.com
+    role: roles/compute.serviceAgent
+  - members:
+    - serviceAccount:1012695704554-compute@developer.gserviceaccount.com
+    role: roles/editor
+  - members:
+    - serviceAccount:1012695704554@cloudservices.gserviceaccount.com
+    role: roles/editor
+  - members:
+    - serviceAccount:test-csi-test-infra.svc.id.goog[default/test-cluster-sa]
+    role: roles/secretmanager.secretAccessor
+  - members:
+    - serviceAccount:e2e-test-sa@test-csi-test-infra.iam.gserviceaccount.com
+    role: roles/secretmanager.admin
+  resourceRef:
+    apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+    external: projects/test-csi-test-infra
+    kind: Project
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMServiceAccount
+metadata:
+  annotations:
+    configmanagement.gke.io/cluster-name: defaultcluster
+    configmanagement.gke.io/source-path: namespaces/test-csi-test-infra/e2e-test-sa.yaml
+  name: e2e-test-sa
+  namespace: test-csi-test-infra
+spec:
+  displayName: E2E Tests Service Account
