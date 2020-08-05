@@ -48,8 +48,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: test-secret-mounter
-          # TODO: pull image from head or from image built from the branch being tested
-          image: gcr.io/test-csi-test-infra/test-secret-mounter:latest
+          image: gcr.io/$PROJECT_ID/test-secret-mounter:$GCP_PROVIDER_BRANCH
           env:
           - name: TEST_SECRET_ID
             value: $TEST_SECRET_ID

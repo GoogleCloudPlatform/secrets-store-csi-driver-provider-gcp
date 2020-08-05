@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -19,20 +20,23 @@ const zone = "us-central1-c" // matches zone in test-cluster.yaml.tmpl
 const testProjectId = "test-csi-test-infra"
 
 type testFixture struct {
-	tempDir         string
-	testClusterName string
-	testSecretId    string
-	kubeconfigFile  string
+	tempDir           string
+	gcpProviderBranch string
+	testClusterName   string
+	testSecretId      string
+	kubeconfigFile    string
 }
 
 var f testFixture
 
+// Panics with the provided error if it is not nil.
 func check(err error) {
 	if err != nil {
 		panic(err)
 	}
 }
 
+// Prints and executes a command.
 func execCmd(command *exec.Cmd) error {
 	var stdout, stderr bytes.Buffer
 	fmt.Println("+", command)
@@ -44,25 +48,33 @@ func execCmd(command *exec.Cmd) error {
 	return err
 }
 
-func replaceTemplate(templatePath string, destFile string) error {
+// Replaces variables in an input template file and writes the result to an
+// output file.
+func replaceTemplate(templateFile string, destFile string) error {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	templateFile, err := ioutil.ReadFile(filepath.Join(pwd, templatePath))
+	templateBytes, err := ioutil.ReadFile(filepath.Join(pwd, templateFile))
 	if err != nil {
 		return err
 	}
-	template := string(templateFile)
+	template := string(templateBytes)
 	template = strings.ReplaceAll(template, "$PROJECT_ID", testProjectId)
 	template = strings.ReplaceAll(template, "$CLUSTER_NAME", f.testClusterName)
 	template = strings.ReplaceAll(template, "$TEST_SECRET_ID", f.testSecretId)
+	template = strings.ReplaceAll(template, "$GCP_PROVIDER_BRANCH", f.gcpProviderBranch)
 	return ioutil.WriteFile(destFile, []byte(template), 0644)
 }
 
 // Executed before any tests are run. Setup is only run once for all tests in the suite.
 func setupTestSuite() {
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	f.gcpProviderBranch = os.Getenv("GCP_PROVIDER_BRANCH")
+	if len(f.gcpProviderBranch) == 0 {
+		log.Fatal("GCP_PROVIDER_BRANCH is empty")
+	}
 
 	tempDir, err := ioutil.TempDir("", "csi-tests")
 	check(err)
@@ -131,6 +143,8 @@ func runTest(m *testing.M) (code int) {
 	return m.Run()
 }
 
+// Execute a test job that writes the test secret to a configmap and verify that the
+// secret value is correct.
 func TestMountSecret(t *testing.T) {
 	jobFile := filepath.Join(f.tempDir, "test-job.yaml")
 	if err := replaceTemplate("templates/test-job.yaml.tmpl", jobFile); err != nil {

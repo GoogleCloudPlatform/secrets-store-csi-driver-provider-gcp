@@ -9,33 +9,32 @@ COPY . ./
 RUN go get -t ./...
 RUN go test -c .
 
-# kubectl
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
-RUN chmod +x ./kubectl
-
-# deploy scripts
-# TODO: think about how we want to version these
-RUN curl -LO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/v0.0.12/deploy/rbac-secretproviderclass.yaml
-RUN curl -LO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/v0.0.12/deploy/csidriver.yaml
-RUN curl -LO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/v0.0.12/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
-RUN curl -LO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/v0.0.12/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml
-RUN curl -LO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/v0.0.12/deploy/secrets-store-csi-driver.yaml
-
-RUN curl -LO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/main/deploy/provider-gcp-plugin.yaml
-RUN curl -LO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/main/deploy/workload-id-binding.yaml
-
 # Use Cloud SDK image to use gCloud in tests
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
 
-WORKDIR /test
+ARG SECRET_STORE_VERSION
+ARG GCP_PROVIDER_BRANCH
+
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/e2e.test /bin/
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/templates /test/templates
-COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/kubectl /bin/
-COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/rbac-secretproviderclass.yaml /test/deploy/
-COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/csidriver.yaml /test/deploy/
-COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml /test/deploy/
-COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml /test/deploy/
-COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/secrets-store-csi-driver.yaml /test/deploy/
-COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/workload-id-binding.yaml /test/deploy/
-COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/provider-gcp-plugin.yaml /test/deploy/
+
+# kubectl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+RUN chmod +x ./kubectl
+RUN mv kubectl /bin/
+
+WORKDIR /test/deploy
+
+# secrets-store-csi-driver
+RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/deploy/rbac-secretproviderclass.yaml
+RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/deploy/csidriver.yaml
+RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
+RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml
+RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/deploy/secrets-store-csi-driver.yaml
+
+# secrets-store-csi-driver-provider-gcp
+RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_BRANCH/deploy/provider-gcp-plugin.yaml
+RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_BRANCH/deploy/workload-id-binding.yaml
+
+WORKDIR /test
 ENTRYPOINT ["/bin/e2e.test"]

@@ -4,8 +4,6 @@ metadata:
   annotations:
     cnrm.cloud.google.com/project-id: $PROJECT_ID
     cnrm.cloud.google.com/remove-default-node-pool: "false"
-    # TODO: do we need "deletion-policy: abandon" here to prevent anthos config management
-    # from deleting the resource?
   name: $CLUSTER_NAME
 spec:
   location: us-central1-c

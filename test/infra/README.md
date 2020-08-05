@@ -1,12 +1,11 @@
-## TODO: Add test infrastructure architecture diagram
+## TODO: Add architecture diagram
 
 # Set up Config Connector via Anthos Config Management
 
-In order to declaratively configure our management cluster, we must first set up Anthos Config Management on the cluster.
+Set up Anthos Config Management on the management cluster to declaratively manage objects.
 
 Follow the [instructions](https://cloud.google.com/anthos-config-management/docs/how-to/installing) to install Anthos Config Management.
 
-1. [Install](https://cloud.google.com/anthos-config-management/docs/how-to/nomos-command#installing) the `nomos` tool
 1. Create and connect to a `management-cluster` GKE cluster in the project
 
 ```sh
@@ -38,6 +37,8 @@ $ kubectl apply -f configs/config-management-operator.yaml
 $ kubectl apply -f configs/config-management.yaml
 ```
 
+1. [Install](https://cloud.google.com/anthos-config-management/docs/how-to/nomos-command#installing) the `nomos` tool
+
 1. Use `nomos` to verify that the installation succeeded
 
 ```sh
@@ -46,7 +47,7 @@ $ nomos status
 ```
 
 1. Create a service account for Config Connector to use to manage GCP resources.
-## TODO: See if there's a way to do this via ADC or Workload identity. Check out b/154765441
+## TODO: Do this via Workload identity after b/154765441 is resolved
 
 ```sh
 $ gcloud iam service-accounts create cnrm-system --project ${PROJECT_ID}
@@ -60,7 +61,6 @@ $ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
  --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
  --role "roles/container.admin"
 
-# TODO: Why do we need this again?
 $ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
  --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
  --role "roles/iam.serviceAccountUser"

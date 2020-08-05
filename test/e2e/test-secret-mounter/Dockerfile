@@ -6,7 +6,7 @@ ENV CGO_ENABLED=0 \
 # e2e test
 WORKDIR /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/test-secret-mounter
 COPY . ./
-# RUN go get -t ./...
+RUN go get -t ./...
 RUN go install \
     -trimpath \
     -ldflags "-s -w -extldflags '-static'" \

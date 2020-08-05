@@ -24,7 +24,6 @@ spec:
     - members:
       - serviceAccount:1012695704554-compute@developer.gserviceaccount.com
       role: roles/compute.serviceAgent
-      # to pull GCR images (TODO: reduce scope)
     - members:
       - serviceAccount:1012695704554-compute@developer.gserviceaccount.com
       role: roles/editor
