@@ -18,7 +18,7 @@ $ gcloud container clusters create management-cluster \
   --zone us-central1-c \
   --workload-pool=${PROJECT_ID}.svc.id.goog
 
-# This documentation assumes a default kubeconfig that connects to `managment-cluster`
+# This documentation assumes a default kubeconfig that connects to `management-cluster`
 $ gcloud container clusters get-credentials management-cluster --zone us-central1-c --project ${PROJECT_ID}
 ```
 
