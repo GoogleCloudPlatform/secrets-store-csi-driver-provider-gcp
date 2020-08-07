@@ -6,7 +6,7 @@ metadata:
     cnrm.cloud.google.com/remove-default-node-pool: "false"
   name: $CLUSTER_NAME
 spec:
-  location: us-central1-c
+  location: $ZONE
   initialNodeCount: 3
   loggingService: logging.googleapis.com/kubernetes
   minMasterVersion: "1.16"

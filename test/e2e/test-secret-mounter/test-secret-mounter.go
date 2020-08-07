@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -23,15 +22,11 @@ func main() {
 		log.Fatalf("Could not read secret file %v: %v", secretId, err)
 	}
 
-	var stdout, stderr bytes.Buffer
 	command := exec.Command("kubectl", "create", "configmap", "secretmap",
 		"--from-literal=csiSecret="+base64.StdEncoding.EncodeToString(secret))
 	fmt.Println("+", command)
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	err = command.Run()
-	fmt.Println("Stdout:", string(stdout.Bytes()))
-	fmt.Println("Stderr:", string(stderr.Bytes()))
+	stdoutStderr, err := command.CombinedOutput()
+	fmt.Println(string(stdoutStderr))
 	if err != nil {
 		log.Fatalf("Could not create config map: %v", err)
 	}

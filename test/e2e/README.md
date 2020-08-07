@@ -21,7 +21,7 @@ $ ./build.sh
 To run end-to-end tests on a specific branch (after building images):
 
 ```sh
-$ sed "s/\$GCP_PROVIDER_BRANCH/${GCP_PROVIDER_BRANCH}/g" e2e-test-job.yaml.tmpl | kubectl apply -f -
+$ sed "s/\$GCP_PROVIDER_BRANCH/${GCP_PROVIDER_BRANCH}/g;s/\$PROJECT_ID/${PROJECT_ID}/g" e2e-test-job.yaml.tmpl | kubectl apply -f -
 
 # view job logs
 $ kubectl logs -n e2e-test -l job-name=e2e-test-job -f

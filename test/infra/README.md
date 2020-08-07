@@ -1,5 +1,11 @@
 ## TODO: Add architecture diagram
 
+# Overview
+
+This folder codifies the test infrastructure used to execute end-to-end integration tests. Use these instruction to perform one-time provisioning of a GKE "management cluster".
+
+E2E tests are executed in the management cluster and create/teardown separate test clusters for testing. See [test/e2e](test/e2e/README.md) for instructions on running the tests.
+
 # Set up Config Connector via Anthos Config Management
 
 Set up Anthos Config Management on the management cluster to declaratively manage objects.

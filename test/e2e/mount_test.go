@@ -16,8 +16,8 @@ import (
 	"time"
 )
 
-const zone = "us-central1-c" // matches zone in test-cluster.yaml.tmpl
-const testProjectId = "test-csi-test-infra"
+// zone to set up test cluster in
+const zone = "us-central1-c"
 
 type testFixture struct {
 	tempDir           string
@@ -25,6 +25,7 @@ type testFixture struct {
 	testClusterName   string
 	testSecretId      string
 	kubeconfigFile    string
+	testProjectId     string
 }
 
 var f testFixture
@@ -38,13 +39,9 @@ func check(err error) {
 
 // Prints and executes a command.
 func execCmd(command *exec.Cmd) error {
-	var stdout, stderr bytes.Buffer
 	fmt.Println("+", command)
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	err := command.Run()
-	fmt.Println("Stdout:", string(stdout.Bytes()))
-	fmt.Println("Stderr:", string(stderr.Bytes()))
+	stdoutStderr, err := command.CombinedOutput()
+	fmt.Println(string(stdoutStderr))
 	return err
 }
 
@@ -60,10 +57,11 @@ func replaceTemplate(templateFile string, destFile string) error {
 		return err
 	}
 	template := string(templateBytes)
-	template = strings.ReplaceAll(template, "$PROJECT_ID", testProjectId)
+	template = strings.ReplaceAll(template, "$PROJECT_ID", f.testProjectId)
 	template = strings.ReplaceAll(template, "$CLUSTER_NAME", f.testClusterName)
 	template = strings.ReplaceAll(template, "$TEST_SECRET_ID", f.testSecretId)
 	template = strings.ReplaceAll(template, "$GCP_PROVIDER_BRANCH", f.gcpProviderBranch)
+	template = strings.ReplaceAll(template, "$ZONE", zone)
 	return ioutil.WriteFile(destFile, []byte(template), 0644)
 }
 
@@ -74,6 +72,10 @@ func setupTestSuite() {
 	f.gcpProviderBranch = os.Getenv("GCP_PROVIDER_BRANCH")
 	if len(f.gcpProviderBranch) == 0 {
 		log.Fatal("GCP_PROVIDER_BRANCH is empty")
+	}
+	f.testProjectId = os.Getenv("PROJECT_ID")
+	if len(f.testProjectId) == 0 {
+		log.Fatal("PROJECT_ID is empty")
 	}
 
 	tempDir, err := ioutil.TempDir("", "csi-tests")
@@ -91,7 +93,7 @@ func setupTestSuite() {
 	// Get kubeconfig to use to authenticate to test cluster
 	f.kubeconfigFile = filepath.Join(f.tempDir, "test-cluster-kubeconfig")
 	gcloudCmd := exec.Command("gcloud", "container", "clusters", "get-credentials", f.testClusterName,
-		"--zone", zone, "--project", testProjectId)
+		"--zone", zone, "--project", f.testProjectId)
 	gcloudCmd.Env = append(os.Environ(), "KUBECONFIG="+f.kubeconfigFile)
 	check(execCmd(gcloudCmd))
 
@@ -114,14 +116,14 @@ func setupTestSuite() {
 	secretFile := filepath.Join(f.tempDir, "secretValue")
 	check(ioutil.WriteFile(secretFile, []byte(f.testSecretId), 0644))
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretId, "--replication-policy", "automatic",
-		"--data-file", secretFile, "--project", testProjectId)))
+		"--data-file", secretFile, "--project", f.testProjectId)))
 }
 
 // Executed after tests are run. Teardown is only run once for all tests in the suite.
 func teardownTestSuite() {
 	os.RemoveAll(f.tempDir)
 	execCmd(exec.Command("kubectl", "delete", "containercluster", f.testClusterName))
-	execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretId, "--project", testProjectId, "--quiet"))
+	execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretId, "--project", f.testProjectId, "--quiet"))
 }
 
 // Entry point for go test.
