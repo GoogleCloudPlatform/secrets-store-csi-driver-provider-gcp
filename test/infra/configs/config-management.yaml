@@ -5,8 +5,6 @@ metadata:
 spec:
   # main GKE cluster used to run integration tests and create other GKE clusters
   clusterName: management-cluster
-  configConnector:
-    enabled: true
   git:
     syncRepo: git@github.com:GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp.git
     syncBranch: main

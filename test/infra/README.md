@@ -41,24 +41,34 @@ $ kubectl apply -f configs/config-management-operator.yaml
 
 # Create ConfigManagement CRD
 $ kubectl apply -f configs/config-management.yaml
+
+# Install KCC (ACM does not yet support Workload Identity with KCC)
+$ kubectl apply -f configs/kcc-bundle/install-bundle-workload-identity/
 ```
 
-1. [Install](https://cloud.google.com/anthos-config-management/docs/how-to/nomos-command#installing) the `nomos` tool
+Wait for `cnrm-controller-manager-0` in namespace `cnrm-system` to be running.
 
-1. Use `nomos` to verify that the installation succeeded
-
-```sh
-# PENDING or SYNCED status means that the cluster is configured properly
-$ nomos status
-```
-
-1. Create a service account for Config Connector to use to manage GCP resources.
-## TODO: Do this via Workload identity after b/154765441 is resolved
+1. Create a service account for Config Connector to use (via Workload Identity) to manage GCP resources.
 
 ```sh
 $ gcloud iam service-accounts create cnrm-system --project ${PROJECT_ID}
 
-# Grant Config Connector permission on GKE and GCE and to use service accounts
+# Allow KCC K8S SA to use cnrm-system IAM SA via Workload identity
+$ gcloud iam service-accounts add-iam-policy-binding \
+ cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com \
+ --member="serviceAccount:${PROJECT_ID}.svc.id.goog[cnrm-system/cnrm-controller-manager]" \
+ --role="roles/iam.workloadIdentityUser"
+
+# Grant Config Connector permissions the project
+
+$ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+ --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
+ --role "roles/iam.securityAdmin"
+
+$ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+ --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
+ --role "roles/iam.serviceAccountAdmin"
+
 $ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
  --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
  --role "roles/compute.instanceAdmin.v1"
@@ -70,11 +80,29 @@ $ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
 $ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
  --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
  --role "roles/iam.serviceAccountUser"
-
-# Export service account key and store in k8s secret for ConfigConnector to use.
-$ gcloud iam service-accounts keys create --iam-account "cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" ./key.json
-$ kubectl create secret generic gcp-key --from-file ./key.json --namespace cnrm-system
-$ rm key.json
 ```
 
-Wait for `cnrm-controller-manager-0` in namespace `cnrm-system` to be running.
+1. [Install](https://cloud.google.com/anthos-config-management/docs/how-to/nomos-command#installing) the `nomos` tool
+
+1. Use `nomos` to verify that the Anthos Config Management installation succeeded
+
+```sh
+# PENDING or SYNCED status means that the cluster is configured properly
+$ nomos status
+```
+
+1. View KCC logs to verify that installation succeeded
+
+```sh
+$ kubectl logs cnrm-controller-manager-0 -n cnrm-system -f
+```
+
+# Test changes to anthos-managed
+
+To test changes, use the `nomos` command to generate a YAML to apply to the management cluster:
+
+```sh
+$ cd anthos-managed
+$ nomos hydrate --flat
+$ kubectl apply -f compiled
+```

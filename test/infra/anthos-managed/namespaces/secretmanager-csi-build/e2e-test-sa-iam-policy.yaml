@@ -10,4 +10,4 @@ spec:
   bindings:
     - role: roles/iam.workloadIdentityUser
       members:
-        - serviceAccount:test-csi-test-infra.svc.id.goog[e2e-test/e2e-test-sa]
+        - serviceAccount:secretmanager-csi-build.svc.id.goog[e2e-test/e2e-test-sa]

@@ -3,4 +3,4 @@ kind: ServiceAccount
 metadata:
   name: e2e-test-sa
   annotations:
-    iam.gke.io/gcp-service-account: e2e-test-sa@test-csi-test-infra.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account: e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
