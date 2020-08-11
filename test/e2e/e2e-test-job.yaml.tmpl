@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: e2e-test-job
+  namespace: e2e-test
+spec:
+  template:
+    metadata:
+      name: e2e-test
+    spec:
+      serviceAccountName: e2e-test-sa
+      restartPolicy: Never
+      containers:
+        - name: e2e-test
+          image: gcr.io/$PROJECT_ID/e2e-test:$GCP_PROVIDER_BRANCH
+          imagePullPolicy: Always
+          env:
+          - name: GCP_PROVIDER_BRANCH
+            value: $GCP_PROVIDER_BRANCH
+          - name: PROJECT_ID
+            value: $PROJECT_ID
