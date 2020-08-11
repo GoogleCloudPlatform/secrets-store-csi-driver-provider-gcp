@@ -6,7 +6,7 @@ spec:
   # main GKE cluster used to run integration tests and create other GKE clusters
   clusterName: management-cluster
   git:
-    syncRepo: git@github.com:GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp.git
+    syncRepo: https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp.git
     syncBranch: main
     secretType: none
     policyDir: "test/infra/anthos-managed"
