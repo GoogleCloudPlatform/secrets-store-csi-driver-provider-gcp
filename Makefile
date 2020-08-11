@@ -32,7 +32,7 @@ fmtcheck:
 
 spellcheck:
 	@command -v misspell > /dev/null 2>&1 || (cd tools && go get github.com/client9/misspell/cmd/misspell && cd ..)
-	@misspell -locale="US" -error -source="text" **/*
+	@misspell -error -source="text" **/*
 .PHONY: spellcheck
 
 staticcheck:
