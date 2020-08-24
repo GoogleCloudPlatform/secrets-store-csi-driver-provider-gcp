@@ -11,11 +11,12 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 ## Install
 
 * Create a new GKE cluster with K8S 1.16+
-* Install [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver) to the cluster.
+* Install [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver) v0.0.13 or higher to the cluster.
 ```shell
 $ kubectl apply -f deploy/rbac-secretproviderclass.yaml
 $ kubectl apply -f deploy/csidriver.yaml
 $ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
+$ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml
 $ kubectl apply -f deploy/secrets-store-csi-driver.yaml
 ```
 * Install the plugin DaemonSet & additional RoleBindings

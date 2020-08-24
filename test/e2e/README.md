@@ -12,7 +12,7 @@ E2E tests run a simple test binary (test secret mounter) that reads a secret fro
 
 ```sh
 $ export PROJECT_ID=myprojectid
-$ export SECRET_STORE_VERSION=v0.0.12
+$ export SECRET_STORE_VERSION=v0.0.13
 $ export GCP_PROVIDER_BRANCH=main
 $ ./build.sh
 ```
