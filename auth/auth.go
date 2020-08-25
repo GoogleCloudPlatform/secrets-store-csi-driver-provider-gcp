@@ -53,9 +53,9 @@ import (
 // implemented - blocking Issue #14.
 //
 // This method requires additional K8S API permission for the CSI driver
-// daemonset, including serviceaccounts/token create, serviceaccounts get,
-// and pod get. These permissions could break node isolation and a long term
-// solution is tracked by Issue #13.
+// daemonset, including serviceaccounts/token create and serviceaccounts get.
+// These permissions could break node isolation and a long term solution is
+// tracked by Issue #13.
 func Token(ctx context.Context, cfg *config.MountConfig, kubeconfig string) (*oauth2.Token, error) {
 	var rc *rest.Config
 	var err error
@@ -89,21 +89,10 @@ func Token(ctx context.Context, cfg *config.MountConfig, kubeconfig string) (*oa
 	log.Printf("idPool: %s", idPool)
 	log.Printf("idProvider: %s", idProvider)
 
-	// The csi.storage.k8s.io/serviceAccount.name attribute is passed to the
-	// CSI driver but not propagated to the plugin, so we must fetch the pod
-	// information to determine which k8s SA the pod will run as.
-	podResp, err := clientset.CoreV1().Pods(cfg.PodInfo.Namespace).Get(ctx, cfg.PodInfo.Name, v1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch pod info: %w", err)
-	}
-	if podResp.GetUID() != cfg.PodInfo.UID {
-		return nil, fmt.Errorf("pod uid missmatch. got: %s, want: %v", podResp.GetUID(), cfg.PodInfo.UID)
-	}
-
 	// Get iam.gke.io/gcp-service-account annotation to see if the
 	// identitybindingtoken token should be traded for a GCP SA token.
 	// See https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#creating_a_relationship_between_ksas_and_gsas
-	saResp, err := clientset.CoreV1().ServiceAccounts(cfg.PodInfo.Namespace).Get(ctx, podResp.Spec.ServiceAccountName, v1.GetOptions{})
+	saResp, err := clientset.CoreV1().ServiceAccounts(cfg.PodInfo.Namespace).Get(ctx, cfg.PodInfo.ServiceAccount, v1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch SA info: %w", err)
 	}
@@ -112,7 +101,7 @@ func Token(ctx context.Context, cfg *config.MountConfig, kubeconfig string) (*oa
 
 	// Request a serviceaccount token for the pod
 	ttl := int64((15 * time.Minute).Seconds())
-	resp, err := clientset.CoreV1().ServiceAccounts(cfg.PodInfo.Namespace).CreateToken(ctx, podResp.Spec.ServiceAccountName, &authenticationv1.TokenRequest{
+	resp, err := clientset.CoreV1().ServiceAccounts(cfg.PodInfo.Namespace).CreateToken(ctx, cfg.PodInfo.ServiceAccount, &authenticationv1.TokenRequest{
 		Spec: authenticationv1.TokenRequestSpec{
 			ExpirationSeconds: &ttl,
 			Audiences:         []string{idPool},
