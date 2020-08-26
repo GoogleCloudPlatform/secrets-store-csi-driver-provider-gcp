@@ -90,9 +90,13 @@ func Parse(in *MountParams) (*MountConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal secrets: %v", err)
 	}
 
-	// TODO(#4): redact attributes + secrets (or make configurable)
-	log.Printf("attributes: %v", attrib)
-	log.Printf("secrets: %v", secret)
+	if os.Getenv("DEBUG") == "true" {
+		log.Printf("attributes: %v", attrib)
+		log.Printf("secrets: %v", secret)
+	} else {
+		log.Printf("attributes: REDACTED (envvar DEBUG=true to see values)")
+		log.Printf("secrets: REDACTED (envvar DEBUG=true to see values)")
+	}
 	log.Printf("filePermission: %v", in.Permissions)
 	log.Printf("targetPath: %v", in.TargetPath)
 
