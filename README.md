@@ -10,8 +10,8 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 
 ## Security Considerations
 
-This plugin is built to ensure compatibility between Secret Manager and 
-Kubernetes workloads that expect to load secrets from the filesystem. It also
+This plugin is built to ensure compatibility between Secret Manager and
+Kubernetes workloads that need to load secrets from the filesystem. It also
 enables syncing of those secrets to Kubernetes-native secrets for consumption
 as environment variables.
 
