@@ -8,6 +8,36 @@ the [Secret Store CSI
 Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver). Allows you
 to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 
+## Security Considerations
+
+This plugin is built to ensure compatibility between Secret Manager and 
+Kubernetes workloads that expect to load secrets from the filesystem. It also
+enables syncing of those secrets to Kubernetes-native secrets for consumption
+as environment variables.
+
+When evaluating this plugin consider the following threats:
+
+When a secret is accessible on the filesystem, application vulnerabilities like
+[directory traversal][directory-traversal] attacks can become higher severity as
+the attacker may gain the ability read the secret material.
+
+When a secret is consumed through environment variables, misconfigurations such
+as enabling a debug endpoints or including dependencies that log process
+environment details may leak secrets.
+
+When copying secret material to another data store (like Kubernetes Secrets), 
+consider whether the access controls on that data store are sufficiently narrow
+in scope. 
+
+For these reasons, _when possible_ we recommend using the Secret Manager API
+directly (using one of the provided [client libraries][client-libraries], or by
+following the [REST][rest] or [GRPC][grpc] documentation).
+
+[client-libraries]: https://cloud.google.com/secret-manager/docs/reference/libraries
+[rest]: https://cloud.google.com/secret-manager/docs/reference/rest
+[grpc]: https://cloud.google.com/secret-manager/docs/reference/rpc
+[directory-traversal]: https://en.wikipedia.org/wiki/Directory_traversal_attack
+
 ## Install
 
 * Create a new GKE cluster with K8S 1.16+
