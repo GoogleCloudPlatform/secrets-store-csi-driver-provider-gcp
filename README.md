@@ -17,17 +17,15 @@ as environment variables.
 
 When evaluating this plugin consider the following threats:
 
-When a secret is accessible on the filesystem, application vulnerabilities like
-[directory traversal][directory-traversal] attacks can become higher severity as
-the attacker may gain the ability read the secret material.
-
-When a secret is consumed through environment variables, misconfigurations such
-as enabling a debug endpoints or including dependencies that log process
-environment details may leak secrets.
-
-When copying secret material to another data store (like Kubernetes Secrets), 
-consider whether the access controls on that data store are sufficiently narrow
-in scope. 
+* When a secret is accessible on the filesystem, application vulnerabilities
+  like [directory traversal][directory-traversal] attacks can become higher
+  severity as the attacker may gain the ability read the secret material.
+* When a secret is consumed through environment variables, misconfigurations
+  such as enabling a debug endpoints or including dependencies that log process
+  environment details may leak secrets.
+* When copying secret material to another data store (like Kubernetes Secrets),
+  consider whether the access controls on that data store are sufficiently
+  narrow in scope.
 
 For these reasons, _when possible_ we recommend using the Secret Manager API
 directly (using one of the provided [client libraries][client-libraries], or by
