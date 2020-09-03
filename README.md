@@ -73,6 +73,11 @@ $ kubectl exec -it mypod /bin/bash
 root@mypod:/# ls /var/secrets
 ```
 
+## Contributing
+
+Please see the [contributing guidelines](docs/contributing.md). Pull requests
+and issues will be triaged weekly.
+
 ## Support
 
 __This is not an officially supported Google product.__
