@@ -47,6 +47,13 @@ spec:
       - serviceAccount:735463103342@cloudservices.gserviceaccount.com
       - serviceAccount:service-735463103342@containerregistry.iam.gserviceaccount.com
       role: roles/editor
+    # for Cloud Build to build and upload to GCR
+    - members:
+      - serviceAccount:735463103342@cloudbuild.gserviceaccount.com
+      role: roles/storage.admin
+    - members:
+      - serviceAccount:735463103342@cloudbuild.gserviceaccount.com
+      role: roles/cloudbuild.builds.editor
     # TODO: replace with secret manager team
     - members:
       - user:colinman@google.com
