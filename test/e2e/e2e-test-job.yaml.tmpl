@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: e2e-test-job
+  name: $JOB_NAME
   namespace: e2e-test
 spec:
   template:
@@ -12,10 +12,10 @@ spec:
       restartPolicy: Never
       containers:
         - name: e2e-test
-          image: gcr.io/$PROJECT_ID/e2e-test:$GCP_PROVIDER_BRANCH
+          image: gcr.io/$PROJECT_ID/e2e-test:$GCP_PROVIDER_SHA
           imagePullPolicy: Always
           env:
-          - name: GCP_PROVIDER_BRANCH
-            value: "$GCP_PROVIDER_BRANCH"
+          - name: GCP_PROVIDER_SHA
+            value: "$GCP_PROVIDER_SHA"
           - name: PROJECT_ID
             value: "$PROJECT_ID"

@@ -8,21 +8,15 @@ E2E tests rely on [Config Connector](https://cloud.google.com/config-connector/d
 
 E2E tests run a simple test binary (test secret mounter) that reads a secret from a predefined location on the filesystem and writes it to a k8s configmap.
 
-# Build Docker Images
+# Run E2E tests (Presubmit)
 
-```sh
-$ export PROJECT_ID=myprojectid
-$ export SECRET_STORE_VERSION=v0.0.13
-$ export GCP_PROVIDER_BRANCH=main
-$ ./build.sh
-```
+Execute E2E tests by running the presubmit script. From `secrets-store-csi-driver-provider-gcp` directory.
 
-# Run E2E tests
-To run end-to-end tests on a specific branch (after building images):
+```SH
+$ export GCP_PROVIDER_SHA=main
 
-```sh
-$ sed "s/\$GCP_PROVIDER_BRANCH/${GCP_PROVIDER_BRANCH}/g;s/\$PROJECT_ID/${PROJECT_ID}/g" e2e-test-job.yaml.tmpl | kubectl apply -f -
+$ test/infra/prow/presubmit.sh
 
-# view job logs
+# (Optional) Manually inspect view job logs for debugging.
 $ kubectl logs -n e2e-test -l job-name=e2e-test-job -f
 ```

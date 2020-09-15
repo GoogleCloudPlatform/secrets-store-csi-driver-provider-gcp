@@ -48,7 +48,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: test-secret-mounter
-          image: gcr.io/$PROJECT_ID/test-secret-mounter:$GCP_PROVIDER_BRANCH
+          image: gcr.io/$PROJECT_ID/test-secret-mounter:$GCP_PROVIDER_SHA
           env:
           - name: TEST_SECRET_ID
             value: $TEST_SECRET_ID

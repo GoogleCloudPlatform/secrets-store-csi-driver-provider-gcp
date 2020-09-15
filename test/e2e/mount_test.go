@@ -60,7 +60,7 @@ func replaceTemplate(templateFile string, destFile string) error {
 	template = strings.ReplaceAll(template, "$PROJECT_ID", f.testProjectId)
 	template = strings.ReplaceAll(template, "$CLUSTER_NAME", f.testClusterName)
 	template = strings.ReplaceAll(template, "$TEST_SECRET_ID", f.testSecretId)
-	template = strings.ReplaceAll(template, "$GCP_PROVIDER_BRANCH", f.gcpProviderBranch)
+	template = strings.ReplaceAll(template, "$GCP_PROVIDER_SHA", f.gcpProviderBranch)
 	template = strings.ReplaceAll(template, "$ZONE", zone)
 	return ioutil.WriteFile(destFile, []byte(template), 0644)
 }
@@ -69,9 +69,9 @@ func replaceTemplate(templateFile string, destFile string) error {
 func setupTestSuite() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	f.gcpProviderBranch = os.Getenv("GCP_PROVIDER_BRANCH")
+	f.gcpProviderBranch = os.Getenv("GCP_PROVIDER_SHA")
 	if len(f.gcpProviderBranch) == 0 {
-		log.Fatal("GCP_PROVIDER_BRANCH is empty")
+		log.Fatal("GCP_PROVIDER_SHA is empty")
 	}
 	f.testProjectId = os.Getenv("PROJECT_ID")
 	if len(f.testProjectId) == 0 {
