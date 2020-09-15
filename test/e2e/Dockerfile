@@ -13,7 +13,7 @@ RUN go test -c .
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
 
 ARG SECRET_STORE_VERSION
-ARG GCP_PROVIDER_BRANCH
+ARG GCP_PROVIDER_SHA
 
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/e2e.test /bin/
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/templates /test/templates
@@ -33,8 +33,8 @@ RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-cs
 RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/deploy/secrets-store-csi-driver.yaml
 
 # secrets-store-csi-driver-provider-gcp
-RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_BRANCH/deploy/provider-gcp-plugin.yaml
-RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_BRANCH/deploy/workload-id-binding.yaml
+RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_SHA/deploy/provider-gcp-plugin.yaml
+RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_SHA/deploy/workload-id-binding.yaml
 
 WORKDIR /test
 ENTRYPOINT ["/bin/e2e.test"]
