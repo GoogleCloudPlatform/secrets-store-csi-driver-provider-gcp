@@ -106,3 +106,17 @@ $ cd anthos-managed
 $ nomos hydrate --flat
 $ kubectl apply -f compiled
 ```
+
+# Configure Prow
+
+1. Export service account key for `prow-pod-utils` IAM service account and store it in a k8s secret in the `test-pod` namespace for Prow Pod Utilities to access.
+
+```sh
+$ gcloud iam service-accounts keys create "sa-key.json" --project="${PROJECT}" --iam-account="prow-pod-utils@${PROJECT_ID}.iam.gserviceaccount.com"
+
+$ kubectl create secret generic "service-account" -n "test-pods" --from-file="service-account.json=sa-key.json"
+
+$ rm sa-key.json
+```
+
+This service account is granted access to the Prow instance GCS bucket that stores execution logs. Prow pod utils wrap logs and use the service account to store them.
