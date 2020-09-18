@@ -37,6 +37,7 @@ $ gcloud services enable cloudresourcemanager.googleapis.com
 $ gcloud services enable secretmanager.googleapis.com
 
 # Install Config Management Operator
+# Obtain from gs://config-management-release/released/latest/config-management-operator.yaml
 $ kubectl apply -f configs/config-management-operator.yaml
 
 # Create ConfigManagement CRD
