@@ -14,7 +14,7 @@
 #
 # Clone plugin @ HEAD and build/publish Docker Image
 #
-# gcloud builds submit --config scripts/cloudbuild-release.yaml --no-source
+# gcloud builds submit --config scripts/cloudbuild-release.yaml --substitutions=TAG_NAME=<TAG> --no-source
 #
 # Requires permission for Cloud Build and the secretmanager-csi Artifact
 # Registry repos.
