@@ -42,6 +42,7 @@ following the [REST][rest] or [GRPC][grpc] documentation).
 * Install [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver) v0.0.13 or higher to the cluster.
 ```shell
 $ kubectl apply -f deploy/rbac-secretproviderclass.yaml
+$ kubectl apply -f deploy/rbac-secretprovidersyncing.yaml
 $ kubectl apply -f deploy/csidriver.yaml
 $ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
 $ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml
@@ -49,7 +50,6 @@ $ kubectl apply -f deploy/secrets-store-csi-driver.yaml
 ```
 * Install the plugin DaemonSet & additional RoleBindings
 ```shell
-$ kubectl apply -f deploy/workload-id-binding.yaml
 $ kubectl apply -f deploy/provider-gcp-plugin.yaml
 ```
 
