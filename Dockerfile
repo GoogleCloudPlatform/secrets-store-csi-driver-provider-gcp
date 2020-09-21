@@ -1,4 +1,7 @@
 FROM golang:1.14 as build-env
+
+ARG VERSION=dev
+
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
@@ -10,7 +13,7 @@ RUN go get -t ./...
 RUN make licensessave
 RUN go install \
     -trimpath \
-    -ldflags "-s -w -extldflags '-static'" \
+    -ldflags "-s -w -extldflags '-static' -X 'main.version=${VERSION}'" \
     github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 
 FROM gcr.io/distroless/static-debian10

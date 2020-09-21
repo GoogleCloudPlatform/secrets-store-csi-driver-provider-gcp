@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -43,6 +44,8 @@ var (
 	secrets    = flag.String("secrets", "", "Kubernetes secrets passed through the CSI driver node publish interface.")
 	targetPath = flag.String("targetPath", "", "Path to where the secrets should be written")
 	permission = flag.Uint("permission", 700, "File permissions of the written secrets")
+
+	version = "dev"
 )
 
 // The "provider" name in the "SecretProviderClass" CRD that this plugin
@@ -55,6 +58,9 @@ func main() {
 	// stderr if the plugin execution is not successful.
 	log.SetOutput(os.Stdout)
 	ctx := withShutdownSignal(context.Background())
+
+	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
+	log.Printf("starting %s", ua)
 
 	// This plugin and the github.com/kubernetes-sigs/secrets-store-csi-driver
 	// driver are both installed as DaemonSets that share a common folder on
@@ -79,7 +85,7 @@ func main() {
 		log.Fatalf("Failed to parse input params: %v", err)
 	}
 
-	smOpts := []option.ClientOption{}
+	smOpts := []option.ClientOption{option.WithUserAgent(ua)}
 
 	// Build the workload identity auth token if possible (fallback to node ID)
 	token, err := auth.Token(ctx, cfg, *kubeconfig)

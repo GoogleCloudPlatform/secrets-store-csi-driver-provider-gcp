@@ -14,7 +14,7 @@
 #
 # Clone plugin @ HEAD and build/publish Docker Image
 #
-# gcloud builds submit --config scripts/cloudbuild.yaml --no-source
+# gcloud builds submit --config scripts/cloudbuild-release.yaml --substitutions=TAG_NAME=<TAG> --no-source
 #
 # Requires permission for Cloud Build and the secretmanager-csi Artifact
 # Registry repos.
@@ -26,6 +26,8 @@ steps:
   args: ['clone', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
 - name: 'gcr.io/cloud-builders/docker'
   args: [ 'build',
+          '--build-arg',
+          'VERSION=$TAG_NAME',
           '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',
           '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',
           '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',

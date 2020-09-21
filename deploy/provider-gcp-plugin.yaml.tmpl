@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: provider-gcp-installer
-          image: gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:latest
+          image: gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$TAG_NAME
           imagePullPolicy: Always
           resources:
             requests:
