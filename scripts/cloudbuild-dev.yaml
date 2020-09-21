@@ -24,7 +24,7 @@ steps:
          '--build-arg',
          'VERSION=$TAG_NAME',
          '-t',
-         'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp',
+         'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$TAG_NAME',
          '.']
 images:
 - 'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp'
