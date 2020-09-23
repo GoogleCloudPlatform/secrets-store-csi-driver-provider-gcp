@@ -55,11 +55,11 @@ func main() {
 	}
 
 	l, err := net.Listen("unix", path.Join(os.Getenv("TARGET_DIR"), "gcp.sock"))
-	defer l.Close()
-
 	if err != nil {
 		log.Fatalf("Unable to listen to unix socket: %s", err)
 	}
+	defer l.Close()
+
 	g := grpc.NewServer()
 	v1alpha1.RegisterCSIDriverProviderServer(g, s)
 	g.Serve(l)
