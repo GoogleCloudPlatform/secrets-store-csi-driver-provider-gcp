@@ -1,6 +1,10 @@
-# Unrelease
+# secrets-store-csi-driver-provider-gcp Changelog
 
-## Breaking Changes
+All notable changes to secrets-store-csi-driver-provider-gcp will be documented in this file. This file is maintained by humans and is therefore subject to error.
+
+## [unreleased]
+
+### Breaking
 
 Removed the following resources:
 * `ClusterRoleBinding`: `secretproviderclasses-workload-id-rolebinding`

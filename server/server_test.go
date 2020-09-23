@@ -53,7 +53,7 @@ func TestHandleMountEvent(t *testing.T) {
 
 	want := []byte("My Secret")
 	wantMetadata := []*v1alpha1.ObjectVersion{
-		&v1alpha1.ObjectVersion{
+		{
 			Id:      "projects/project/secrets/test/versions/2",
 			Version: "projects/project/secrets/test/versions/2",
 		},
