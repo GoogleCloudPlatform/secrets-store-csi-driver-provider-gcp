@@ -18,12 +18,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"path"
+	"syscall"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
 
@@ -32,7 +35,6 @@ import (
 )
 
 var (
-	daemonset  = flag.Bool("daemonset", false, "Controls whether the plugin executes in the DaemonSet mode, copying itself to TARGET_DIR")
 	kubeconfig = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
 
 	version = "dev"
@@ -40,14 +42,10 @@ var (
 
 func main() {
 	flag.Parse()
+	ctx := withShutdownSignal(context.Background())
 
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
 	log.Printf("starting %s", ua)
-
-	if !*daemonset {
-		// no-op if exec'd without -daemonset
-		os.Exit(0)
-	}
 
 	s := &server.Server{
 		UA:         ua,
@@ -62,5 +60,24 @@ func main() {
 
 	g := grpc.NewServer()
 	v1alpha1.RegisterCSIDriverProviderServer(g, s)
-	g.Serve(l)
+	go g.Serve(l)
+
+	<-ctx.Done()
+	log.Printf("terminating")
+	g.GracefulStop()
+}
+
+// withShutdownSignal returns a copy of the parent context that will close if
+// the process receives termination signals.
+func withShutdownSignal(ctx context.Context) context.Context {
+	nctx, cancel := context.WithCancel(ctx)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+
+	go func() {
+		sig := <-sigs
+		log.Println("signal:", sig)
+		cancel()
+	}()
+	return nctx
 }

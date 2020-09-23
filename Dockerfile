@@ -19,4 +19,4 @@ RUN go install \
 FROM gcr.io/distroless/static-debian10
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/licenses /licenses
 COPY --from=build-env /go/bin/secrets-store-csi-driver-provider-gcp /bin/
-ENTRYPOINT ["/bin/secrets-store-csi-driver-provider-gcp", "-daemonset"]
+ENTRYPOINT ["/bin/secrets-store-csi-driver-provider-gcp"]
