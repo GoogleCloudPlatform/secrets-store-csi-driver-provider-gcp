@@ -122,7 +122,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *co
 		log.Printf("secrets-store csi driver wrote %s at %s", secret.ResourceName, cfg.TargetPath)
 
 		ovs = append(ovs, &v1alpha1.ObjectVersion{
-			Id:      result.GetName(),
+			Id:      secret.ResourceName,
 			Version: result.GetName(),
 		})
 	}
