@@ -44,12 +44,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
   - serviceaccounts
   verbs:
   - get
