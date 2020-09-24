@@ -11,6 +11,43 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secrets-store-csi-driver-provider-gcp
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: secrets-store-csi-driver-provider-gcp-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: secrets-store-csi-driver-provider-gcp-role
+subjects:
+- kind: ServiceAccount
+  name: secrets-store-csi-driver-provider-gcp
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: secrets-store-csi-driver-provider-gcp-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -28,8 +65,9 @@ spec:
       labels:
         app: csi-secrets-store-provider-gcp
     spec:
+      serviceAccountName: secrets-store-csi-driver-provider-gcp
       containers:
-        - name: provider-gcp-installer
+        - name: provider
           image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:e8b491a72eb3f3337005565470972f41c52a8de47fc5266d6bf3e2a94d88df26
           imagePullPolicy: IfNotPresent
           resources:
@@ -45,9 +83,14 @@ spec:
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
+            - name: mountpoint-dir
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: Bidirectional
+          securityContext:
+            privileged: true
       volumes:
         - name: providervol
           hostPath:
               path: /etc/kubernetes/secrets-store-csi-providers
       nodeSelector:
-        beta.kubernetes.io/os: linux
+        kubernetes.io/os: linux

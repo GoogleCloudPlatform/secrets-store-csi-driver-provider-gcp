@@ -19,92 +19,52 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
+	"path"
 	"syscall"
 
-	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
-	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
-	"golang.org/x/oauth2"
-	"google.golang.org/api/option"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
+
+	"google.golang.org/grpc"
+	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
 
 var (
-	daemonset  = flag.Bool("daemonset", false, "Controls whether the plugin executes in the DaemonSet mode, copying itself to TARGET_DIR")
 	kubeconfig = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
-
-	attributes = flag.String("attributes", "", "Secrets volume attributes.")
-	secrets    = flag.String("secrets", "", "Kubernetes secrets passed through the CSI driver node publish interface.")
-	targetPath = flag.String("targetPath", "", "Path to where the secrets should be written")
-	permission = flag.Uint("permission", 700, "File permissions of the written secrets")
 
 	version = "dev"
 )
 
-// The "provider" name in the "SecretProviderClass" CRD that this plugin
-// operates on.
-const providerName = "gcp"
-
 func main() {
 	flag.Parse()
-	// https://github.com/kubernetes-sigs/secrets-store-csi-driver only logs
-	// stderr if the plugin execution is not successful.
-	log.SetOutput(os.Stdout)
 	ctx := withShutdownSignal(context.Background())
 
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
 	log.Printf("starting %s", ua)
 
-	// This plugin and the github.com/kubernetes-sigs/secrets-store-csi-driver
-	// driver are both installed as DaemonSets that share a common folder on
-	// the host. When the "-daemonset" flag is set this binary copies itself
-	// to the TARGET_DIR folder and sleeps indefinitely.
-	if *daemonset {
-		if err := copyself(ctx); err != nil {
-			log.Fatal(err)
-		}
-		os.Exit(0)
+	s := &server.Server{
+		UA:         ua,
+		Kubeconfig: *kubeconfig,
 	}
 
-	params := &config.MountParams{
-		Attributes:  *attributes,
-		KubeSecrets: *secrets,
-		TargetPath:  *targetPath,
-		Permissions: os.FileMode(*permission),
-	}
-
-	cfg, err := config.Parse(params)
+	l, err := net.Listen("unix", path.Join(os.Getenv("TARGET_DIR"), "gcp.sock"))
 	if err != nil {
-		log.Fatalf("Failed to parse input params: %v", err)
+		log.Fatalf("Unable to listen to unix socket: %s", err)
 	}
+	defer l.Close()
 
-	smOpts := []option.ClientOption{option.WithUserAgent(ua)}
+	g := grpc.NewServer()
+	v1alpha1.RegisterCSIDriverProviderServer(g, s)
+	go g.Serve(l)
 
-	// Build the workload identity auth token if possible (fallback to node ID)
-	token, err := auth.Token(ctx, cfg, *kubeconfig)
-	if err != nil {
-		log.Printf("unable to use workload identity: %v", err)
-	} else {
-		smOpts = append(smOpts, option.WithTokenSource(oauth2.StaticTokenSource(token)))
-	}
-
-	// Build the secret manager client
-	client, err := secretmanager.NewClient(ctx, smOpts...)
-	if err != nil {
-		log.Fatalf("failed to create secretmanager client: %v", err)
-	}
-
-	// Fetch and write secrets.
-	if err := handleMountEvent(ctx, client, cfg); err != nil {
-		log.Fatal(err)
-	}
+	<-ctx.Done()
+	log.Printf("terminating")
+	g.GracefulStop()
 }
 
 // withShutdownSignal returns a copy of the parent context that will close if
@@ -120,41 +80,4 @@ func withShutdownSignal(ctx context.Context) context.Context {
 		cancel()
 	}()
 	return nctx
-}
-
-// copyself copies the current binary to the correct path in TARGET_DIR and
-// then sleeps until the context done signal is received.
-func copyself(ctx context.Context) error {
-	td := os.Getenv("TARGET_DIR")
-	if td == "" {
-		return errors.New("TARGET_DIR not set")
-	}
-	if _, err := os.Stat(td); err != nil {
-		return err
-	}
-
-	pluginDir := filepath.Join(td, providerName)
-	pluginPath := filepath.Join(pluginDir, "provider-"+providerName)
-	defer func() {
-		// Attempt to cleanup since we are creating a folder and writing a
-		// binary to a hostPath
-		log.Printf("cleanup %v: %v", pluginDir, os.RemoveAll(pluginDir))
-	}()
-
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
-		return err
-	}
-
-	self, err := ioutil.ReadFile(os.Args[0])
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(pluginPath, self, 0754); err != nil {
-		return err
-	}
-
-	<-ctx.Done()
-	log.Printf("terminating")
-	return nil
 }

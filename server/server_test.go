@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package server
 
 import (
 	"bytes"
@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
@@ -51,9 +52,16 @@ func TestHandleMountEvent(t *testing.T) {
 	}
 
 	want := []byte("My Secret")
+	wantMetadata := []*v1alpha1.ObjectVersion{
+		{
+			Id:      "projects/project/secrets/test/versions/latest",
+			Version: "projects/project/secrets/test/versions/2",
+		},
+	}
 	client := mock(t, &mockSecretServer{
 		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
 			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
 				Payload: &secretmanagerpb.SecretPayload{
 					Data: want,
 				},
@@ -61,8 +69,13 @@ func TestHandleMountEvent(t *testing.T) {
 		},
 	})
 
-	if got := handleMountEvent(context.Background(), client, cfg); got != nil {
-		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	ovs, err := handleMountEvent(context.Background(), client, cfg)
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+
+	if diffMetadata(t, wantMetadata, ovs) {
+		t.Errorf("handleMountEvent() returned metadata diff. got = %v, want = %v +got", ovs, wantMetadata)
 	}
 
 	got, err := ioutil.ReadFile(filepath.Join(dir, "good1.txt"))
@@ -94,11 +107,27 @@ func TestHandleMountEventSMError(t *testing.T) {
 		},
 	})
 
-	got := handleMountEvent(context.Background(), client, cfg)
+	_, got := handleMountEvent(context.Background(), client, cfg)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 
 	}
+}
+
+func diffMetadata(t testing.TB, want, got []*v1alpha1.ObjectVersion) bool {
+	t.Helper()
+	if len(want) != len(got) {
+		return true
+	}
+	for i := range want {
+		if want[i].Id != got[i].Id {
+			return true
+		}
+		if want[i].Version != got[i].Version {
+			return true
+		}
+	}
+	return false
 }
 
 // driveMountHelper creates a temporary directory for use by tests as a

@@ -22,4 +22,3 @@ set -x          # Print each command as it is run
 TAG=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
 sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$TAG_NAME/${TAG}/g" deploy/provider-gcp-plugin.yaml.tmpl | kubectl apply -f -
-kubectl apply -f deploy/workload-id-binding.yaml
