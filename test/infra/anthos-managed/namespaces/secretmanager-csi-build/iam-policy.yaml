@@ -48,6 +48,9 @@ spec:
     - members:
       - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/iam.serviceAccountUser
+    - members:
+      - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/secretmanager.admin
     # service account agent bindings
     - members:
       - serviceAccount:service-735463103342@compute-system.iam.gserviceaccount.com
