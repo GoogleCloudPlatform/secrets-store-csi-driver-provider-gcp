@@ -25,7 +25,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"syscall"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
@@ -52,7 +52,7 @@ func main() {
 		Kubeconfig: *kubeconfig,
 	}
 
-	l, err := net.Listen("unix", path.Join(os.Getenv("TARGET_DIR"), "gcp.sock"))
+	l, err := net.Listen("unix", filepath.Join(os.Getenv("TARGET_DIR"), "gcp.sock"))
 	if err != nil {
 		log.Fatalf("Unable to listen to unix socket: %s", err)
 	}
