@@ -78,6 +78,7 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 	token, err := auth.Token(ctx, cfg, s.Kubeconfig)
 	if err != nil {
 		log.Printf("unable to use workload identity: %v", err)
+		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("Unable to obtain workload identity auth: %v", err))
 	} else {
 		smOpts = append(smOpts, option.WithTokenSource(oauth2.StaticTokenSource(token)))
 	}
