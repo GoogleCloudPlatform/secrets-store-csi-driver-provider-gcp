@@ -74,13 +74,18 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 
 	smOpts := []option.ClientOption{option.WithUserAgent(s.UA)}
 
-	// Build the workload identity auth token if possible (fallback to node ID)
-	token, err := auth.Token(ctx, cfg, s.Kubeconfig)
-	if err != nil {
-		log.Printf("unable to use workload identity: %v", err)
-		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("Unable to obtain workload identity auth: %v", err))
+	if cfg.TokenSource == nil {
+		// Build the workload identity auth token
+		token, err := auth.Token(ctx, cfg, s.Kubeconfig)
+		if err != nil {
+			log.Printf("unable to use workload identity: %v", err)
+			return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("Unable to obtain workload identity auth: %v", err))
+		} else {
+			smOpts = append(smOpts, option.WithTokenSource(oauth2.StaticTokenSource(token)))
+		}
 	} else {
-		smOpts = append(smOpts, option.WithTokenSource(oauth2.StaticTokenSource(token)))
+		// Use the secret provided in the CSI mount command for auth
+		smOpts = append(smOpts, option.WithTokenSource(cfg.TokenSource))
 	}
 
 	// Build the secret manager client
