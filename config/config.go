@@ -17,12 +17,15 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -52,6 +55,7 @@ type MountConfig struct {
 	PodInfo     *PodInfo
 	TargetPath  string
 	Permissions os.FileMode
+	TokenSource oauth2.TokenSource
 }
 
 // MountParams hold unparsed arguments from the CSI Driver from the mount event.
@@ -85,9 +89,15 @@ func Parse(in *MountParams) (*MountConfig, error) {
 
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
-	// Currently unused.
 	if err := json.Unmarshal([]byte(in.KubeSecrets), &secret); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal secrets: %v", err)
+	}
+	if _, ok := secret["key.json"]; ok {
+		creds, err := google.CredentialsFromJSON(context.Background(), []byte(secret["key.json"]), "https://www.googleapis.com/auth/cloud-platform")
+		if err != nil {
+			return nil, fmt.Errorf("unable to generate credentials from key.json: %w", err)
+		}
+		out.TokenSource = creds.TokenSource
 	}
 
 	if os.Getenv("DEBUG") == "true" {

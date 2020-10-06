@@ -160,3 +160,49 @@ func TestParseErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestParseSecret(t *testing.T) {
+	in := &MountParams{
+		Attributes: `
+		{
+			"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
+			"csi.storage.k8s.io/pod.namespace": "default",
+			"csi.storage.k8s.io/pod.name": "mypod",
+			"csi.storage.k8s.io/pod.uid": "123",
+			"csi.storage.k8s.io/serviceAccount.name": "mysa"
+		}
+		`,
+		KubeSecrets: `{"key.json":"{\"private_key_id\": \"123\",\"private_key\": \"a-secret\",\"token_uri\": \"https://example.com/token\",\"type\": \"service_account\"}"}`,
+		TargetPath:  "/tmp/foo",
+		Permissions: 777,
+	}
+
+	got, err := Parse(in)
+	if err != nil {
+		t.Errorf("Parse() failed: %v", err)
+	}
+	if got == nil || got.TokenSource == nil {
+		t.Errorf("TokenSource missing.")
+	}
+}
+
+func TestParseSecretError(t *testing.T) {
+	in := &MountParams{
+		Attributes: `
+		{
+			"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
+			"csi.storage.k8s.io/pod.namespace": "default",
+			"csi.storage.k8s.io/pod.name": "mypod",
+			"csi.storage.k8s.io/pod.uid": "123",
+			"csi.storage.k8s.io/serviceAccount.name": "mysa"
+		}
+		`,
+		KubeSecrets: `{"key.json":"a"}`,
+		TargetPath:  "/tmp/foo",
+		Permissions: 777,
+	}
+
+	if _, err := Parse(in); err == nil {
+		t.Errorf("Parse() succeeded for malformed input, want error")
+	}
+}
