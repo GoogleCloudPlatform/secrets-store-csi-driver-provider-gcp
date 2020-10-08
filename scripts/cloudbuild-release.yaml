@@ -23,14 +23,14 @@ options:
   machineType: N1_HIGHCPU_8
 steps:
 - name: 'gcr.io/cloud-builders/git'
-  args: ['clone', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
+  args: ['clone', '--depth', '1', '--branch', '$TAG_NAME', https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
 - name: 'gcr.io/cloud-builders/docker'
   args: [ 'build',
           '--build-arg',
           'VERSION=$TAG_NAME',
-          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',
-          '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',
-          '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',
+          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$TAG_NAME',
+          '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$TAG_NAME',
+          '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$TAG_NAME',
           'secrets-store-csi-driver-provider-gcp' ]
 images:
 - 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin'
