@@ -23,7 +23,7 @@ options:
   machineType: N1_HIGHCPU_8
 steps:
 - name: 'gcr.io/cloud-builders/git'
-  args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
+  args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
 - name: 'gcr.io/cloud-builders/docker'
   args: [ 'build',
           '--build-arg',
