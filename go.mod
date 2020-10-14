@@ -14,18 +14,18 @@
 
 module github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 
-go 1.14
+go 1.15
 
 require (
-	cloud.google.com/go v0.60.0
-	github.com/google/go-cmp v0.5.0
-	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	google.golang.org/api v0.28.0
-	google.golang.org/genproto v0.0.0-20200626011028-ee7919e894b5
-	google.golang.org/grpc v1.30.0
+	cloud.google.com/go v0.68.0
+	github.com/google/go-cmp v0.5.2
+	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
+	google.golang.org/api v0.33.0
+	google.golang.org/genproto v0.0.0-20201014134559-03b6142f0dc9
+	google.golang.org/grpc v1.33.0
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.18.5
-	k8s.io/apimachinery v0.18.5
-	k8s.io/client-go v0.18.5
-	sigs.k8s.io/secrets-store-csi-driver v0.0.14
+	k8s.io/api v0.19.2
+	k8s.io/apimachinery v0.19.2
+	k8s.io/client-go v0.19.2
+	sigs.k8s.io/secrets-store-csi-driver v0.0.16
 )
