@@ -6,7 +6,8 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ### Breaking
 
-Removed the following resources:
+If you were using a previous version, note that the following resources have
+been removed and should be deleted from your cluster:
 
 * `ClusterRoleBinding`: `secretproviderclasses-workload-id-rolebinding`
 * `ClusterRole`: `secretproviderclasses-workload-id-role`
@@ -23,10 +24,15 @@ Driver now requires v0.0.14+ of the CSI driver with:
 * Set Usage Agent String [#31](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/31)
 * `DEBUG` environment variable [#40](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/40)
 * Support for `nodePublishSecretRef` authentication [#58](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/58)
+* Switched to a grpc interface between the driver and plugin
+  [#47](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/47).
+  This enables support for experimental driver features including periodic
+  re-fetching of secrets.
 
 ### Changed
 
 * Plugin no longer needs to GET pod information [#29](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/29)
+* The default installed namespace changed from `default` to `kube-system`
 
 ## [sha:8929e57f988dc87840d13c35235f5889d11c8005](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/tree/8929e57f988dc87840d13c35235f5889d11c8005)
 
