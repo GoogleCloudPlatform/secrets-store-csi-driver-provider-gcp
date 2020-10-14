@@ -15,7 +15,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: secrets-store-csi-driver-provider-gcp
-  namespace: default
+  namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -28,7 +28,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: secrets-store-csi-driver-provider-gcp
-  namespace: default
+  namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -54,6 +54,7 @@ metadata:
   labels:
     app: csi-secrets-store-provider-gcp
   name: csi-secrets-store-provider-gcp
+  namespace: kube-system
 spec:
   updateStrategy:
     type: RollingUpdate
@@ -68,7 +69,7 @@ spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
       containers:
         - name: provider
-          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:e8b491a72eb3f3337005565470972f41c52a8de47fc5266d6bf3e2a94d88df26
+          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:faaa2d2bb6b8c470f81a2f5735b2c920277d1a17673c324c20a0863fedc66cad
           imagePullPolicy: IfNotPresent
           resources:
             requests:
@@ -90,5 +91,9 @@ spec:
         - name: providervol
           hostPath:
               path: /etc/kubernetes/secrets-store-csi-providers
+        - name: mountpoint-dir
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: DirectoryOrCreate
       nodeSelector:
         kubernetes.io/os: linux

@@ -2,7 +2,7 @@
 
 All notable changes to secrets-store-csi-driver-provider-gcp will be documented in this file. This file is maintained by humans and is therefore subject to error.
 
-## [unreleased]
+## v0.1.0
 
 ### Breaking
 
@@ -15,13 +15,14 @@ These RBAC rules gave the CSI driver the necesssary permissions to perform
 workload ID auth. The introduction of the grpc interface will have the plugin
 `DaemonSet` perform these operations instead.
 
-Driver now requires v0.0.14 of the CSI driver with:
+Driver now requires v0.0.14+ of the CSI driver with:
 `--grpc-supported-providers=gcp;` set.
 
 ### Added
 
 * Set Usage Agent String [#31](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/31)
 * `DEBUG` environment variable [#40](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/40)
+* Support for `nodePublishSecretRef` authentication [#58](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/58)
 
 ### Changed
 

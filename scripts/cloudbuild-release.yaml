@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Clone plugin @ HEAD and build/publish Docker Image
+# Clone plugin @ BRANCH and build/publish Docker Image
 #
-# gcloud builds submit --config scripts/cloudbuild-release.yaml --substitutions=TAG_NAME=<TAG> --no-source
+# gcloud builds submit --config scripts/cloudbuild-release.yaml --substitutions=_VERSION=<VERSION>,_BRANCH_NAME=<BRANCH> --no-source
 #
 # Requires permission for Cloud Build and the secretmanager-csi Artifact
 # Registry repos.
@@ -23,14 +23,14 @@ options:
   machineType: N1_HIGHCPU_8
 steps:
 - name: 'gcr.io/cloud-builders/git'
-  args: ['clone', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
+  args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
 - name: 'gcr.io/cloud-builders/docker'
   args: [ 'build',
           '--build-arg',
-          'VERSION=$TAG_NAME',
-          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',
-          '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',
-          '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin',
+          'VERSION=$_VERSION',
+          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
+          '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
+          '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
           'secrets-store-csi-driver-provider-gcp' ]
 images:
 - 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin'
