@@ -108,9 +108,14 @@ root@mypod:/# ls /var/secrets
 
 ## Contributing
 
-Please see the [contributing guidelines](docs/contributing.md). Pull requests
-and issues will be triaged weekly.
+Please see the [contributing guidelines](docs/contributing.md).
 
 ## Support
 
 __This is not an officially supported Google product.__
+
+For support
+[please search open issues here](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues),
+and if your issue isn't already represented please
+[open a new one](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/new/choose).
+Pull requests and issues will be triaged weekly.
