@@ -39,6 +39,10 @@ spec:
     - members:
       - serviceAccount:prow-pod-utils@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/container.developer
+    # for prow to view Cloud Build logs stored in default google-managed GCS bucket
+    - members:
+      - serviceAccount:prow-pod-utils@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/viewer
     # for KCC to manager GCP project resources
     - members:
       - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
