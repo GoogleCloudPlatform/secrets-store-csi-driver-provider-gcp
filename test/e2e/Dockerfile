@@ -34,7 +34,6 @@ RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-cs
 
 # secrets-store-csi-driver-provider-gcp
 RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_SHA/deploy/provider-gcp-plugin.yaml
-RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_SHA/deploy/workload-id-binding.yaml
 
 WORKDIR /test
 ENTRYPOINT ["/bin/e2e.test"]

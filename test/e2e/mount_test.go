@@ -120,8 +120,7 @@ func setupTestSuite() {
 	)))
 
 	// Install GCP Plugin and Workload Identity bindings
-	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"-f", "deploy/workload-id-binding.yaml",
+	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile, "--namespace", "kube-system",
 		"-f", "deploy/provider-gcp-plugin.yaml")))
 
 	// Create test secret
