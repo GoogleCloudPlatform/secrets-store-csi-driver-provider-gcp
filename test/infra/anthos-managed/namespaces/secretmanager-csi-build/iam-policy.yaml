@@ -32,6 +32,13 @@ spec:
     - members:
       - serviceAccount:secretmanager-csi-build.svc.id.goog[default/test-cluster-sa]
       role: roles/secretmanager.secretAccessor
+    # for prow to build test images and run them
+    - members:
+      - serviceAccount:prow-pod-utils@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/cloudbuild.builds.builder
+    - members:
+      - serviceAccount:prow-pod-utils@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/container.developer
     # for KCC to manager GCP project resources
     - members:
       - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
