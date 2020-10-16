@@ -21,7 +21,7 @@ set -x          # Print each command as it is run
 
 export CLUSTER_NAME=management-cluster
 export PROJECT_ID=secretmanager-csi-build
-export SECRET_STORE_VERSION=v0.0.13
+export SECRET_STORE_VERSION=v0.0.14
 
 # Populated by prow pod utilities
 # https://github.com/kubernetes/test-infra/blob/master/prow/pod-utilities.md#pod-utilities
