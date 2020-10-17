@@ -171,7 +171,7 @@ func TestMountSecret(t *testing.T) {
 	}
 
 	if err := execCmd(exec.Command("kubectl", "wait", "jobs/test-secret-mounter-job", "--for=condition=Complete",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "50m")); err != nil {
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
