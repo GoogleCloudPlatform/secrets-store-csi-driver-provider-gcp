@@ -38,25 +38,18 @@ following the [REST][rest] or [GRPC][grpc] documentation).
 
 ## Install
 
-NOTE: Follow direction at commit
-[8929e57](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/tree/8929e57f988dc87840d13c35235f5889d11c8005)
-to try out the driver.
-
 * Create a new GKE cluster with K8S 1.16+
-* Install [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver) v0.0.14 or higher to
-the cluster.  You must also edit `deploy/csidriver.yaml` to set `--grpc-supported-providers=gcp;`.
+* Use the provided script to install both the
+  [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver)
+  and the GCP Plugin:
+
 ```shell
-$ kubectl apply -f deploy/rbac-secretproviderclass.yaml
-$ kubectl apply -f deploy/rbac-secretprovidersyncing.yaml
-$ kubectl apply -f deploy/csidriver.yaml
-$ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
-$ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml
-$ kubectl apply -f deploy/secrets-store-csi-driver.yaml
+$ scripts/install-driver.sh
 ```
-* Install the plugin DaemonSet & additional RoleBindings
-```shell
-$ kubectl apply -f deploy/provider-gcp-plugin.yaml
-```
+
+The install script will install the driver and plugin to the `kube-system`
+namespace and enables all driver features like secret syncing and polling for
+new secret values.
 
 ## Build and deploy notes
 
