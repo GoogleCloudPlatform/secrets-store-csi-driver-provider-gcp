@@ -170,8 +170,12 @@ func TestMountSecret(t *testing.T) {
 		t.Fatalf("Error creating job: %v", err)
 	}
 
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5)
+
 	if err := execCmd(exec.Command("kubectl", "wait", "jobs/test-secret-mounter-job", "--for=condition=Complete",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "50m")); err != nil {
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
