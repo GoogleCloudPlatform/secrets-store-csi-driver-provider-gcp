@@ -52,7 +52,12 @@ func main() {
 		Kubeconfig: *kubeconfig,
 	}
 
-	l, err := net.Listen("unix", filepath.Join(os.Getenv("TARGET_DIR"), "gcp.sock"))
+	socketPath := filepath.Join(os.Getenv("TARGET_DIR"), "gcp.sock")
+	// Attempt to remove the UDS to handle cases where a previous execution was
+	// killed before fully closing the socket listener and unlinking.
+	_ = os.Remove(socketPath)
+
+	l, err := net.Listen("unix", socketPath)
 	if err != nil {
 		log.Fatalf("Unable to listen to unix socket: %s", err)
 	}
