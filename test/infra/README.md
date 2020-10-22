@@ -121,3 +121,19 @@ $ rm sa-key.json
 ```
 
 This service account is granted access to the Prow instance GCS bucket that stores execution logs. Prow pod utils wrap logs and use the service account to store them.
+
+1. Generate a JWT kubeconfig file to store in Prow cluster to allow Prow to schedule pods.
+
+```sh
+$ git clone https://github.com/kubernetes/test-infra --depth=1
+$ cd test-infra
+$ bazel run //gencred -- --context="$(kubectl config current-context)" --name "build-secretmanager-csi" > build-cluster-kubeconfig.yaml
+```
+
+1. Supply `build-cluster-kubeconfig.yaml` and `prow-pod-utils@${PROJECT_ID}.iam.gserviceaccount.com` service account name to Prow admin to store in Prow cluster K8S secrets.
+
+1. Clean up
+
+```sh
+$ rm build-cluster-kubeconfig.ymal
+```
