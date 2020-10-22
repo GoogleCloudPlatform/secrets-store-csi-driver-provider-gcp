@@ -32,6 +32,9 @@ if [ -n "${GOOGLE_APPLICATION_CREDENTIALS+set}" ]; then
     gcloud auth activate-service-account --key-file ${GOOGLE_APPLICATION_CREDENTIALS}
 fi
 
+# Build the driver image
+gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID
+
 # Build test images for E2E testing
 gcloud builds submit --config test/e2e/cloudbuild.yaml --substitutions="_SECRET_STORE_VERSION=${SECRET_STORE_VERSION},_GCP_PROVIDER_SHA=${GCP_PROVIDER_SHA}" --project $PROJECT_ID test/e2e
 

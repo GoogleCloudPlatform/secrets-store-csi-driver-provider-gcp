@@ -34,7 +34,7 @@ RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-cs
 RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/manifest_staging/deploy/secrets-store-csi-driver.yaml
 
 # secrets-store-csi-driver-provider-gcp
-RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_SHA/deploy/provider-gcp-plugin.yaml
+RUN curl -fLO https://raw.githubusercontent.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/$GCP_PROVIDER_SHA/deploy/provider-gcp-plugin.yaml.tmpl
 
 WORKDIR /test
 ENTRYPOINT ["/bin/e2e.test"]
