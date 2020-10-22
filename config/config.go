@@ -23,11 +23,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // Secret holds the parameters of the SecretProviderClass CRD. Links the GCP
@@ -115,6 +117,13 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 	if err := yaml.Unmarshal([]byte(attrib["secrets"]), &out.Secrets); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal secrets attribute: %v", err)
+	}
+
+	for i := range out.Secrets {
+		name := out.Secrets[i].FileName
+		if errs := validation.IsConfigMapKey(name); len(errs) != 0 {
+			return nil, fmt.Errorf("%q is not a valid fileName for Secret: %s", name, strings.Join(errs, ";"))
+		}
 	}
 
 	return out, nil
