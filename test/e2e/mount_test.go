@@ -96,6 +96,10 @@ func setupTestSuite() {
 	f.tempDir = tempDir
 	f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
 
+	// Build the plugin deploy yaml
+	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
+	check(replaceTemplate("deploy/provider-gcp-plugin.yaml.tmpl", pluginFile))
+
 	// Create test cluster
 	clusterFile := filepath.Join(tempDir, "test-cluster.yaml")
 	check(replaceTemplate("templates/test-cluster.yaml.tmpl", clusterFile))
@@ -121,7 +125,7 @@ func setupTestSuite() {
 
 	// Install GCP Plugin and Workload Identity bindings
 	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile, "--namespace", "kube-system",
-		"-f", "deploy/provider-gcp-plugin.yaml")))
+		"-f", pluginFile)))
 
 	// Create test secret
 	f.testSecretId = fmt.Sprintf("testsecret-%d", rand.Int31())
