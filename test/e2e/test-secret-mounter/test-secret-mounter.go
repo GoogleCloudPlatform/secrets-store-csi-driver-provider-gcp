@@ -30,11 +30,13 @@ func main() {
 		log.Fatal("TEST_SECRET_ID is empty")
 	}
 
+	/* #nosec */
 	secret, err := ioutil.ReadFile(filepath.Join("/var/gcp-test-secrets", secretId))
 	if err != nil {
 		log.Fatalf("Could not read secret file %v: %v", secretId, err)
 	}
 
+	/* #nosec */
 	command := exec.Command("kubectl", "create", "configmap", "secretmap",
 		"--from-literal=csiSecret="+base64.StdEncoding.EncodeToString(secret))
 	fmt.Println("+", command)

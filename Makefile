@@ -55,6 +55,11 @@ licensessave:
 	@go-licenses save . --save_path=licenses
 .PHONY: licensessave
 
+gosec:
+	@command -v gosec > /dev/null 2>&1 || (cd tools && go get github.com/securego/gosec/cmd/gosec && cd ..)
+	@gosec ./...
+.PHONY: gosec
+
 test:
 	@go test \
 		-count=1 \
