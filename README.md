@@ -99,7 +99,7 @@ $ gcloud secrets add-iam-policy-binding testsecret \
     --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
     --role=roles/secretmanager.secretAccessor
 ```
-* Try it out the example which attempts to mount the secret "test" in `$PROJECT_ID` to `/var/secrets/good1.txt` and `/var/secrets/good2.txt`
+* Try it out the [example](./examples) which attempts to mount the secret "test" in `$PROJECT_ID` to `/var/secrets/good1.txt` and `/var/secrets/good2.txt`
 ```shell
 $ ./scripts/example.sh
 $ kubectl exec -it mypod /bin/bash
