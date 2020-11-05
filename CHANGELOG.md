@@ -2,11 +2,15 @@
 
 All notable changes to secrets-store-csi-driver-provider-gcp will be documented in this file. This file is maintained by humans and is therefore subject to error.
 
-## v0.1.1 (unreleased)
+## UNRELEASED
 
 ### Fixed
 
 * Cleanup unix domain socket
+
+### Changed
+
+* Validate filenames against regex `[-._a-zA-Z0-9]+` and max length of 253 [#74](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/74)
 
 ## v0.1.0
 
