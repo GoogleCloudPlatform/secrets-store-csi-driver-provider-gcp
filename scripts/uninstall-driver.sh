@@ -26,7 +26,7 @@ kubectl delete sa secrets-store-csi-driver-provider-gcp -n kube-system
 kubectl delete clusterrole secrets-store-csi-driver-provider-gcp-role
 
 # Uninstall CSI Driver
-kubectl delete ds csi-secrets-store-provider -n kube-system
+kubectl delete ds csi-secrets-store -n kube-system
 
 kubectl delete clusterrolebinding secretproviderclasses-rolebinding
 kubectl delete clusterrole secretproviderclasses-role
@@ -38,3 +38,5 @@ kubectl delete sa secrets-store-csi-driver -n kube-system
 
 kubectl delete crd secretproviderclasses.secrets-store.csi.x-k8s.io
 kubectl delete crd secretproviderclasspodstatuses.secrets-store.csi.x-k8s.io
+
+kubectl delete csidriver secrets-store.csi.k8s.io

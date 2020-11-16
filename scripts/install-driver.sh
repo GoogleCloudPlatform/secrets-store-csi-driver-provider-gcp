@@ -21,8 +21,8 @@ set -o pipefail # Check the exit code of *all* commands in a pipeline
 set -o nounset  # Error if accessing an unbound variable
 set -x          # Print each command as it is run
 
-SECRET_STORE_VERSION=v0.0.16
-GCP_PROVIDER_SHA=v0.1.0
+SECRET_STORE_VERSION=v0.0.17
+GCP_PROVIDER_SHA=v0.2.0
 
 # -- CSI Driver Info --
 kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/deploy/csidriver.yaml
@@ -43,9 +43,7 @@ curl -s https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driv
 
 # -- DaemonSet --
 # namespace: default => namespace: kube-system
-# set "--grpcSupportedProviders=gcp;"
 curl -s https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/deploy/secrets-store-csi-driver.yaml  2>&1 |
-    awk '/rotation-poll-interval/ && !x {print "            - \"--grpc-supported-providers=gcp;\""; x=1} 1' |
     sed "s/--enable-secret-rotation=false/--enable-secret-rotation=true/g;" |
     kubectl apply -n kube-system -f -
 
