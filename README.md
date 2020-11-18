@@ -1,12 +1,61 @@
 # Google Secret Manager Provider for Secret Store CSI Driver
 
-**WARNING:** This project is in active development and not suitable for
-production use.
-
 [Google Secret Manager](https://cloud.google.com/secret-manager/) provider for
 the [Secret Store CSI
 Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver). Allows you
 to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
+
+## Install
+
+* Create a new GKE cluster with K8S 1.16+ and enable
+  [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#enable_on_existing_cluster).
+* Install
+  [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver)
+  v0.0.17 or higher to the cluster.
+* Install the plugin DaemonSet & additional RoleBindings:
+
+```shell
+$ kubectl apply -f deploy/provider-gcp-plugin.yaml
+```
+
+## Usage
+
+* Setup the workload identity service account.
+
+```shell
+$ export PROJECT_ID=<your gcp project>
+$ gcloud config set project $PROJECT_ID
+# Create a service account for workload identity
+$ gcloud iam service-accounts create gke-workload
+
+# Allow "default/mypod" to act as the new service account
+$ gcloud iam service-accounts add-iam-policy-binding \
+    --role roles/iam.workloadIdentityUser \
+    --member "serviceAccount:$PROJECT_ID.svc.id.goog[default/mypodserviceaccount]" \
+    gke-workload@$PROJECT_ID.iam.gserviceaccount.com
+```
+
+* Create a secret that the workload identity service account can access
+
+```shell
+# Create a secret with 1 active version
+$ echo "foo" > secret.data
+$ gcloud secrets create testsecret --replication-policy=automatic --data-file=secret.data
+$ rm secret.data
+
+# grant the new service account permission to access the secret
+$ gcloud secrets add-iam-policy-binding testsecret \
+    --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
+    --role=roles/secretmanager.secretAccessor
+```
+
+* Try it out the [example](./examples) which attempts to mount the secret "test" in `$PROJECT_ID` to `/var/secrets/good1.txt` and `/var/secrets/good2.txt`
+
+```shell
+$ ./scripts/example.sh
+$ kubectl exec -it mypod /bin/bash
+root@mypod:/# ls /var/secrets
+```
 
 ## Security Considerations
 
@@ -35,76 +84,6 @@ following the [REST][rest] or [GRPC][grpc] documentation).
 [rest]: https://cloud.google.com/secret-manager/docs/reference/rest
 [grpc]: https://cloud.google.com/secret-manager/docs/reference/rpc
 [directory-traversal]: https://en.wikipedia.org/wiki/Directory_traversal_attack
-
-## Install
-
-NOTE: Follow direction at commit
-[8929e57](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/tree/8929e57f988dc87840d13c35235f5889d11c8005)
-to try out the driver.
-
-* Create a new GKE cluster with K8S 1.16+
-* Install [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver) v0.0.14 or higher to
-the cluster.  You must also edit `deploy/csidriver.yaml` to set `--grpc-supported-providers=gcp;`.
-```shell
-$ kubectl apply -f deploy/rbac-secretproviderclass.yaml
-$ kubectl apply -f deploy/rbac-secretprovidersyncing.yaml
-$ kubectl apply -f deploy/csidriver.yaml
-$ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
-$ kubectl apply -f deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml
-$ kubectl apply -f deploy/secrets-store-csi-driver.yaml
-```
-* Install the plugin DaemonSet & additional RoleBindings
-```shell
-$ kubectl apply -f deploy/provider-gcp-plugin.yaml
-```
-
-## Build and deploy notes
-
-* Use [Google Cloud Build](https://cloud.google.com/run/docs/building/containers#building_using) and [Container Registry](https://cloud.google.com/container-registry/docs/quickstart) to build and host the plugin docker image.
-```shell
-$ export PROJECT_ID=<your gcp project>
-$ gcloud config set project $PROJECT_ID
-$ ./scripts/build.sh
-```
-* Deploy the plugin as a DaemonSet to your cluster.
-```shell
-$ ./scripts/deploy.sh
-```
-
-## Usage
-
-* Ensure that workload identity is [enabled](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#enable_on_existing_cluster) in your GKE cluster.
-* Setup the workload identity service account.
-```shell
-$ export PROJECT_ID=<your gcp project>
-$ gcloud config set project $PROJECT_ID
-# Create a service account for workload identity
-$ gcloud iam service-accounts create gke-workload
-
-# Allow "default/mypod" to act as the new service account
-$ gcloud iam service-accounts add-iam-policy-binding \
-    --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:$PROJECT_ID.svc.id.goog[default/mypodserviceaccount]" \
-    gke-workload@$PROJECT_ID.iam.gserviceaccount.com
-```
-* Create a secret that the workload identity service account can access
-```shell
-# Create a secret with 1 active version
-$ echo "foo" > secret.data
-$ gcloud secrets create testsecret --replication-policy=automatic --data-file=secret.data
-$ rm secret.data
-
-# grant the new service account permission to access the secret
-$ gcloud secrets add-iam-policy-binding testsecret \
-    --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
-    --role=roles/secretmanager.secretAccessor
-```
-* Try it out the [example](./examples) which attempts to mount the secret "test" in `$PROJECT_ID` to `/var/secrets/good1.txt` and `/var/secrets/good2.txt`
-```shell
-$ ./scripts/example.sh
-$ kubectl exec -it mypod /bin/bash
-root@mypod:/# ls /var/secrets
-```
 
 ## Contributing
 
