@@ -1,4 +1,4 @@
-FROM golang:1.14 as build-env
+FROM golang:1.15 as build-env
 ENV CGO_ENABLED=0 \
     GOOS=linux \
     GOARCH=amd64
@@ -25,9 +25,8 @@ RUN mv kubectl /bin/
 
 WORKDIR /test/deploy
 
-# TODO: Change this production yaml when https://github.com/kubernetes-sigs/secrets-store-csi-driver/pull/351 makes it into the secrets-store-csi-driver release
-# secrets-store-csi-driver
 RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/manifest_staging/deploy/rbac-secretproviderclass.yaml
+RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/manifest_staging/deploy/rbac-secretprovidersyncing.yaml
 RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/manifest_staging/deploy/csidriver.yaml
 RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/manifest_staging/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
 RUN curl -fLO https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/$SECRET_STORE_VERSION/manifest_staging/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml

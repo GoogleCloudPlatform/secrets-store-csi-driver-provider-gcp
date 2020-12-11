@@ -115,8 +115,9 @@ func setupTestSuite() {
 	check(execCmd(gcloudCmd))
 
 	// Install Secret Store
-	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
 		"-f", "deploy/rbac-secretproviderclass.yaml",
+		"-f", "deploy/rbac-secretprovidersyncing.yaml",
 		"-f", "deploy/csidriver.yaml",
 		"-f", "deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml",
 		"-f", "deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml",
@@ -124,7 +125,7 @@ func setupTestSuite() {
 	)))
 
 	// Install GCP Plugin and Workload Identity bindings
-	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile, "--namespace", "kube-system",
+	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
 		"-f", pluginFile)))
 
 	// Create test secret
