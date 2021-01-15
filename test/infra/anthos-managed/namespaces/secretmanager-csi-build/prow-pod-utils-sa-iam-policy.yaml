@@ -19,7 +19,7 @@ spec:
   resourceRef:
     apiVersion: iam.cnrm.cloud.google.com/v1beta1
     kind: IAMServiceAccount
-    name: prow-pod-utils-sa
+    name: prow-pod-utils
   bindings:
     - role: roles/iam.workloadIdentityUser
       members:
