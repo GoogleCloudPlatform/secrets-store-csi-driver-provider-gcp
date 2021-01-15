@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -34,6 +33,7 @@ import (
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
 
@@ -49,10 +49,9 @@ var _ v1alpha1.CSIDriverProviderServer = &Server{}
 func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alpha1.MountResponse, error) {
 	deadline, ok := ctx.Deadline()
 	if !ok {
-		log.Printf("Mount() called without a deadline.")
-	} else {
-		log.Printf("remaining deadline: %v", time.Until(deadline))
+		klog.Warningln("Mount() called without a deadline.")
 	}
+	klog.V(5).InfoS("Mount() called", "deadline", time.Until(deadline).String())
 
 	p, err := strconv.ParseUint(req.GetPermission(), 10, 32)
 	if err != nil {
@@ -78,7 +77,7 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 		// Build the workload identity auth token
 		token, err := auth.Token(ctx, cfg, s.Kubeconfig)
 		if err != nil {
-			log.Printf("unable to use workload identity: %v", err)
+			klog.ErrorS(err, "unable to use workload identity", "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 			return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("Unable to obtain workload identity auth: %v", err))
 		} else {
 			smOpts = append(smOpts, option.WithTokenSource(oauth2.StaticTokenSource(token)))
@@ -125,7 +124,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *co
 		if err != nil {
 			// TODO: determine error codes, should we propagate error code space
 			// from the secret call to this response?
-			log.Printf("failed to access secret version (%s): %s", secret.ResourceName, err)
+			klog.ErrorS(err, "failed to access secret", "secret", secret.ResourceName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 
@@ -133,7 +132,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *co
 			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to write %s at %s: %s", secret.ResourceName, cfg.TargetPath, err))
 		}
 
-		log.Printf("secrets-store csi driver wrote %s at %s", secret.ResourceName, cfg.TargetPath)
+		klog.InfoS("wrote secret", "secret", secret.ResourceName, "path", cfg.TargetPath, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 
 		ovs = append(ovs, &v1alpha1.ObjectVersion{
 			Id:      secret.ResourceName,

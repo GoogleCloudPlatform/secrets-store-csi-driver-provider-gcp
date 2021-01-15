@@ -27,5 +27,7 @@ require (
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
+	k8s.io/component-base v0.19.2
+	k8s.io/klog/v2 v2.4.0
 	sigs.k8s.io/secrets-store-csi-driver v0.0.16
 )

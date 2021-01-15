@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -30,6 +29,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/klog/v2"
 )
 
 // Secret holds the parameters of the SecretProviderClass CRD. Links the GCP
@@ -103,14 +103,14 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 
 	if os.Getenv("DEBUG") == "true" {
-		log.Printf("attributes: %v", attrib)
-		log.Printf("secrets: %v", secret)
+		klog.V(5).Infof("attributes: %v", attrib)
+		klog.V(5).Infof("secrets: %v", secret)
 	} else {
-		log.Printf("attributes: REDACTED (envvar DEBUG=true to see values)")
-		log.Printf("secrets: REDACTED (envvar DEBUG=true to see values)")
+		klog.V(5).Infof("attributes: REDACTED (envvar DEBUG=true to see values)")
+		klog.V(5).Infof("secrets: REDACTED (envvar DEBUG=true to see values)")
 	}
-	log.Printf("filePermission: %v", in.Permissions)
-	log.Printf("targetPath: %v", in.TargetPath)
+	klog.V(5).Infof("filePermission: %v", in.Permissions)
+	klog.V(5).Infof("targetPath: %v", in.TargetPath)
 
 	if _, ok := attrib["secrets"]; !ok {
 		return nil, errors.New("missing required 'secrets' attribute")

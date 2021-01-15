@@ -21,7 +21,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -29,23 +28,32 @@ import (
 	"syscall"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
-
 	"google.golang.org/grpc"
+	jlogs "k8s.io/component-base/logs/json"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
 
 var (
-	kubeconfig = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
+	kubeconfig    = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
+	logFormatJSON = flag.Bool("log-format-json", true, "set log formatter to json")
 
 	version = "dev"
 )
 
 func main() {
+	klog.InitFlags(nil)
+	defer klog.Flush()
+
+	if *logFormatJSON {
+		klog.SetLogger(jlogs.JSONLogger)
+	}
+
 	flag.Parse()
 	ctx := withShutdownSignal(context.Background())
 
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
-	log.Printf("starting %s", ua)
+	klog.Infof("starting %s", ua)
 
 	s := &server.Server{
 		UA:         ua,
@@ -59,7 +67,8 @@ func main() {
 
 	l, err := net.Listen("unix", socketPath)
 	if err != nil {
-		log.Fatalf("Unable to listen to unix socket: %s", err)
+		klog.ErrorS(err, "unable to listen to unix socket", "path", socketPath)
+		klog.Fatalln("unable to start")
 	}
 	defer l.Close()
 
@@ -68,7 +77,7 @@ func main() {
 	go g.Serve(l)
 
 	<-ctx.Done()
-	log.Printf("terminating")
+	klog.InfoS("terminating")
 	g.GracefulStop()
 }
 
@@ -77,11 +86,11 @@ func main() {
 func withShutdownSignal(ctx context.Context) context.Context {
 	nctx, cancel := context.WithCancel(ctx)
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		sig := <-sigs
-		log.Println("signal:", sig)
+		klog.InfoS("received shutdown signal", "signal", sig)
 		cancel()
 	}()
 	return nctx
