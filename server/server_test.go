@@ -49,6 +49,10 @@ func TestHandleMountEvent(t *testing.T) {
 		},
 		TargetPath:  dir,
 		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
 	}
 
 	want := []byte("My Secret")
@@ -99,6 +103,10 @@ func TestHandleMountEventSMError(t *testing.T) {
 		},
 		TargetPath:  dir,
 		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
 	}
 
 	client := mock(t, &mockSecretServer{
@@ -110,7 +118,6 @@ func TestHandleMountEventSMError(t *testing.T) {
 	_, got := handleMountEvent(context.Background(), client, cfg)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
-
 	}
 }
 

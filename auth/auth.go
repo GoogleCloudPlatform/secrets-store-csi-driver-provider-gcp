@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 
@@ -37,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
 )
 
 // Token fetches a workload identity auth token for the pod for the MountConfig.
@@ -60,10 +60,10 @@ func Token(ctx context.Context, cfg *config.MountConfig, kubeconfig string) (*oa
 	var rc *rest.Config
 	var err error
 	if kubeconfig != "" {
-		log.Println("using kubeconfig")
+		klog.V(5).InfoS("using kubeconfig", "path", kubeconfig)
 		rc, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 	} else {
-		log.Println("using in-cluster kubeconfig")
+		klog.V(5).InfoS("using in-cluster kubeconfig")
 		rc, err = rest.InClusterConfig()
 	}
 	if err != nil {
@@ -86,8 +86,7 @@ func Token(ctx context.Context, cfg *config.MountConfig, kubeconfig string) (*oa
 		return nil, fmt.Errorf("unable to determine idProvider: %w", err)
 	}
 
-	log.Printf("idPool: %s", idPool)
-	log.Printf("idProvider: %s", idProvider)
+	klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
 
 	// Get iam.gke.io/gcp-service-account annotation to see if the
 	// identitybindingtoken token should be traded for a GCP SA token.
@@ -97,7 +96,7 @@ func Token(ctx context.Context, cfg *config.MountConfig, kubeconfig string) (*oa
 		return nil, fmt.Errorf("unable to fetch SA info: %w", err)
 	}
 	gcpSA := saResp.Annotations["iam.gke.io/gcp-service-account"]
-	log.Printf("gcpSA: %s", gcpSA)
+	klog.V(5).InfoS("matched service account", "service_account", gcpSA)
 
 	// Request a serviceaccount token for the pod
 	ttl := int64((15 * time.Minute).Seconds())
