@@ -121,6 +121,64 @@ func TestHandleMountEventSMError(t *testing.T) {
 	}
 }
 
+func TestHandleMountEventSMMultipleErrors(t *testing.T) {
+	dir := driveMountHelper(t)
+
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/secrets/test-a/versions/1",
+				FileName:     "good1.txt",
+			},
+			{
+				ResourceName: "projects/project/secrets/test-a/versions/2",
+				FileName:     "bad1.txt",
+			},
+			{
+				ResourceName: "projects/project/secrets/test-b/versions/latest",
+				FileName:     "bad2.txt",
+			},
+		},
+		TargetPath:  dir,
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, req *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			switch req.Name {
+			case "projects/project/secrets/test-a/versions/1":
+				return &secretmanagerpb.AccessSecretVersionResponse{
+					Name: "projects/project/secrets/test-a/versions/1",
+					Payload: &secretmanagerpb.SecretPayload{
+						Data: []byte("good data"),
+					},
+				}, nil
+			case "projects/project/secrets/test-a/versions/2":
+				return nil, status.Error(codes.FailedPrecondition, "Secret is Disabled")
+			case "projects/project/secrets/test-b/versions/latest":
+				return nil, status.Error(codes.PermissionDenied, "User does not have permission on secret")
+			default:
+				return nil, status.Error(codes.FailedPrecondition, "Secret is Disabled")
+			}
+		},
+	})
+
+	_, got := handleMountEvent(context.Background(), client, cfg)
+	if !strings.Contains(got.Error(), "FailedPrecondition") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+	if !strings.Contains(got.Error(), "PermissionDenied") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "good1.txt")); !os.IsNotExist(err) {
+		t.Errorf("handleMountEvent() wrote file good1.txt")
+	}
+}
+
 func diffMetadata(t testing.TB, want, got []*v1alpha1.ObjectVersion) bool {
 	t.Helper()
 	if len(want) != len(got) {

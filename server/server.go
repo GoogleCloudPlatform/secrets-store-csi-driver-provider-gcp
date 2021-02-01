@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
@@ -31,8 +33,10 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
+	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
@@ -114,30 +118,82 @@ func (s *Server) Version(ctx context.Context, req *v1alpha1.VersionRequest) (*v1
 // handleMountEvent fetches the secrets from the secretmanager API and
 // writes them to the filesystem based on the SecretProviderClass configuration.
 func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *config.MountConfig) ([]*v1alpha1.ObjectVersion, error) {
-	ovs := []*v1alpha1.ObjectVersion{}
-	for _, secret := range cfg.Secrets {
-		req := &secretmanagerpb.AccessSecretVersionRequest{
-			Name: secret.ResourceName,
-		}
+	results := make([]*secretmanagerpb.AccessSecretVersionResponse, len(cfg.Secrets))
+	errs := make([]error, len(cfg.Secrets))
 
-		result, err := client.AccessSecretVersion(ctx, req)
-		if err != nil {
-			// TODO: determine error codes, should we propagate error code space
-			// from the secret call to this response?
-			klog.ErrorS(err, "failed to access secret", "secret", secret.ResourceName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+	// In parallel fetch all secrets needed for the mount
+	wg := sync.WaitGroup{}
+	for i, secret := range cfg.Secrets {
+		wg.Add(1)
 
+		i, secret := i, secret
+		go func() {
+			defer wg.Done()
+			req := &secretmanagerpb.AccessSecretVersionRequest{
+				Name: secret.ResourceName,
+			}
+			resp, err := client.AccessSecretVersion(ctx, req)
+			results[i] = resp
+			errs[i] = err
+		}()
+	}
+	wg.Wait()
+
+	// If any access failed, return a grpc status error that includes each
+	// individual status error in the Details field.
+	//
+	// If there are any failures then there will be no changes to the
+	// filesystem. Initial mount events will fail (preventing pod start) and
+	// the secrets-store-csi-driver will emit pod events on rotation failures.
+	// By erroring out on any failures we prevent partial rotations (i.e. the
+	// username file was updated to a new value but the corresponding password
+	// field was not).
+	if err := buildErr(errs); err != nil {
+		return nil, err
+	}
+
+	// Write secrets.
+	ovs := make([]*v1alpha1.ObjectVersion, len(cfg.Secrets))
+	for i, secret := range cfg.Secrets {
+		result := results[i]
 		if err := ioutil.WriteFile(filepath.Join(cfg.TargetPath, secret.FileName), result.Payload.Data, cfg.Permissions); err != nil {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to write %s at %s: %s", secret.ResourceName, cfg.TargetPath, err))
 		}
 
 		klog.InfoS("wrote secret", "secret", secret.ResourceName, "path", cfg.TargetPath, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 
-		ovs = append(ovs, &v1alpha1.ObjectVersion{
+		ovs[i] = &v1alpha1.ObjectVersion{
 			Id:      secret.ResourceName,
 			Version: result.GetName(),
-		})
+		}
 	}
 	return ovs, nil
+}
+
+// buildErr consolidates many errors into a single Status protobuf error message
+// with each individual error included into the status Details any proto. The
+// consolidated proto is converted to a general error.
+func buildErr(errs []error) error {
+	msgs := make([]string, 0, len(errs))
+	hasErr := false
+	s := &spb.Status{
+		Code:    int32(codes.Internal),
+		Details: make([]*anypb.Any, 0),
+	}
+
+	for i := range errs {
+		if errs[i] == nil {
+			continue
+		}
+		hasErr = true
+		msgs = append(msgs, errs[i].Error())
+
+		any, _ := anypb.New(status.Convert(errs[i]).Proto())
+		s.Details = append(s.Details, any)
+	}
+	if !hasErr {
+		return nil
+	}
+	s.Message = strings.Join(msgs, ",")
+	return status.FromProto(s).Err()
 }
