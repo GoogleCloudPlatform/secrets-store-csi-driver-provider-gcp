@@ -22,12 +22,16 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel/exporters/metric/prometheus"
 	"google.golang.org/grpc"
 	jlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
@@ -37,6 +41,7 @@ import (
 var (
 	kubeconfig    = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
 	logFormatJSON = flag.Bool("log-format-json", true, "set log formatter to json")
+	metricsAddr   = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
 
 	version = "dev"
 )
@@ -55,6 +60,7 @@ func main() {
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
 	klog.Infof("starting %s", ua)
 
+	// setup provider grpc server
 	s := &server.Server{
 		UA:         ua,
 		Kubeconfig: *kubeconfig,
@@ -72,9 +78,36 @@ func main() {
 	}
 	defer l.Close()
 
-	g := grpc.NewServer()
+	g := grpc.NewServer(
+		grpc.UnaryInterceptor(infra.LogInterceptor()),
+	)
 	v1alpha1.RegisterCSIDriverProviderServer(g, s)
 	go g.Serve(l)
+
+	// initialize metrics and health http server
+	ms := http.Server{
+		Addr: *metricsAddr,
+	}
+	defer ms.Shutdown(ctx)
+
+	ex, err := prometheus.InstallNewPipeline(prometheus.Config{})
+	if err != nil {
+		klog.ErrorS(err, "unable to initialize prometheus exporter")
+		klog.Fatalln("unable to initialize prometheus exporter")
+	}
+	if err := runtime.Start(runtime.WithMeterProvider(ex.MeterProvider())); err != nil {
+		klog.ErrorS(err, "unable to start tuntime metrics monitoring")
+	}
+	http.HandleFunc("/metrics", ex.ServeHTTP)
+	http.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	go func() {
+		if err := ms.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			klog.ErrorS(err, "metrics http server error")
+		}
+	}()
+	klog.Infof("health server listening on %s", *metricsAddr)
 
 	<-ctx.Done()
 	klog.InfoS("terminating")

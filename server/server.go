@@ -24,7 +24,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
@@ -51,12 +50,6 @@ var _ v1alpha1.CSIDriverProviderServer = &Server{}
 
 // Mount implements provider csi-provider method
 func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alpha1.MountResponse, error) {
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		klog.Warningln("Mount() called without a deadline.")
-	}
-	klog.V(5).InfoS("Mount() called", "deadline", time.Until(deadline).String())
-
 	p, err := strconv.ParseUint(req.GetPermission(), 10, 32)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Unable to parse permissions: %s", req.GetPermission()))

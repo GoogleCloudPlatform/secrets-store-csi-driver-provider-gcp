@@ -18,7 +18,9 @@ go 1.15
 
 require (
 	cloud.google.com/go v0.68.0
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.4
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.16.0
+	go.opentelemetry.io/otel/exporters/metric/prometheus v0.16.0
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
 	google.golang.org/api v0.33.0
 	google.golang.org/genproto v0.0.0-20201014134559-03b6142f0dc9

@@ -70,6 +70,9 @@ spec:
       containers:
         - name: provider
           image: gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$GCP_PROVIDER_SHA
+          args:
+          - "-metrics_addr=:8095"
+          - "-v=5"
           imagePullPolicy: Always
           resources:
             requests:
@@ -87,6 +90,14 @@ spec:
             - name: mountpoint-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: HostToContainer
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /live
+              port: 8095
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 30
       volumes:
         - name: providervol
           hostPath:
