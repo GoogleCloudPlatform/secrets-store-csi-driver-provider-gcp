@@ -58,7 +58,7 @@ func main() {
 	ctx := withShutdownSignal(context.Background())
 
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
-	klog.Infof("starting %s", ua)
+	klog.InfoS("starting %s", ua)
 
 	// setup provider grpc server
 	s := &server.Server{
