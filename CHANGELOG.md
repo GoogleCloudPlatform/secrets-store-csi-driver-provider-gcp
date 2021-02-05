@@ -2,6 +2,26 @@
 
 All notable changes to secrets-store-csi-driver-provider-gcp will be documented in this file. This file is maintained by humans and is therefore subject to error.
 
+## unreleased (v0.3.0)
+
+Images:
+
+* TODO
+
+Digest: `TODO`
+
+### Changed
+
+* `AccessSecretVersion` is attempted on all secrets in a `SecretProviderClass` before returning any errors or writing any data to the filesystem [#83](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/83). This allows all errors to be reported together. `SecretProviderClass`s that attempt to load ~hundreds of secrets may encounter memory pressure issues.
+
+### Added
+
+* `klog` structured logging [#80](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/80)
+* `grpc` mount request and response metadata logging [#85](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/85)
+* Initial prometheus metrics collection [#85](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/85)
+* `livenessProbe` [#85](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/85)
+* [Debugging documentation](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/blob/v0.3.0/docs/debugging.md) [#85](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/85)
+
 ## v0.2.0
 
 Images:

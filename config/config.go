@@ -89,6 +89,8 @@ func Parse(in *MountParams) (*MountConfig, error) {
 		ServiceAccount: attrib["csi.storage.k8s.io/serviceAccount.name"],
 	}
 
+	podInfo := klog.ObjectRef{Namespace: out.PodInfo.Namespace, Name: out.PodInfo.Name}
+
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
 	if err := json.Unmarshal([]byte(in.KubeSecrets), &secret); err != nil {
@@ -103,14 +105,14 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 
 	if os.Getenv("DEBUG") == "true" {
-		klog.V(5).Infof("attributes: %v", attrib)
-		klog.V(5).Infof("secrets: %v", secret)
+		klog.V(5).InfoS("attributes: %v", attrib, "pod", podInfo)
+		klog.V(5).InfoS("secrets: %v", secret, "pod", podInfo)
 	} else {
-		klog.V(5).Infof("attributes: REDACTED (envvar DEBUG=true to see values)")
-		klog.V(5).Infof("secrets: REDACTED (envvar DEBUG=true to see values)")
+		klog.V(5).InfoS("attributes: REDACTED (envvar DEBUG=true to see values)", "pod", podInfo)
+		klog.V(5).InfoS("secrets: REDACTED (envvar DEBUG=true to see values)", "pod", podInfo)
 	}
-	klog.V(5).Infof("filePermission: %v", in.Permissions)
-	klog.V(5).Infof("targetPath: %v", in.TargetPath)
+	klog.V(5).InfoS("filePermission: %v", in.Permissions, "pod", podInfo)
+	klog.V(5).InfoS("targetPath: %v", in.TargetPath, "pod", podInfo)
 
 	if _, ok := attrib["secrets"]; !ok {
 		return nil, errors.New("missing required 'secrets' attribute")
