@@ -58,7 +58,7 @@ func main() {
 	ctx := withShutdownSignal(context.Background())
 
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
-	klog.InfoS("starting %s", ua)
+	klog.InfoS(fmt.Sprintf("starting %s", ua))
 
 	// setup provider grpc server
 	s := &server.Server{
@@ -96,7 +96,7 @@ func main() {
 		klog.Fatalln("unable to initialize prometheus exporter")
 	}
 	if err := runtime.Start(runtime.WithMeterProvider(ex.MeterProvider())); err != nil {
-		klog.ErrorS(err, "unable to start tuntime metrics monitoring")
+		klog.ErrorS(err, "unable to start runtime metrics monitoring")
 	}
 	http.HandleFunc("/metrics", ex.ServeHTTP)
 	http.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +107,7 @@ func main() {
 			klog.ErrorS(err, "metrics http server error")
 		}
 	}()
-	klog.Infof("health server listening on %s", *metricsAddr)
+	klog.InfoS("health server listening", "addr", *metricsAddr)
 
 	<-ctx.Done()
 	klog.InfoS("terminating")

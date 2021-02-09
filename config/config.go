@@ -105,14 +105,14 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 
 	if os.Getenv("DEBUG") == "true" {
-		klog.V(5).InfoS("attributes: %v", attrib, "pod", podInfo)
-		klog.V(5).InfoS("secrets: %v", secret, "pod", podInfo)
+		klog.V(5).InfoS(fmt.Sprintf("attributes: %v", attrib), "pod", podInfo)
+		klog.V(5).InfoS(fmt.Sprintf("secrets: %v", secret), "pod", podInfo)
 	} else {
 		klog.V(5).InfoS("attributes: REDACTED (envvar DEBUG=true to see values)", "pod", podInfo)
 		klog.V(5).InfoS("secrets: REDACTED (envvar DEBUG=true to see values)", "pod", podInfo)
 	}
-	klog.V(5).InfoS("filePermission: %v", in.Permissions, "pod", podInfo)
-	klog.V(5).InfoS("targetPath: %v", in.TargetPath, "pod", podInfo)
+	klog.V(5).InfoS(fmt.Sprintf("filePermission: %v", in.Permissions), "pod", podInfo)
+	klog.V(5).InfoS(fmt.Sprintf("targetPath: %v", in.TargetPath), "pod", podInfo)
 
 	if _, ok := attrib["secrets"]; !ok {
 		return nil, errors.New("missing required 'secrets' attribute")

@@ -29,14 +29,15 @@ import (
 func LogInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		start := time.Now()
+		deadline, _ := ctx.Deadline()
+		dd := time.Until(deadline).String()
 		if klog.V(5).Enabled() {
-			deadline, _ := ctx.Deadline()
-			klog.V(5).InfoS("request", "method", info.FullMethod, "deadline", time.Until(deadline).String())
+			klog.V(5).InfoS("request", "method", info.FullMethod, "deadline", dd)
 		}
 		resp, err := handler(ctx, req)
 		if klog.V(5).Enabled() {
 			s, _ := status.FromError(err)
-			klog.V(5).InfoS("response", "method", info.FullMethod, "duration", time.Since(start).String(), "code", s.Code(), "message", s.Message())
+			klog.V(5).InfoS("response", "method", info.FullMethod, "deadline", dd, "duration", time.Since(start).String(), "status.code", s.Code(), "status.message", s.Message())
 		}
 		return resp, err
 	}
