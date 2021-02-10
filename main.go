@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -42,6 +43,8 @@ var (
 	kubeconfig    = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
 	logFormatJSON = flag.Bool("log-format-json", true, "set log formatter to json")
 	metricsAddr   = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
+	enableProfile = flag.Bool("enable-pprof", false, "enable pprof profiling")
+	debugAddr     = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
 
 	version = "dev"
 )
@@ -85,8 +88,10 @@ func main() {
 	go g.Serve(l)
 
 	// initialize metrics and health http server
+	mux := http.NewServeMux()
 	ms := http.Server{
-		Addr: *metricsAddr,
+		Addr:    *metricsAddr,
+		Handler: mux,
 	}
 	defer ms.Shutdown(ctx)
 
@@ -98,8 +103,8 @@ func main() {
 	if err := runtime.Start(runtime.WithMeterProvider(ex.MeterProvider())); err != nil {
 		klog.ErrorS(err, "unable to start runtime metrics monitoring")
 	}
-	http.HandleFunc("/metrics", ex.ServeHTTP)
-	http.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/metrics", ex.ServeHTTP)
+	mux.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	go func() {
@@ -108,6 +113,26 @@ func main() {
 		}
 	}()
 	klog.InfoS("health server listening", "addr", *metricsAddr)
+
+	if *enableProfile {
+		dmux := http.NewServeMux()
+		dmux.HandleFunc("/debug/pprof/", pprof.Index)
+		dmux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		dmux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		dmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		dmux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		ds := http.Server{
+			Addr:    *debugAddr,
+			Handler: dmux,
+		}
+		defer ds.Shutdown(ctx)
+		go func() {
+			if err := ds.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				klog.ErrorS(err, "debug http server error")
+			}
+		}()
+		klog.InfoS("debug server listening", "addr", *debugAddr)
+	}
 
 	<-ctx.Done()
 	klog.InfoS("terminating")

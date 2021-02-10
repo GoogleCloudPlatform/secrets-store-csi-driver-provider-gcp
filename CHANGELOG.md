@@ -21,6 +21,7 @@ Digest: `TODO`
 * Initial prometheus metrics collection [#85](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/85)
 * `livenessProbe` [#85](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/85)
 * [Debugging documentation](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/blob/v0.3.0/docs/debugging.md) [#85](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/85)
+* Optional pprof debugging endpoint [#88](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/88)
 
 ## v0.2.0
 

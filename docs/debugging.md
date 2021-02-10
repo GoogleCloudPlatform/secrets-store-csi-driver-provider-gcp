@@ -126,6 +126,16 @@ kubectl port-forward csi-secrets-store-provider-gcp-vmqct --namespace=kube-syste
 curl localhost:8095/metrics
 ```
 
+## pprof
+
+Starting the plugin with `-enable-pprof=true` will enable a debug http endpoint
+at `-debug_addr`.  Accessing this will also require `port-forward`:
+
+```cli
+kubectl port-forward csi-secrets-store-provider-gcp-vmqct --namespace=kube-system 6060:6060
+curl localhost:6060/debug/pprof
+```
+
 ## Objects
 
 View `SecretProviderClass`s:
