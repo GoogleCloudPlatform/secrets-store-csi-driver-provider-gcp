@@ -34,8 +34,6 @@ import (
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 )
 
@@ -56,25 +54,7 @@ import (
 // daemonset, including serviceaccounts/token create and serviceaccounts get.
 // These permissions could break node isolation and a long term solution is
 // tracked by Issue #13.
-func Token(ctx context.Context, cfg *config.MountConfig, kubeconfig string) (*oauth2.Token, error) {
-	var rc *rest.Config
-	var err error
-	if kubeconfig != "" {
-		klog.V(5).InfoS("using kubeconfig", "path", kubeconfig)
-		rc, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-	} else {
-		klog.V(5).InfoS("using in-cluster kubeconfig")
-		rc, err = rest.InClusterConfig()
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to read kubeconfig: %w", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(rc)
-	if err != nil {
-		return nil, fmt.Errorf("could not configure k8s client: %w", err)
-	}
-
+func Token(ctx context.Context, cfg *config.MountConfig, clientset *kubernetes.Clientset) (*oauth2.Token, error) {
 	// Determine Workload ID parameters from the GCE instance metadata.
 	idPool, err := fetchIDPool()
 	if err != nil {

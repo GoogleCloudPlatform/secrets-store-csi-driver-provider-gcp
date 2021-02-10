@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
@@ -43,7 +44,7 @@ import (
 type Server struct {
 	UA             string
 	RuntimeVersion string
-	Kubeconfig     string // TODO: accept a kubernetes.Clientset instead
+	KubeClient     *kubernetes.Clientset
 }
 
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
@@ -72,7 +73,7 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 
 	if cfg.TokenSource == nil {
 		// Build the workload identity auth token
-		token, err := auth.Token(ctx, cfg, s.Kubeconfig)
+		token, err := auth.Token(ctx, cfg, s.KubeClient)
 		if err != nil {
 			klog.ErrorS(err, "unable to use workload identity", "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 			return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("Unable to obtain workload identity auth: %v", err))

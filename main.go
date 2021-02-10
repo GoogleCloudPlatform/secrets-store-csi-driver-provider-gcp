@@ -34,6 +34,9 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/exporters/metric/prometheus"
 	"google.golang.org/grpc"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	jlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
@@ -63,10 +66,30 @@ func main() {
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
 	klog.InfoS(fmt.Sprintf("starting %s", ua))
 
+	var rc *rest.Config
+	var err error
+	if *kubeconfig != "" {
+		klog.V(5).InfoS("using kubeconfig", "path", *kubeconfig)
+		rc, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	} else {
+		klog.V(5).InfoS("using in-cluster kubeconfig")
+		rc, err = rest.InClusterConfig()
+	}
+	if err != nil {
+		klog.ErrorS(err, "failed to read kubeconfig")
+		klog.Fatal("failed to read kubeconfig")
+	}
+
+	clientset, err := kubernetes.NewForConfig(rc)
+	if err != nil {
+		klog.ErrorS(err, "failed to configure k8s client")
+		klog.Fatal("failed to configure k8s client")
+	}
+
 	// setup provider grpc server
 	s := &server.Server{
 		UA:         ua,
-		Kubeconfig: *kubeconfig,
+		KubeClient: clientset,
 	}
 
 	socketPath := filepath.Join(os.Getenv("TARGET_DIR"), "gcp.sock")
