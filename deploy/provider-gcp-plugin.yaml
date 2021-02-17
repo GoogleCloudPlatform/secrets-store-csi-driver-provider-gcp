@@ -69,7 +69,7 @@ spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
       containers:
         - name: provider
-          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:214f7aec249aaf450106eddd4455221f84283e8df2751ef5c70b6b1a69e598a0
+          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:90eeaef1afcbac988fb9f5a96222dff91f79920e9fa1c0d4200688ebc2680622
           imagePullPolicy: IfNotPresent
           resources:
             requests:
@@ -87,6 +87,14 @@ spec:
             - name: mountpoint-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: HostToContainer
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /live
+              port: 8095
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 30
       volumes:
         - name: providervol
           hostPath:
