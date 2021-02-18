@@ -71,7 +71,6 @@ spec:
         - name: provider
           image: gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$GCP_PROVIDER_SHA
           args:
-          - "-metrics_addr=:8095"
           - "-v=5"
           imagePullPolicy: Always
           resources:
