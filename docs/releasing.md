@@ -2,16 +2,42 @@
 
 Notes on building a release.
 
-1. Create a release branch (release-x.x)
-2. Ensure integration tests on branch
+1. Create a release branch (`release-X.X`)
+
+    ```bash
+    git checkout -b release-X.X
+    git push origin release-X.X
+    ```
+
+2. Ensure integration tests pass on branch
 3. Build a release image
 
     ```bash
-    gcloud builds submit --config scripts/cloudbuild-release.yaml --substitutions=_VERSION=<VERSION>,_BRANCH_NAME=<branch> --no-source
+    gcloud builds submit --config scripts/cloudbuild-release.yaml --substitutions=_VERSION=<vX.X.X>,_BRANCH_NAME=<release-X.X> --no-source
     ```
 
 4. Update `deploy/` `yaml` files to point to the content addressable sha
-5. Tag the commit from step 4 as `vx.x.0`
+5. Manually test release image
+6. Tag the commit from step 4 as `vX.X.X` by creating a new release
+7. Merge changes from `release-X.X` into `main`
+
+## Release template
+
+* Tag Version: `vX.X.X`
+* Target: branch `release-X.X`
+* Release Title: `vX.X.X`
+
+```markdown
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:vX.X.X`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:vX.X.X`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:vX.X.X`
+
+Digest: `sha256:<sha>`
+
+See CHANGELOG.md for more details.
+```
 
 ## Fixes
 
