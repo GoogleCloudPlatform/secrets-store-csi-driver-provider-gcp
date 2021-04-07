@@ -23,14 +23,14 @@ require (
 	go.opentelemetry.io/otel/exporters/metric/prometheus v0.16.0
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
 	google.golang.org/api v0.33.0
-	google.golang.org/genproto v0.0.0-20201014134559-03b6142f0dc9
+	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.33.0
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.19.2
-	k8s.io/apimachinery v0.19.2
-	k8s.io/client-go v0.19.2
-	k8s.io/component-base v0.19.2
-	k8s.io/klog/v2 v2.4.0
-	sigs.k8s.io/secrets-store-csi-driver v0.0.16
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.20.2
+	k8s.io/client-go v0.20.2
+	k8s.io/component-base v0.20.2
+	k8s.io/klog/v2 v2.5.0
+	sigs.k8s.io/secrets-store-csi-driver v0.0.21
 )

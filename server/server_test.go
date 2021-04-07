@@ -26,11 +26,13 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/testing/protocmp"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
@@ -73,13 +75,13 @@ func TestHandleMountEvent(t *testing.T) {
 		},
 	})
 
-	ovs, err := handleMountEvent(context.Background(), client, cfg)
+	resp, err := handleMountEvent(context.Background(), client, cfg, true)
 	if err != nil {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
 	}
 
-	if diffMetadata(t, wantMetadata, ovs) {
-		t.Errorf("handleMountEvent() returned metadata diff. got = %v, want = %v +got", ovs, wantMetadata)
+	if diff := cmp.Diff(wantMetadata, resp.GetObjectVersion(), protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
 	}
 
 	got, err := ioutil.ReadFile(filepath.Join(dir, "good1.txt"))
@@ -88,6 +90,63 @@ func TestHandleMountEvent(t *testing.T) {
 	}
 	if !bytes.Equal(got, want) {
 		t.Errorf("handleMountEvent() wrote unexpected secret value. got = %v, want = %v", got, want)
+	}
+}
+
+func TestHandleMountEventNoWrite(t *testing.T) {
+	dir := driveMountHelper(t)
+
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+		},
+		TargetPath:  dir,
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	want := &v1alpha1.MountResponse{
+		ObjectVersion: []*v1alpha1.ObjectVersion{
+			{
+				Id:      "projects/project/secrets/test/versions/latest",
+				Version: "projects/project/secrets/test/versions/2",
+			},
+		},
+		Files: []*v1alpha1.File{
+			{
+				Path:     "good1.txt",
+				Mode:     777,
+				Contents: []byte("My Secret"),
+			},
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte("My Secret"),
+				},
+			}, nil
+		},
+	})
+
+	got, err := handleMountEvent(context.Background(), client, cfg, false)
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "good1.txt")); !os.IsNotExist(err) {
+		t.Errorf("handleMountEvent() wrote file good1.txt")
 	}
 }
 
@@ -115,7 +174,7 @@ func TestHandleMountEventSMError(t *testing.T) {
 		},
 	})
 
-	_, got := handleMountEvent(context.Background(), client, cfg)
+	_, got := handleMountEvent(context.Background(), client, cfg, true)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
@@ -167,7 +226,7 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 		},
 	})
 
-	_, got := handleMountEvent(context.Background(), client, cfg)
+	_, got := handleMountEvent(context.Background(), client, cfg, true)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
@@ -177,22 +236,6 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "good1.txt")); !os.IsNotExist(err) {
 		t.Errorf("handleMountEvent() wrote file good1.txt")
 	}
-}
-
-func diffMetadata(t testing.TB, want, got []*v1alpha1.ObjectVersion) bool {
-	t.Helper()
-	if len(want) != len(got) {
-		return true
-	}
-	for i := range want {
-		if want[i].Id != got[i].Id {
-			return true
-		}
-		if want[i].Version != got[i].Version {
-			return true
-		}
-	}
-	return false
 }
 
 // driveMountHelper creates a temporary directory for use by tests as a

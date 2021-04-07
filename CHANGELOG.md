@@ -4,6 +4,10 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased (v0.4.0)
 
+### Added
+
+* `-write_secrets` flag. Set `-write_secrets=false` with `v0.0.21+` of the `secrets-store-csi-driver` to have the driver write the secrets instead of this provider. This will be made the default in `v0.5.0`. [#98](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/98)
+
 ## v0.3.0
 
 Images:
