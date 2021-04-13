@@ -122,6 +122,10 @@ $ rm sa-key.json
 
 This service account is granted access to the Prow instance GCS bucket that stores execution logs. Prow pod utils wrap logs and use the service account to store them.
 
+# Prow kubeconfig
+
+[Prow](https://github.com/GoogleCloudPlatform/oss-test-infra/blob/master/prow/prowjobs/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/secrets-store-csi-driver-provider-gcp-config.yaml) has these credentials to schedule jobs in our cluster.
+
 1. Generate a JWT kubeconfig file to store in Prow cluster to allow Prow to schedule pods.
 
 ```sh
