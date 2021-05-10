@@ -36,9 +36,9 @@ type testFixture struct {
 	tempDir           string
 	gcpProviderBranch string
 	testClusterName   string
-	testSecretId      string
+	testSecretID      string
 	kubeconfigFile    string
-	testProjectId     string
+	testProjectID     string
 }
 
 var f testFixture
@@ -70,9 +70,9 @@ func replaceTemplate(templateFile string, destFile string) error {
 		return err
 	}
 	template := string(templateBytes)
-	template = strings.ReplaceAll(template, "$PROJECT_ID", f.testProjectId)
+	template = strings.ReplaceAll(template, "$PROJECT_ID", f.testProjectID)
 	template = strings.ReplaceAll(template, "$CLUSTER_NAME", f.testClusterName)
-	template = strings.ReplaceAll(template, "$TEST_SECRET_ID", f.testSecretId)
+	template = strings.ReplaceAll(template, "$TEST_SECRET_ID", f.testSecretID)
 	template = strings.ReplaceAll(template, "$GCP_PROVIDER_SHA", f.gcpProviderBranch)
 	template = strings.ReplaceAll(template, "$ZONE", zone)
 	return ioutil.WriteFile(destFile, []byte(template), 0644)
@@ -86,8 +86,8 @@ func setupTestSuite() {
 	if len(f.gcpProviderBranch) == 0 {
 		log.Fatal("GCP_PROVIDER_SHA is empty")
 	}
-	f.testProjectId = os.Getenv("PROJECT_ID")
-	if len(f.testProjectId) == 0 {
+	f.testProjectID = os.Getenv("PROJECT_ID")
+	if len(f.testProjectID) == 0 {
 		log.Fatal("PROJECT_ID is empty")
 	}
 
@@ -95,6 +95,7 @@ func setupTestSuite() {
 	check(err)
 	f.tempDir = tempDir
 	f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
+	f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
 
 	// Build the plugin deploy yaml
 	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
@@ -105,12 +106,12 @@ func setupTestSuite() {
 	check(replaceTemplate("templates/test-cluster.yaml.tmpl", clusterFile))
 	check(execCmd(exec.Command("kubectl", "apply", "-f", clusterFile)))
 	check(execCmd(exec.Command("kubectl", "wait", "containercluster/"+f.testClusterName,
-		"--for=condition=Ready", "--timeout", "5m")))
+		"--for=condition=Ready", "--timeout", "15m")))
 
 	// Get kubeconfig to use to authenticate to test cluster
 	f.kubeconfigFile = filepath.Join(f.tempDir, "test-cluster-kubeconfig")
 	gcloudCmd := exec.Command("gcloud", "container", "clusters", "get-credentials", f.testClusterName,
-		"--zone", zone, "--project", f.testProjectId)
+		"--zone", zone, "--project", f.testProjectID)
 	gcloudCmd.Env = append(os.Environ(), "KUBECONFIG="+f.kubeconfigFile)
 	check(execCmd(gcloudCmd))
 
@@ -129,18 +130,17 @@ func setupTestSuite() {
 		"-f", pluginFile)))
 
 	// Create test secret
-	f.testSecretId = fmt.Sprintf("testsecret-%d", rand.Int31())
 	secretFile := filepath.Join(f.tempDir, "secretValue")
-	check(ioutil.WriteFile(secretFile, []byte(f.testSecretId), 0644))
-	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretId, "--replication-policy", "automatic",
-		"--data-file", secretFile, "--project", f.testProjectId)))
+	check(ioutil.WriteFile(secretFile, []byte(f.testSecretID), 0644))
+	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
+		"--data-file", secretFile, "--project", f.testProjectID)))
 }
 
 // Executed after tests are run. Teardown is only run once for all tests in the suite.
 func teardownTestSuite() {
 	os.RemoveAll(f.tempDir)
 	execCmd(exec.Command("kubectl", "delete", "containercluster", f.testClusterName))
-	execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretId, "--project", f.testProjectId, "--quiet"))
+	execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--project", f.testProjectID, "--quiet"))
 }
 
 // Entry point for go test.
@@ -190,12 +190,12 @@ func TestMountSecret(t *testing.T) {
 	command.Stdout = &stdout
 	command.Stderr = &stderr
 	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", string(stdout.Bytes()))
-		fmt.Println("Stderr:", string(stderr.Bytes()))
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
 		t.Fatalf("Could not get config map: %v", err)
 	}
 	var secretConfigMap map[string]interface{}
-	json.Unmarshal([]byte(string(stdout.Bytes())), &secretConfigMap)
+	json.Unmarshal(stdout.Bytes(), &secretConfigMap)
 
 	secret, present := secretConfigMap["data"].(map[string]interface{})["csiSecret"].(string)
 	if !present {
@@ -207,7 +207,7 @@ func TestMountSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error decoding secret (%v): %v", secret, err)
 	}
-	if string(decoded) != f.testSecretId {
-		t.Fatalf("Secret value is %v, want: %v", secret, f.testSecretId)
+	if string(decoded) != f.testSecretID {
+		t.Fatalf("Secret value is %v, want: %v", secret, f.testSecretID)
 	}
 }

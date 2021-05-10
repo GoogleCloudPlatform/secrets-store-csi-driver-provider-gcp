@@ -1,4 +1,4 @@
-FROM golang:1.15 as build-env
+FROM golang:1.16 as build-env
 
 ARG VERSION=dev
 
