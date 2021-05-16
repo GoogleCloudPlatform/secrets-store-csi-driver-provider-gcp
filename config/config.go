@@ -69,7 +69,7 @@ type MountParams struct {
 }
 
 // Parse parses the input MountParams to the more structured MountConfig.
-func Parse(in *MountParams) (*MountConfig, error) {
+func Parse(ctx context.Context, in *MountParams) (*MountConfig, error) {
 	out := &MountConfig{}
 	out.Permissions = in.Permissions
 	out.TargetPath = in.TargetPath
@@ -97,7 +97,7 @@ func Parse(in *MountParams) (*MountConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal secrets: %v", err)
 	}
 	if _, ok := secret["key.json"]; ok {
-		creds, err := google.CredentialsFromJSON(context.Background(), []byte(secret["key.json"]), "https://www.googleapis.com/auth/cloud-platform")
+		creds, err := google.CredentialsFromJSON(ctx, []byte(secret["key.json"]), "https://www.googleapis.com/auth/cloud-platform")
 		if err != nil {
 			return nil, fmt.Errorf("unable to generate credentials from key.json: %w", err)
 		}

@@ -67,7 +67,7 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 		Permissions: os.FileMode(p),
 	}
 
-	cfg, err := config.Parse(params)
+	cfg, err := config.Parse(ctx, params)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
