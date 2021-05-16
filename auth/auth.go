@@ -156,6 +156,7 @@ func tradeIDBindToken(ctx context.Context, k8sToken, idPool, idProvider string) 
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
