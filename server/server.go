@@ -18,7 +18,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -152,7 +151,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *co
 	for i, secret := range cfg.Secrets {
 		result := results[i]
 		if writeSecrets {
-			if err := ioutil.WriteFile(filepath.Join(cfg.TargetPath, secret.FileName), result.Payload.Data, cfg.Permissions); err != nil {
+			if err := os.WriteFile(filepath.Join(cfg.TargetPath, secret.FileName), result.Payload.Data, cfg.Permissions); err != nil {
 				return nil, status.Error(codes.Internal, fmt.Sprintf("failed to write %s at %s: %s", secret.ResourceName, cfg.TargetPath, err))
 			}
 
