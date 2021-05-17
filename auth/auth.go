@@ -137,7 +137,7 @@ func tradeIDBindToken(ctx context.Context, k8sToken, idPool, idProvider string) 
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", "https://securetoken.googleapis.com/v1/identitybindingtoken", bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://securetoken.googleapis.com/v1/identitybindingtoken", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
