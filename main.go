@@ -62,7 +62,8 @@ func main() {
 	}
 
 	flag.Parse()
-	ctx := withShutdownSignal(context.Background())
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
 	klog.InfoS(fmt.Sprintf("starting %s", ua))
@@ -162,19 +163,4 @@ func main() {
 	<-ctx.Done()
 	klog.InfoS("terminating")
 	g.GracefulStop()
-}
-
-// withShutdownSignal returns a copy of the parent context that will close if
-// the process receives termination signals.
-func withShutdownSignal(ctx context.Context) context.Context {
-	nctx, cancel := context.WithCancel(ctx)
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		sig := <-sigs
-		klog.InfoS("received shutdown signal", "signal", sig)
-		cancel()
-	}()
-	return nctx
 }
