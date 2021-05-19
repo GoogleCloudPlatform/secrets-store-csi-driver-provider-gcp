@@ -2,7 +2,17 @@
 
 All notable changes to secrets-store-csi-driver-provider-gcp will be documented in this file. This file is maintained by humans and is therefore subject to error.
 
-## unreleased (v0.4.0)
+## unreleased
+
+## v0.4.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v0.4.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v0.4.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v0.4.0`
+
+Digest: `sha256:d4b3b361dbf41ae407532358ec89510a20fc15d6e9620fd27f281c1e8f6db864`
 
 ### Added
 
