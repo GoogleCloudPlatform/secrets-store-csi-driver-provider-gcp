@@ -16,7 +16,7 @@ Notes on building a release.
     gcloud builds submit --config scripts/cloudbuild-release.yaml --substitutions=_VERSION=<vX.X.X>,_BRANCH_NAME=<release-X.X> --no-source
     ```
 
-4. Update `deploy/` `yaml` files to point to the content addressable sha
+4. Update `deploy/` `yaml` files to point to the content addressable sha and update `CHANGELOG.md`
 5. Manually test release image
 6. Tag the commit from step 4 as `vX.X.X` by creating a new release
 7. Merge changes from `release-X.X` into `main`
