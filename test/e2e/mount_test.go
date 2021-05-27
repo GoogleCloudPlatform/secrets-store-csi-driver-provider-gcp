@@ -31,12 +31,13 @@ import (
 const zone = "us-central1-c"
 
 type testFixture struct {
-	tempDir           string
-	gcpProviderBranch string
-	testClusterName   string
-	testSecretID      string
-	kubeconfigFile    string
-	testProjectID     string
+	tempDir            string
+	gcpProviderBranch  string
+	testClusterName    string
+	testSecretID       string
+	kubeconfigFile     string
+	testProjectID      string
+	secretStoreVersion string
 }
 
 var f testFixture
@@ -88,6 +89,11 @@ func setupTestSuite() {
 	if len(f.testProjectID) == 0 {
 		log.Fatal("PROJECT_ID is empty")
 	}
+	f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
+	if len(f.secretStoreVersion) == 0 {
+		log.Println("SECRET_STORE_VERSION is empty, defaulting to 'master'")
+		f.secretStoreVersion = "master"
+	}
 
 	tempDir, err := ioutil.TempDir("", "csi-tests")
 	check(err)
@@ -97,7 +103,7 @@ func setupTestSuite() {
 
 	// Build the plugin deploy yaml
 	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
-	check(replaceTemplate("deploy/provider-gcp-plugin.yaml.tmpl", pluginFile))
+	check(replaceTemplate("templates/provider-gcp-plugin.yaml.tmpl", pluginFile))
 
 	// Create test cluster
 	clusterFile := filepath.Join(tempDir, "test-cluster.yaml")
@@ -115,12 +121,12 @@ func setupTestSuite() {
 
 	// Install Secret Store
 	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"-f", "deploy/rbac-secretproviderclass.yaml",
-		"-f", "deploy/rbac-secretprovidersyncing.yaml",
-		"-f", "deploy/csidriver.yaml",
-		"-f", "deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml",
-		"-f", "deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml",
-		"-f", "deploy/secrets-store-csi-driver.yaml",
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretproviderclass.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretprovidersyncing.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/csidriver.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store-csi-driver.yaml", f.secretStoreVersion),
 	)))
 
 	// Install GCP Plugin and Workload Identity bindings

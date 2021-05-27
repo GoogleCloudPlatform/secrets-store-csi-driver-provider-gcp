@@ -31,13 +31,13 @@ export GCP_PROVIDER_SHA=${GCP_PROVIDER_SHA:-$PULL_PULL_SHA}
 gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID
 
 # Build test images for E2E testing
-gcloud builds submit --config test/e2e/cloudbuild.yaml --substitutions="_SECRET_STORE_VERSION=${SECRET_STORE_VERSION},_GCP_PROVIDER_SHA=${GCP_PROVIDER_SHA}" --project $PROJECT_ID test/e2e
+gcloud builds submit --config test/e2e/cloudbuild.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID test/e2e
 
 export JOB_NAME="e2e-test-job-$(head /dev/urandom | base64 | tr -dc 'a-z' | head -c 8)"
 
 # Start up E2E tests
 gcloud container clusters get-credentials $CLUSTER_NAME --zone us-central1-c --project $PROJECT_ID
-sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$JOB_NAME/${JOB_NAME}/g" \
+sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$JOB_NAME/${JOB_NAME}/g;s/\$SECRET_STORE_VERSION/${SECRET_STORE_VERSION}/g" \
     test/e2e/e2e-test-job.yaml.tmpl | kubectl apply -f -
 
 # Wait until job start, then subscribe to job logs
