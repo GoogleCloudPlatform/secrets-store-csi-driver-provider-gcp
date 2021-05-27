@@ -27,11 +27,6 @@ export SECRET_STORE_VERSION=v0.0.18
 # https://github.com/kubernetes/test-infra/blob/master/prow/pod-utilities.md#pod-utilities
 export GCP_PROVIDER_SHA=${GCP_PROVIDER_SHA:-$PULL_PULL_SHA}
 
-# Use the SA token in environment variable to run gCloud commands if provided
-if [ -n "${GOOGLE_APPLICATION_CREDENTIALS+set}" ]; then
-    gcloud auth activate-service-account --key-file ${GOOGLE_APPLICATION_CREDENTIALS}
-fi
-
 # Build the driver image
 gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID
 
