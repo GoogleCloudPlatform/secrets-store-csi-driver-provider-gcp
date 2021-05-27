@@ -4,10 +4,6 @@ This directory contains E2E tests that can be run as a job on a cluster. See [te
 
 E2E tests rely on [Config Connector](https://cloud.google.com/config-connector/docs/overview) to setup and tear-down test GKE clusters and assume that it is available.
 
-## Test Secret Mounter
-
-E2E tests run a simple test binary (test secret mounter) that reads a secret from a predefined location on the filesystem and writes it to a k8s configmap.
-
 # Run E2E tests (Presubmit)
 
 Execute E2E tests by running the presubmit script. From `secrets-store-csi-driver-provider-gcp` directory.

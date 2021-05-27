@@ -17,6 +17,7 @@ metadata:
   name: $JOB_NAME
   namespace: e2e-test
 spec:
+  backoffLimit: 0
   template:
     metadata:
       name: e2e-test

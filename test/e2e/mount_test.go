@@ -15,8 +15,6 @@ package test
 
 import (
 	"bytes"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -165,49 +163,37 @@ func runTest(m *testing.M) (code int) {
 // Execute a test job that writes the test secret to a configmap and verify that the
 // secret value is correct.
 func TestMountSecret(t *testing.T) {
-	jobFile := filepath.Join(f.tempDir, "test-job.yaml")
-	if err := replaceTemplate("templates/test-job.yaml.tmpl", jobFile); err != nil {
-		t.Fatalf("Error replacing job template: %v", err)
+	podFile := filepath.Join(f.tempDir, "test-pod.yaml")
+	if err := replaceTemplate("templates/test-pod.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
 	}
 
 	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", jobFile)); err != nil {
+		"--namespace", "default", "-f", podFile)); err != nil {
 		t.Fatalf("Error creating job: %v", err)
 	}
 
 	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
 	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5)
-
-	if err := execCmd(exec.Command("kubectl", "wait", "jobs/test-secret-mounter-job", "--for=condition=Complete",
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter", "--for=condition=Ready",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
 	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "get", "configmap", "secretmap", "--kubeconfig", f.kubeconfigFile,
-		"-o", "json", "--namespace", "default")
+	command := exec.Command("kubectl", "exec", "test-secret-mounter",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+		"--",
+		"cat", fmt.Sprintf("/var/gcp-test-secrets/%s", f.testSecretID))
 	command.Stdout = &stdout
 	command.Stderr = &stderr
 	if err := command.Run(); err != nil {
 		fmt.Println("Stdout:", stdout.String())
 		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not get config map: %v", err)
+		t.Fatalf("Could not read secret from container: %v", err)
 	}
-	var secretConfigMap map[string]interface{}
-	json.Unmarshal(stdout.Bytes(), &secretConfigMap)
-
-	secret, present := secretConfigMap["data"].(map[string]interface{})["csiSecret"].(string)
-	if !present {
-		t.Fatalf("CSI secret not found in config map: %v", secretConfigMap)
-	}
-
-	// Secret value is set to the secret ID
-	decoded, err := base64.StdEncoding.DecodeString(secret)
-	if err != nil {
-		t.Fatalf("Error decoding secret (%v): %v", secret, err)
-	}
-	if string(decoded) != f.testSecretID {
-		t.Fatalf("Secret value is %v, want: %v", secret, f.testSecretID)
+	if !bytes.Equal(stdout.Bytes(), []byte(f.testSecretID)) {
+		t.Fatalf("Secret value is %v, want: %v", stdout.String(), f.testSecretID)
 	}
 }
