@@ -23,13 +23,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/option"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
@@ -113,24 +113,24 @@ func (s *Server) Version(ctx context.Context, req *v1alpha1.VersionRequest) (*v1
 func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *config.MountConfig, writeSecrets bool) (*v1alpha1.MountResponse, error) {
 	results := make([]*secretmanagerpb.AccessSecretVersionResponse, len(cfg.Secrets))
 	errs := make([]error, len(cfg.Secrets))
+	g, ctx := errgroup.WithContext(ctx)
 
 	// In parallel fetch all secrets needed for the mount
-	wg := sync.WaitGroup{}
 	for i, secret := range cfg.Secrets {
-		wg.Add(1)
-
-		i, secret := i, secret
-		go func() {
-			defer wg.Done()
+		i, secret := i, secret // https://golang.org/doc/faq#closures_and_goroutines
+		g.Go(func() error {
 			req := &secretmanagerpb.AccessSecretVersionRequest{
 				Name: secret.ResourceName,
 			}
 			resp, err := client.AccessSecretVersion(ctx, req)
 			results[i] = resp
 			errs[i] = err
-		}()
+			return nil
+		})
 	}
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
 
 	// If any access failed, return a grpc status error that includes each
 	// individual status error in the Details field.
