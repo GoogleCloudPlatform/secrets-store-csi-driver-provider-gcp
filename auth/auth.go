@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	credentialspb "google.golang.org/genproto/googleapis/iam/credentials/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
@@ -36,6 +38,34 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
+
+const cloudScope = "https://www.googleapis.com/auth/cloud-platform"
+
+// TokenSource returns the correct oauth2.TokenSource depending on the auth
+// configuration of the MountConfig.
+func TokenSource(ctx context.Context, cfg *config.MountConfig, clientset *kubernetes.Clientset) (oauth2.TokenSource, error) {
+	if cfg.AuthNodePublishSecret {
+		creds, err := google.CredentialsFromJSON(ctx, cfg.AuthKubeSecret, cloudScope)
+		if err != nil {
+			return nil, fmt.Errorf("unable to generate credentials from key.json: %w", err)
+		}
+		return creds.TokenSource, nil
+	}
+
+	if cfg.AuthProviderADC {
+		return google.DefaultTokenSource(ctx, cloudScope)
+	}
+
+	if cfg.AuthPodADC {
+		token, err := Token(ctx, cfg, clientset)
+		if err != nil {
+			return nil, fmt.Errorf("unable to obtain workload identity auth: %v", err)
+		}
+		return oauth2.StaticTokenSource(token), nil
+	}
+
+	return nil, errors.New("mount configuration has no auth method configured")
+}
 
 // Token fetches a workload identity auth token for the pod for the MountConfig.
 //

@@ -17,15 +17,12 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -57,7 +54,21 @@ type MountConfig struct {
 	PodInfo     *PodInfo
 	TargetPath  string
 	Permissions os.FileMode
-	TokenSource oauth2.TokenSource
+	// AuthPodADC identifies whether Workload Identity should be used for
+	// authentication. This is the of the pod for volume mount (default)
+	AuthPodADC bool
+	// AuthProviderADC identifies whether the Application Default Credentials of the
+	// GCP Provider DaemonSet should be used for authentication.
+	// https://cloud.google.com/docs/authentication/production#automatically
+	AuthProviderADC bool
+	// AuthNodePublishSecret identifies whether the a K8s Secret provided on the
+	// NodePublish call should be used for authentication.
+	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
+	//
+	// If set then AuthKubeSecret will contain the json representation of the
+	// Google credential (parseable by google.CredentialsFromJSON).
+	AuthNodePublishSecret bool
+	AuthKubeSecret        []byte
 }
 
 // MountParams hold unparsed arguments from the CSI Driver from the mount event.
@@ -97,11 +108,29 @@ func Parse(in *MountParams) (*MountConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal secrets: %v", err)
 	}
 	if _, ok := secret["key.json"]; ok {
-		creds, err := google.CredentialsFromJSON(context.Background(), []byte(secret["key.json"]), "https://www.googleapis.com/auth/cloud-platform")
-		if err != nil {
-			return nil, fmt.Errorf("unable to generate credentials from key.json: %w", err)
+		out.AuthNodePublishSecret = true
+		out.AuthKubeSecret = []byte(secret["key.json"])
+	}
+
+	switch attrib["auth"] {
+	case "provider-adc":
+		if out.AuthNodePublishSecret {
+			klog.InfoS("attempting to set both nodePublishSecretRef and provider-adc auth. For details consult https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/blob/main/docs/authentication.md", podInfo)
+			return nil, fmt.Errorf("attempting to set both nodePublishSecretRef and provider-adc auth")
 		}
-		out.TokenSource = creds.TokenSource
+		out.AuthProviderADC = true
+	case "pod-adc":
+		if out.AuthNodePublishSecret {
+			klog.InfoS("attempting to set both nodePublishSecretRef and pod-adc auth. For details consult https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/blob/main/docs/authentication.md", podInfo)
+			return nil, fmt.Errorf("attempting to set both nodePublishSecretRef and pod-adc auth")
+		}
+		out.AuthPodADC = true
+	case "":
+		// default to pod auth unless nodePublishSecret is set
+		out.AuthPodADC = !out.AuthNodePublishSecret
+	default:
+		klog.InfoS("unknown auth configuration", podInfo)
+		return nil, fmt.Errorf("unknown auth configuration: %q", attrib["auth"])
 	}
 
 	if os.Getenv("DEBUG") == "true" {
