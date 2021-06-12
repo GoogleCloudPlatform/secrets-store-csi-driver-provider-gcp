@@ -21,7 +21,8 @@ set -x          # Print each command as it is run
 
 export CLUSTER_NAME=management-cluster
 export PROJECT_ID=secretmanager-csi-build
-export SECRET_STORE_VERSION=v0.0.18
+export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v0.0.23}
+export GKE_VERSION=${GKE_VERSION:-STABLE}
 
 # Populated by prow pod utilities
 # https://github.com/kubernetes/test-infra/blob/master/prow/pod-utilities.md#pod-utilities
@@ -37,7 +38,7 @@ export JOB_NAME="e2e-test-job-$(head /dev/urandom | base64 | tr -dc 'a-z' | head
 
 # Start up E2E tests
 gcloud container clusters get-credentials $CLUSTER_NAME --zone us-central1-c --project $PROJECT_ID
-sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$JOB_NAME/${JOB_NAME}/g;s/\$SECRET_STORE_VERSION/${SECRET_STORE_VERSION}/g" \
+sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$JOB_NAME/${JOB_NAME}/g;s/\$SECRET_STORE_VERSION/${SECRET_STORE_VERSION}/g;s/\$GKE_VERSION/${GKE_VERSION}/g" \
     test/e2e/e2e-test-job.yaml.tmpl | kubectl apply -f -
 
 # Wait until job start, then subscribe to job logs

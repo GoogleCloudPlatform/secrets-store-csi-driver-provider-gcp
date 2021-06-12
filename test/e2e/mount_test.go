@@ -38,6 +38,7 @@ type testFixture struct {
 	kubeconfigFile     string
 	testProjectID      string
 	secretStoreVersion string
+	gkeVersion         string
 }
 
 var f testFixture
@@ -74,6 +75,7 @@ func replaceTemplate(templateFile string, destFile string) error {
 	template = strings.ReplaceAll(template, "$TEST_SECRET_ID", f.testSecretID)
 	template = strings.ReplaceAll(template, "$GCP_PROVIDER_SHA", f.gcpProviderBranch)
 	template = strings.ReplaceAll(template, "$ZONE", zone)
+	template = strings.ReplaceAll(template, "$GKE_VERSION", f.gkeVersion)
 	return ioutil.WriteFile(destFile, []byte(template), 0644)
 }
 
@@ -93,6 +95,19 @@ func setupTestSuite() {
 	if len(f.secretStoreVersion) == 0 {
 		log.Println("SECRET_STORE_VERSION is empty, defaulting to 'master'")
 		f.secretStoreVersion = "master"
+	}
+	// Version of the GKE cluster to run the tests on
+	// spec.releaseChannel.channel from:
+	// https://cloud.google.com/config-connector/docs/reference/resource-docs/container/containercluster
+	f.gkeVersion = os.Getenv("GKE_VERSION")
+	switch f.gkeVersion {
+	case "STABLE":
+	case "REGULAR":
+	case "RAPID":
+		break
+	default:
+		log.Printf("GKE_VERSION is invalid (%q), defaulting to 'STABLE'", f.gkeVersion)
+		f.gkeVersion = "STABLE"
 	}
 
 	tempDir, err := ioutil.TempDir("", "csi-tests")
@@ -202,4 +217,12 @@ func TestMountSecret(t *testing.T) {
 	if !bytes.Equal(stdout.Bytes(), []byte(f.testSecretID)) {
 		t.Fatalf("Secret value is %v, want: %v", stdout.String(), f.testSecretID)
 	}
+}
+
+func TestMountSyncSecret(t *testing.T) {
+	t.Skip("TODO: test secret sync")
+}
+
+func TestMountRotateSecret(t *testing.T) {
+	t.Skip("TODO: test rotate")
 }

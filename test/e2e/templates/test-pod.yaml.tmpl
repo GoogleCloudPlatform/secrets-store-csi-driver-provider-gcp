@@ -16,27 +16,6 @@ kind: ServiceAccount
 metadata:
   name: test-cluster-sa
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: configmap-admin
-rules:
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: test-cluster-sa-configmap-admin
-subjects:
-  - kind: ServiceAccount
-    name: test-cluster-sa
-roleRef:
-  kind: Role
-  name: configmap-admin
-  apiGroup: rbac.authorization.k8s.io
----
 apiVersion: secrets-store.csi.x-k8s.io/v1alpha1
 kind: SecretProviderClass
 metadata:
