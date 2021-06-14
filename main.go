@@ -48,7 +48,7 @@ var (
 	metricsAddr   = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
 	enableProfile = flag.Bool("enable-pprof", false, "enable pprof profiling")
 	debugAddr     = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
-	writeSecrets  = flag.Bool("write_secrets", true, "whether to write the secrets directly to the filesystem (true) or returns secrets in grpc response to the driver (false, requires driver v0.0.21+)")
+	writeSecrets  = flag.Bool("write_secrets", false, "whether to write the secrets directly to the filesystem (true) or returns secrets in grpc response to the driver (false, requires driver v0.0.21+)")
 
 	version = "dev"
 )
