@@ -7,18 +7,24 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 
 ## Install
 
-* Create a new GKE cluster with K8S 1.16+ and enable
-  [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#enable_on_existing_cluster).
-* Install
-  [Secret Store CSI Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver)
-  v0.0.17 or higher to the cluster.
-* Install the plugin DaemonSet & additional RoleBindings:
+* Create a new GKE cluster with Workload Identity or enable
+  [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#enable_on_existing_cluster)
+  on an existing cluster.
+* Install the
+  [Secret Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation.html)
+  v0.0.21 or higher to the cluster.
+* Install the Google plugin DaemonSet & additional RoleBindings:
 
 ```shell
 $ kubectl apply -f deploy/provider-gcp-plugin.yaml
 ```
 
 ## Usage
+
+The provider will use the workload identity of the pod that a secret is mounted
+onto when authenticating to the Google Secret Manager API. For this to work the
+workload identity of the pod must be configured and appropriate IAM bindings
+must be applied.
 
 * Setup the workload identity service account.
 
