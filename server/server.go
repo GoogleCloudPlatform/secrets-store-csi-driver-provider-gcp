@@ -29,7 +29,6 @@ import (
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
@@ -72,21 +71,12 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	smOpts := []option.ClientOption{option.WithUserAgent(s.UA)}
-
-	if cfg.TokenSource == nil {
-		// Build the workload identity auth token
-		token, err := auth.Token(ctx, cfg, s.KubeClient)
-		if err != nil {
-			klog.ErrorS(err, "unable to use workload identity", "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
-			return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("Unable to obtain workload identity auth: %v", err))
-		} else {
-			smOpts = append(smOpts, option.WithTokenSource(oauth2.StaticTokenSource(token)))
-		}
-	} else {
-		// Use the secret provided in the CSI mount command for auth
-		smOpts = append(smOpts, option.WithTokenSource(cfg.TokenSource))
+	ts, err := auth.TokenSource(ctx, cfg, s.KubeClient)
+	if err != nil {
+		klog.ErrorS(err, "unable to obtain auth for mount", "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
+		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("unable to obtain auth for mount: %v", err))
 	}
+	smOpts := []option.ClientOption{option.WithUserAgent(s.UA), option.WithTokenSource(ts)}
 
 	// Build the secret manager client
 	client, err := secretmanager.NewClient(ctx, smOpts...)
