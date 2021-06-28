@@ -115,13 +115,13 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	switch attrib["auth"] {
 	case "provider-adc":
 		if out.AuthNodePublishSecret {
-			klog.InfoS("attempting to set both nodePublishSecretRef and provider-adc auth. For details consult https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/blob/main/docs/authentication.md", podInfo)
+			klog.InfoS("attempting to set both nodePublishSecretRef and provider-adc auth. For details consult https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/blob/main/docs/authentication.md", "pod", podInfo)
 			return nil, fmt.Errorf("attempting to set both nodePublishSecretRef and provider-adc auth")
 		}
 		out.AuthProviderADC = true
 	case "pod-adc":
 		if out.AuthNodePublishSecret {
-			klog.InfoS("attempting to set both nodePublishSecretRef and pod-adc auth. For details consult https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/blob/main/docs/authentication.md", podInfo)
+			klog.InfoS("attempting to set both nodePublishSecretRef and pod-adc auth. For details consult https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/blob/main/docs/authentication.md", "pod", podInfo)
 			return nil, fmt.Errorf("attempting to set both nodePublishSecretRef and pod-adc auth")
 		}
 		out.AuthPodADC = true
@@ -129,8 +129,18 @@ func Parse(in *MountParams) (*MountConfig, error) {
 		// default to pod auth unless nodePublishSecret is set
 		out.AuthPodADC = !out.AuthNodePublishSecret
 	default:
-		klog.InfoS("unknown auth configuration", podInfo)
+		klog.InfoS("unknown auth configuration", "pod", podInfo)
 		return nil, fmt.Errorf("unknown auth configuration: %q", attrib["auth"])
+	}
+
+	if out.AuthNodePublishSecret {
+		klog.InfoS("parsed auth", "auth", "nodePublishSecretRef", "pod", podInfo)
+	}
+	if out.AuthPodADC {
+		klog.InfoS("parsed auth", "auth", "pod-adc", "pod", podInfo)
+	}
+	if out.AuthProviderADC {
+		klog.InfoS("parsed auth", "auth", "provider-adc", "pod", podInfo)
 	}
 
 	if os.Getenv("DEBUG") == "true" {
