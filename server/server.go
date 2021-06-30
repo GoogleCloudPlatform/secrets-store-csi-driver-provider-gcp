@@ -18,9 +18,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,9 +42,6 @@ type Server struct {
 	UA             string
 	RuntimeVersion string
 	KubeClient     *kubernetes.Clientset
-	// WriteSecrets controls whether to write the secrets directly (true) or
-	// returns secrets in grpc response (false, requires driver v0.0.21+)
-	WriteSecrets bool
 }
 
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
@@ -84,9 +79,9 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to create secretmanager client: %v", err))
 	}
 
-	// Fetch the secrets from the secretmanager API and write them to the
-	// filesystem based on the SecretProviderClass configuration.
-	return handleMountEvent(ctx, client, cfg, s.WriteSecrets)
+	// Fetch the secrets from the secretmanager API based on the
+	// SecretProviderClass configuration.
+	return handleMountEvent(ctx, client, cfg)
 }
 
 // Version implements provider csi-provider method
@@ -99,8 +94,9 @@ func (s *Server) Version(ctx context.Context, req *v1alpha1.VersionRequest) (*v1
 }
 
 // handleMountEvent fetches the secrets from the secretmanager API and
-// writes them to the filesystem based on the SecretProviderClass configuration.
-func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *config.MountConfig, writeSecrets bool) (*v1alpha1.MountResponse, error) {
+// include them in the MountResponse based on the SecretProviderClass
+// configuration.
+func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *config.MountConfig) (*v1alpha1.MountResponse, error) {
 	results := make([]*secretmanagerpb.AccessSecretVersionResponse, len(cfg.Secrets))
 	errs := make([]error, len(cfg.Secrets))
 
@@ -137,24 +133,16 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *co
 
 	out := &v1alpha1.MountResponse{}
 
-	// Write secrets.
+	// Add secrets to response.
 	ovs := make([]*v1alpha1.ObjectVersion, len(cfg.Secrets))
 	for i, secret := range cfg.Secrets {
 		result := results[i]
-		if writeSecrets {
-			if err := ioutil.WriteFile(filepath.Join(cfg.TargetPath, secret.FileName), result.Payload.Data, cfg.Permissions); err != nil {
-				return nil, status.Error(codes.Internal, fmt.Sprintf("failed to write %s at %s: %s", secret.ResourceName, cfg.TargetPath, err))
-			}
-
-			klog.V(5).InfoS("wrote secret", "secret", secret.ResourceName, "path", cfg.TargetPath, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
-		} else {
-			out.Files = append(out.Files, &v1alpha1.File{
-				Path:     secret.FileName,
-				Mode:     int32(cfg.Permissions),
-				Contents: result.Payload.Data,
-			})
-			klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
-		}
+		out.Files = append(out.Files, &v1alpha1.File{
+			Path:     secret.FileName,
+			Mode:     int32(cfg.Permissions),
+			Contents: result.Payload.Data,
+		})
+		klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 
 		ovs[i] = &v1alpha1.ObjectVersion{
 			Id:      secret.ResourceName,
