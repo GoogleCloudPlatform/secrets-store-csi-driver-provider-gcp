@@ -7,6 +7,7 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 ### Changed
 
 * The `-write_secrets` flag defaults to `false`. This requires `v0.0.21+` of the `secrets-store-csi-driver`. [#98](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/98)
+* `wrote secret` and `added secret to response` log messages moved to level 5 (viewable by setting `-v=5`). [https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/120](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/120)
 
 ### Added
 

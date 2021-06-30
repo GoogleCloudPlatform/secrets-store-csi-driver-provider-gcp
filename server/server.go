@@ -146,14 +146,14 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *co
 				return nil, status.Error(codes.Internal, fmt.Sprintf("failed to write %s at %s: %s", secret.ResourceName, cfg.TargetPath, err))
 			}
 
-			klog.InfoS("wrote secret", "secret", secret.ResourceName, "path", cfg.TargetPath, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
+			klog.V(5).InfoS("wrote secret", "secret", secret.ResourceName, "path", cfg.TargetPath, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 		} else {
 			out.Files = append(out.Files, &v1alpha1.File{
 				Path:     secret.FileName,
 				Mode:     int32(cfg.Permissions),
 				Contents: result.Payload.Data,
 			})
-			klog.InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
+			klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 		}
 
 		ovs[i] = &v1alpha1.ObjectVersion{
