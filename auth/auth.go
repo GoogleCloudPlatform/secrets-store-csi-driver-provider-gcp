@@ -119,9 +119,20 @@ func Token(ctx context.Context, cfg *config.MountConfig, clientset *kubernetes.C
 				APIVersion: "v1",
 				Name:       cfg.PodInfo.Name,
 				UID:        cfg.PodInfo.UID,
+	resp, err := clientset.CoreV1().
+		ServiceAccounts(cfg.PodInfo.Namespace).
+		CreateToken(ctx, cfg.PodInfo.ServiceAccount, &authenticationv1.TokenRequest{
+			Spec: authenticationv1.TokenRequestSpec{
+				ExpirationSeconds: &ttl,
+				Audiences:         []string{idPool},
+				BoundObjectRef: &authenticationv1.BoundObjectReference{
+					Kind:       "Pod",
+					APIVersion: "v1",
+					Name:       cfg.PodInfo.Name,
+					UID:        cfg.PodInfo.UID,
+				},
 			},
-		},
-	}, v1.CreateOptions{})
+		}, v1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch pod token: %w", err)
 	}
@@ -175,6 +186,7 @@ func tradeIDBindToken(ctx context.Context, k8sToken, idPool, idProvider string) 
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
