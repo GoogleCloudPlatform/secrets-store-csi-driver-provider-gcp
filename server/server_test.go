@@ -15,13 +15,8 @@
 package server
 
 import (
-	"bytes"
 	"context"
-	"io/ioutil"
-	"log"
 	"net"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -40,8 +35,6 @@ import (
 )
 
 func TestHandleMountEvent(t *testing.T) {
-	dir := driveMountHelper(t)
-
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
@@ -49,61 +42,6 @@ func TestHandleMountEvent(t *testing.T) {
 				FileName:     "good1.txt",
 			},
 		},
-		TargetPath:  dir,
-		Permissions: 777,
-		PodInfo: &config.PodInfo{
-			Namespace: "default",
-			Name:      "test-pod",
-		},
-	}
-
-	want := []byte("My Secret")
-	wantMetadata := []*v1alpha1.ObjectVersion{
-		{
-			Id:      "projects/project/secrets/test/versions/latest",
-			Version: "projects/project/secrets/test/versions/2",
-		},
-	}
-	client := mock(t, &mockSecretServer{
-		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
-			return &secretmanagerpb.AccessSecretVersionResponse{
-				Name: "projects/project/secrets/test/versions/2",
-				Payload: &secretmanagerpb.SecretPayload{
-					Data: want,
-				},
-			}, nil
-		},
-	})
-
-	resp, err := handleMountEvent(context.Background(), client, cfg, true)
-	if err != nil {
-		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
-	}
-
-	if diff := cmp.Diff(wantMetadata, resp.GetObjectVersion(), protocmp.Transform()); diff != "" {
-		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
-	}
-
-	got, err := ioutil.ReadFile(filepath.Join(dir, "good1.txt"))
-	if err != nil {
-		t.Errorf("error reading secret. got err = %v, want err = nil", err)
-	}
-	if !bytes.Equal(got, want) {
-		t.Errorf("handleMountEvent() wrote unexpected secret value. got = %v, want = %v", got, want)
-	}
-}
-
-func TestHandleMountEventNoWrite(t *testing.T) {
-	dir := driveMountHelper(t)
-
-	cfg := &config.MountConfig{
-		Secrets: []*config.Secret{
-			{
-				ResourceName: "projects/project/secrets/test/versions/latest",
-				FileName:     "good1.txt",
-			},
-		},
-		TargetPath:  dir,
 		Permissions: 777,
 		PodInfo: &config.PodInfo{
 			Namespace: "default",
@@ -138,21 +76,16 @@ func TestHandleMountEventNoWrite(t *testing.T) {
 		},
 	})
 
-	got, err := handleMountEvent(context.Background(), client, cfg, false)
+	got, err := handleMountEvent(context.Background(), client, cfg)
 	if err != nil {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
 	}
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
 		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "good1.txt")); !os.IsNotExist(err) {
-		t.Errorf("handleMountEvent() wrote file good1.txt")
-	}
 }
 
 func TestHandleMountEventSMError(t *testing.T) {
-	dir := driveMountHelper(t)
-
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
@@ -160,7 +93,6 @@ func TestHandleMountEventSMError(t *testing.T) {
 				FileName:     "good1.txt",
 			},
 		},
-		TargetPath:  dir,
 		Permissions: 777,
 		PodInfo: &config.PodInfo{
 			Namespace: "default",
@@ -174,15 +106,13 @@ func TestHandleMountEventSMError(t *testing.T) {
 		},
 	})
 
-	_, got := handleMountEvent(context.Background(), client, cfg, true)
+	_, got := handleMountEvent(context.Background(), client, cfg)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 }
 
 func TestHandleMountEventSMMultipleErrors(t *testing.T) {
-	dir := driveMountHelper(t)
-
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
@@ -198,7 +128,6 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 				FileName:     "bad2.txt",
 			},
 		},
-		TargetPath:  dir,
 		Permissions: 777,
 		PodInfo: &config.PodInfo{
 			Namespace: "default",
@@ -226,32 +155,13 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 		},
 	})
 
-	_, got := handleMountEvent(context.Background(), client, cfg, true)
+	_, got := handleMountEvent(context.Background(), client, cfg)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 	if !strings.Contains(got.Error(), "PermissionDenied") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "good1.txt")); !os.IsNotExist(err) {
-		t.Errorf("handleMountEvent() wrote file good1.txt")
-	}
-}
-
-// driveMountHelper creates a temporary directory for use by tests as a
-// replacement for the tmpfs directory that the CSI Driver would create for the
-// handleMountEvent. This returns the path.
-func driveMountHelper(t testing.TB) string {
-	t.Helper()
-	dir, err := ioutil.TempDir("", "csi-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		log.Printf("Cleaning up: %s", dir)
-		os.RemoveAll(dir)
-	})
-	return dir
 }
 
 // mock builds a secretmanager.Client talking to a real in-memory secretmanager
