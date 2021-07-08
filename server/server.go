@@ -25,12 +25,15 @@ import (
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"github.com/googleapis/gax-go/v2"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	"google.golang.org/api/option"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/client-go/kubernetes"
@@ -39,9 +42,9 @@ import (
 )
 
 type Server struct {
-	UA             string
 	RuntimeVersion string
 	KubeClient     *kubernetes.Clientset
+	SecretClient   *secretmanager.Client
 }
 
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
@@ -71,17 +74,15 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 		klog.ErrorS(err, "unable to obtain auth for mount", "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("unable to obtain auth for mount: %v", err))
 	}
-	smOpts := []option.ClientOption{option.WithUserAgent(s.UA), option.WithTokenSource(ts)}
 
-	// Build the secret manager client
-	client, err := secretmanager.NewClient(ctx, smOpts...)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to create secretmanager client: %v", err))
-	}
+	// Build a grpc credentials.PerRPCCredentials using
+	// the grpc google.golang.org/grpc/credentials/oauth package, not to be
+	// confused with the oauth2.TokenSource that it wraps.
+	gts := oauth.TokenSource{TokenSource: ts}
 
 	// Fetch the secrets from the secretmanager API based on the
 	// SecretProviderClass configuration.
-	return handleMountEvent(ctx, client, cfg)
+	return handleMountEvent(ctx, s.SecretClient, gts, cfg)
 }
 
 // Version implements provider csi-provider method
@@ -96,9 +97,12 @@ func (s *Server) Version(ctx context.Context, req *v1alpha1.VersionRequest) (*v1
 // handleMountEvent fetches the secrets from the secretmanager API and
 // include them in the MountResponse based on the SecretProviderClass
 // configuration.
-func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *config.MountConfig) (*v1alpha1.MountResponse, error) {
+func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds credentials.PerRPCCredentials, cfg *config.MountConfig) (*v1alpha1.MountResponse, error) {
 	results := make([]*secretmanagerpb.AccessSecretVersionResponse, len(cfg.Secrets))
 	errs := make([]error, len(cfg.Secrets))
+
+	// need to build a per-rpc call option based of the tokensource
+	callAuth := gax.WithGRPCOptions(grpc.PerRPCCredentials(creds))
 
 	// In parallel fetch all secrets needed for the mount
 	wg := sync.WaitGroup{}
@@ -111,7 +115,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, cfg *co
 			req := &secretmanagerpb.AccessSecretVersionRequest{
 				Name: secret.ResourceName,
 			}
-			resp, err := client.AccessSecretVersion(ctx, req)
+			resp, err := client.AccessSecretVersion(ctx, req, callAuth)
 			results[i] = resp
 			errs[i] = err
 		}()

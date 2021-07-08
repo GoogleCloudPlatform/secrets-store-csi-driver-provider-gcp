@@ -19,6 +19,7 @@ go 1.16
 require (
 	cloud.google.com/go v0.68.0
 	github.com/google/go-cmp v0.5.4
+	github.com/googleapis/gax-go/v2 v2.0.5
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.16.0
 	go.opentelemetry.io/otel/exporters/metric/prometheus v0.16.0
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43

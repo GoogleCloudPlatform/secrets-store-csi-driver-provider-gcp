@@ -76,7 +76,7 @@ func TestHandleMountEvent(t *testing.T) {
 		},
 	})
 
-	got, err := handleMountEvent(context.Background(), client, cfg)
+	got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
 	if err != nil {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
 	}
@@ -106,7 +106,7 @@ func TestHandleMountEventSMError(t *testing.T) {
 		},
 	})
 
-	_, got := handleMountEvent(context.Background(), client, cfg)
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
@@ -155,7 +155,7 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 		},
 	})
 
-	_, got := handleMountEvent(context.Background(), client, cfg)
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
@@ -187,7 +187,7 @@ func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {
 		t.Fatalf("failed to dial: %v", err)
 	}
 
-	client, err := secretmanager.NewClient(context.Background(), option.WithGRPCConn(conn))
+	client, err := secretmanager.NewClient(context.Background(), option.WithoutAuthentication(), option.WithGRPCConn(conn))
 	shutdown := func() {
 		t.Log("shutdown called")
 		conn.Close()
@@ -216,4 +216,25 @@ func (s *mockSecretServer) AccessSecretVersion(ctx context.Context, req *secretm
 		return nil, status.Error(codes.Unimplemented, "mock does not implement accessFn")
 	}
 	return s.accessFn(ctx, req)
+}
+
+// fakeCreds will adhere to the credentials.PerRPCCredentials interface to add
+// empty credentials on a per-rpc basis.
+type fakeCreds struct{}
+
+func NewFakeCreds() fakeCreds {
+	return fakeCreds{}
+}
+
+// GetRequestMetadata gets the request metadata as a map from a TokenSource.
+func (f fakeCreds) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": "fake",
+	}, nil
+}
+
+// RequireTransportSecurity indicates whether the credentials requires transport security.
+// Since these are fake credentials for use with mock local server this is set to false.
+func (f fakeCreds) RequireTransportSecurity() bool {
+	return false
 }
