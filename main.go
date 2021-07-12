@@ -33,11 +33,19 @@ import (
 	"cloud.google.com/go/compute/metadata"
 	iam "cloud.google.com/go/iam/credentials/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	texporter "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
+	gcpdetector "go.opentelemetry.io/contrib/detectors/gcp"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/metric/prometheus"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -53,6 +61,7 @@ var (
 	kubeconfig            = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
 	logFormatJSON         = flag.Bool("log-format-json", true, "set log formatter to json")
 	metricsAddr           = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
+	traceRatio            = flag.Float64("trace_ratio", 1.0, "ratio of requests for stackdriver tracing")
 	enableProfile         = flag.Bool("enable-pprof", false, "enable pprof profiling")
 	debugAddr             = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
 	_                     = flag.Bool("write_secrets", false, "[unused]")
@@ -77,9 +86,45 @@ func main() {
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
 	klog.InfoS(fmt.Sprintf("starting %s", ua))
 
+	// determining environment
+	res, err := resource.Detect(ctx, &gcpdetector.GKE{})
+	if err != nil {
+		klog.ErrorS(err, "unable to tracing environment resource")
+	}
+
+	// sampler
+	sampler := sdktrace.NeverSample()
+	if *traceRatio > 0 {
+		sampler = sdktrace.TraceIDRatioBased(*traceRatio)
+	}
+
+	// setup tracing exporters
+	exporter, err := texporter.NewExporter()
+	if err != nil {
+		klog.ErrorS(err, "NewExporter() failed")
+		klog.Fatal("NewExporter() failed")
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sampler),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(res),
+	)
+	defer tp.ForceFlush(ctx)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+			// there isnt one for the cloud X-Cloud-Trace-Context
+		),
+	)
+	otel.SetErrorHandler(&eh{})
+
+	// setup tracing on clients
+	// https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation
+
 	// Kubernetes Client
 	var rc *rest.Config
-	var err error
 	if *kubeconfig != "" {
 		klog.V(5).InfoS("using kubeconfig", "path", *kubeconfig)
 		rc, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -90,6 +135,11 @@ func main() {
 	if err != nil {
 		klog.ErrorS(err, "failed to read kubeconfig")
 		klog.Fatal("failed to read kubeconfig")
+	}
+
+	// configure K8s client with http wrapper
+	rc.WrapTransport = func(r http.RoundTripper) http.RoundTripper {
+		return otelhttp.NewTransport(infra.NewDetailed(r))
 	}
 
 	clientset, err := kubernetes.NewForConfig(rc)
@@ -115,6 +165,10 @@ func main() {
 		// requests. Note that this is implemented in
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
+		// add open telemetry tracing interceptor
+		// See https://github.com/open-telemetry/opentelemetry-go-contrib/issues/197
+		// for more detailed instrumentation.
+		option.WithGRPCDialOption(grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())),
 	}
 
 	sc, err := secretmanager.NewClient(ctx, smOpts...)
@@ -140,6 +194,10 @@ func main() {
 		// requests. Note that this is implemented in
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*iamConnectionPoolSize),
+		// add open telemetry tracing interceptor
+		// See https://github.com/open-telemetry/opentelemetry-go-contrib/issues/197
+		// for more detailed instrumentation.
+		option.WithGRPCDialOption(grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())),
 	}
 
 	iamc, err := iam.NewIamCredentialsClient(ctx, iamOpts...)
@@ -150,12 +208,12 @@ func main() {
 
 	// HTTP client
 	hc := &http.Client{
-		Transport: &http.Transport{
+		Transport: otelhttp.NewTransport(infra.NewDetailed(&http.Transport{
 			Dial: (&net.Dialer{
 				Timeout:   2 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).Dial,
-		},
+		})),
 		Timeout: 60 * time.Second,
 	}
 
@@ -185,7 +243,10 @@ func main() {
 	defer l.Close()
 
 	g := grpc.NewServer(
-		grpc.UnaryInterceptor(infra.LogInterceptor()),
+		grpc.ChainUnaryInterceptor(
+			otelgrpc.UnaryServerInterceptor(),
+			infra.LogInterceptor(),
+		),
 	)
 	v1alpha1.RegisterCSIDriverProviderServer(g, s)
 	go g.Serve(l)
@@ -240,4 +301,11 @@ func main() {
 	<-ctx.Done()
 	klog.InfoS("terminating")
 	g.GracefulStop()
+}
+
+// eh is an error handler for logging tracing errors
+type eh struct{}
+
+func (*eh) Handle(err error) {
+	klog.ErrorS(err, "tracing error")
 }

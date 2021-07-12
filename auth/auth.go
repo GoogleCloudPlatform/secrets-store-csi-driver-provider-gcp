@@ -30,6 +30,7 @@ import (
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 	"github.com/googleapis/gax-go/v2"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	credentialspb "google.golang.org/genproto/googleapis/iam/credentials/v1"
@@ -94,25 +95,31 @@ func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oaut
 // These permissions could break node isolation and a long term solution is
 // tracked by Issue #13.
 func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.Token, error) {
-	// Determine Workload ID parameters from the GCE instance metadata.
-	projectID, err := c.MetadataClient.ProjectID()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get project id: %w", err)
-	}
-	idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
+	// Create custom span.
+	tracer := otel.GetTracerProvider().Tracer("secretprovidergcp/auth")
+	{
+		_, span := tracer.Start(ctx, "ProjectInfo")
+		// Determine Workload ID parameters from the GCE instance metadata.
+		projectID, err := c.MetadataClient.ProjectID()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get project id: %w", err)
+		}
+		idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
 
-	clusterLocation, err := c.MetadataClient.InstanceAttributeValue("cluster-location")
-	if err != nil {
-		return nil, fmt.Errorf("unable to determine cluster location: %w", err)
-	}
-	clusterName, err := c.MetadataClient.InstanceAttributeValue("cluster-name")
-	if err != nil {
-		return nil, fmt.Errorf("unable to determine cluster name: %w", err)
-	}
-	idProvider := fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", projectID, clusterLocation, clusterName)
+		clusterLocation, err := c.MetadataClient.InstanceAttributeValue("cluster-location")
+		if err != nil {
+			return nil, fmt.Errorf("unable to determine cluster location: %w", err)
+		}
+		clusterName, err := c.MetadataClient.InstanceAttributeValue("cluster-name")
+		if err != nil {
+			return nil, fmt.Errorf("unable to determine cluster name: %w", err)
+		}
+		idProvider := fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", projectID, clusterLocation, clusterName)
 
-	klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
+		klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
 
+		span.End()
+	}
 	// Get iam.gke.io/gcp-service-account annotation to see if the
 	// identitybindingtoken token should be traded for a GCP SA token.
 	// See https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#creating_a_relationship_between_ksas_and_gsas
@@ -128,7 +135,8 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 
 	// Request a serviceaccount token for the pod
 	ttl := int64((15 * time.Minute).Seconds())
-	resp, err := c.KubeClient.CoreV1().
+	resp, err := c.KubeClient.
+		CoreV1().
 		ServiceAccounts(cfg.PodInfo.Namespace).
 		CreateToken(ctx, cfg.PodInfo.ServiceAccount,
 			&authenticationv1.TokenRequest{

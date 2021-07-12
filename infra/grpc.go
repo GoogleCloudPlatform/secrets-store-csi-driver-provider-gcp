@@ -28,6 +28,7 @@ import (
 // and response logging.
 func LogInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		// todo: figure out a way to include span/trace information into the klog logs
 		start := time.Now()
 		deadline, _ := ctx.Deadline()
 		dd := time.Until(deadline).String()
