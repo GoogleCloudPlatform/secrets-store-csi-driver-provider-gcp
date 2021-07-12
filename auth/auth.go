@@ -29,10 +29,13 @@ import (
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	credentialspb "google.golang.org/genproto/googleapis/iam/credentials/v1"
+	"google.golang.org/grpc"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -139,7 +142,10 @@ func Token(ctx context.Context, cfg *config.MountConfig, clientset *kubernetes.C
 		return idBindToken, nil
 	}
 
-	gcpSAClient, err := credentials.NewIamCredentialsClient(ctx, option.WithTokenSource(oauth2.StaticTokenSource(idBindToken)))
+	gcpSAClient, err := credentials.NewIamCredentialsClient(ctx,
+		option.WithTokenSource(oauth2.StaticTokenSource(idBindToken)),
+		option.WithGRPCDialOption(grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create credentials client: %w", err)
 	}
@@ -173,7 +179,7 @@ func tradeIDBindToken(ctx context.Context, k8sToken, idPool, idProvider string) 
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
+	client := otelhttp.DefaultClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -196,7 +202,8 @@ func tradeIDBindToken(ctx context.Context, k8sToken, idPool, idProvider string) 
 }
 
 func fetchIDPool() (string, error) {
-	id, err := metadata.ProjectID()
+	m := metadata.NewClient(otelhttp.DefaultClient)
+	id, err := m.ProjectID()
 	if err != nil {
 		return "", err
 	}
@@ -204,17 +211,20 @@ func fetchIDPool() (string, error) {
 }
 
 func fetchIDProvider() (string, error) {
-	projectID, err := metadata.ProjectID()
+	// metadata package has no ctx input to be able tie these requests to parent
+	// trace.
+	m := metadata.NewClient(otelhttp.DefaultClient)
+	projectID, err := m.ProjectID()
 	if err != nil {
 		return "", err
 	}
 
-	clusterLocation, err := metadata.InstanceAttributeValue("cluster-location")
+	clusterLocation, err := m.InstanceAttributeValue("cluster-location")
 	if err != nil {
 		return "", err
 	}
 
-	clusterName, err := metadata.InstanceAttributeValue("cluster-name")
+	clusterName, err := m.InstanceAttributeValue("cluster-name")
 	if err != nil {
 		return "", err
 	}

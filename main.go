@@ -30,10 +30,16 @@ import (
 	"syscall"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	texporter "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/metric/prometheus"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -72,8 +78,32 @@ func main() {
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
 	klog.InfoS(fmt.Sprintf("starting %s", ua))
 
+	// setup tracing exporters
+	exporter, err := texporter.NewExporter()
+	if err != nil {
+		klog.ErrorS(err, "NewExporter() failed")
+		klog.Fatal("NewExporter() failed")
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+	)
+	defer tp.ForceFlush(ctx) // flushes any pending spans
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+			// there isnt one for the cloud X-Cloud-Trace-Context
+		),
+	)
+
+	// setup tracing on clients
+	// https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation
+	// instrument http and grpc clients
+	// TODO otel.SetErrorHandler
+
 	var rc *rest.Config
-	var err error
 	if *kubeconfig != "" {
 		klog.V(5).InfoS("using kubeconfig", "path", *kubeconfig)
 		rc, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -84,6 +114,11 @@ func main() {
 	if err != nil {
 		klog.ErrorS(err, "failed to read kubeconfig")
 		klog.Fatal("failed to read kubeconfig")
+	}
+
+	// configure K8s client with http wrapper
+	rc.WrapTransport = func(r http.RoundTripper) http.RoundTripper {
+		return otelhttp.NewTransport(r)
 	}
 
 	clientset, err := kubernetes.NewForConfig(rc)
@@ -107,6 +142,10 @@ func main() {
 		// requests. Note that this is implemented in
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
+		// add open telemetry tracing interceptor
+		option.WithGRPCDialOption(grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())),
+		// open telemetry only has per rpc interceptor, not grpc.WithStatsHandler
+		// which I think would provide a lot better information
 	}
 
 	// Build the secret manager client
@@ -135,7 +174,10 @@ func main() {
 	defer l.Close()
 
 	g := grpc.NewServer(
-		grpc.UnaryInterceptor(infra.LogInterceptor()),
+		grpc.ChainUnaryInterceptor(
+			otelgrpc.UnaryServerInterceptor(),
+			infra.LogInterceptor(),
+		),
 	)
 	v1alpha1.RegisterCSIDriverProviderServer(g, s)
 	go g.Serve(l)
