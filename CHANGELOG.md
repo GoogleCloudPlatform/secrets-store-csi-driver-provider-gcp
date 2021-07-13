@@ -4,6 +4,10 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
+### Added
+
+* `-sm_connection_pool_size` flag added with default value of `5`. Added as part of an optimization to reuse the same Secret Manager client across all `Mount` operations. [#94](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/94)
+
 ### Removed
 
 * The `-write_secrets` flag has been removed. All writes to the pod filesystem will now be done by the CSI driver

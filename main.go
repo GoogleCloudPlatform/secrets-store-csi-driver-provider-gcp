@@ -29,11 +29,14 @@ import (
 	"path/filepath"
 	"syscall"
 
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel/exporters/metric/prometheus"
+	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -43,12 +46,13 @@ import (
 )
 
 var (
-	kubeconfig    = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
-	logFormatJSON = flag.Bool("log-format-json", true, "set log formatter to json")
-	metricsAddr   = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
-	enableProfile = flag.Bool("enable-pprof", false, "enable pprof profiling")
-	debugAddr     = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
-	_             = flag.Bool("write_secrets", false, "[unused]")
+	kubeconfig           = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
+	logFormatJSON        = flag.Bool("log-format-json", true, "set log formatter to json")
+	metricsAddr          = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
+	enableProfile        = flag.Bool("enable-pprof", false, "enable pprof profiling")
+	debugAddr            = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
+	_                    = flag.Bool("write_secrets", false, "[unused]")
+	smConnectionPoolSize = flag.Int("sm_connection_pool_size", 5, "size of the connection pool for the secret manager API client")
 
 	version = "dev"
 )
@@ -88,10 +92,34 @@ func main() {
 		klog.Fatal("failed to configure k8s client")
 	}
 
+	// secret manager client, without auth so that authentication can be
+	// re-added on a per-RPC basis for each mount
+	smOpts := []option.ClientOption{
+		option.WithUserAgent(ua),
+		// tell the secretmanager library to not add transport-level ADC since
+		// we need to override on a per call basis
+		option.WithoutAuthentication(),
+		// grpc oauth TokenSource credentials require transport security, so
+		// this must be set explicitly even though TLS is used
+		option.WithGRPCDialOption(grpc.WithTransportCredentials(credentials.NewTLS(nil))),
+		// establish a pool of underlying connections to the Secret Manager API
+		// to decrease blocking since same client will be used across concurrent
+		// requests. Note that this is implemented in
+		// google.golang.org/api/option and not grpc itself.
+		option.WithGRPCConnectionPool(*smConnectionPoolSize),
+	}
+
+	// Build the secret manager client
+	sc, err := secretmanager.NewClient(ctx, smOpts...)
+	if err != nil {
+		klog.ErrorS(err, "failed to create secretmanager client")
+		klog.Fatal("failed to create secretmanager client")
+	}
+
 	// setup provider grpc server
 	s := &server.Server{
-		UA:         ua,
-		KubeClient: clientset,
+		KubeClient:   clientset,
+		SecretClient: sc,
 	}
 
 	socketPath := filepath.Join(os.Getenv("TARGET_DIR"), "gcp.sock")
