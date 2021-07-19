@@ -28,8 +28,12 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
+	"cloud.google.com/go/compute/metadata"
+	iam "cloud.google.com/go/iam/credentials/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
@@ -46,13 +50,14 @@ import (
 )
 
 var (
-	kubeconfig           = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
-	logFormatJSON        = flag.Bool("log-format-json", true, "set log formatter to json")
-	metricsAddr          = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
-	enableProfile        = flag.Bool("enable-pprof", false, "enable pprof profiling")
-	debugAddr            = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
-	_                    = flag.Bool("write_secrets", false, "[unused]")
-	smConnectionPoolSize = flag.Int("sm_connection_pool_size", 5, "size of the connection pool for the secret manager API client")
+	kubeconfig            = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
+	logFormatJSON         = flag.Bool("log-format-json", true, "set log formatter to json")
+	metricsAddr           = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
+	enableProfile         = flag.Bool("enable-pprof", false, "enable pprof profiling")
+	debugAddr             = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
+	_                     = flag.Bool("write_secrets", false, "[unused]")
+	smConnectionPoolSize  = flag.Int("sm_connection_pool_size", 5, "size of the connection pool for the secret manager API client")
+	iamConnectionPoolSize = flag.Int("iam_connection_pool_size", 5, "size of the connection pool for the IAM API client")
 
 	version = "dev"
 )
@@ -72,6 +77,7 @@ func main() {
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
 	klog.InfoS(fmt.Sprintf("starting %s", ua))
 
+	// Kubernetes Client
 	var rc *rest.Config
 	var err error
 	if *kubeconfig != "" {
@@ -92,8 +98,10 @@ func main() {
 		klog.Fatal("failed to configure k8s client")
 	}
 
-	// secret manager client, without auth so that authentication can be
-	// re-added on a per-RPC basis for each mount
+	// Secret Manager client
+	//
+	// build without auth so that authentication can be re-added on a per-RPC
+	// basis for each mount
 	smOpts := []option.ClientOption{
 		option.WithUserAgent(ua),
 		// tell the secretmanager library to not add transport-level ADC since
@@ -109,17 +117,59 @@ func main() {
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
 	}
 
-	// Build the secret manager client
 	sc, err := secretmanager.NewClient(ctx, smOpts...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
 	}
 
+	// IAM client
+	//
+	// build without auth so that authentication can be re-added on a per-RPC
+	// basis for each mount
+	iamOpts := []option.ClientOption{
+		option.WithUserAgent(ua),
+		// tell the secretmanager library to not add transport-level ADC since
+		// we need to override on a per call basis
+		option.WithoutAuthentication(),
+		// grpc oauth TokenSource credentials require transport security, so
+		// this must be set explicitly even though TLS is used
+		option.WithGRPCDialOption(grpc.WithTransportCredentials(credentials.NewTLS(nil))),
+		// establish a pool of underlying connections to the Secret Manager API
+		// to decrease blocking since same client will be used across concurrent
+		// requests. Note that this is implemented in
+		// google.golang.org/api/option and not grpc itself.
+		option.WithGRPCConnectionPool(*iamConnectionPoolSize),
+	}
+
+	iamc, err := iam.NewIamCredentialsClient(ctx, iamOpts...)
+	if err != nil {
+		klog.ErrorS(err, "failed to create iam client")
+		klog.Fatal("failed to create iam client")
+	}
+
+	// HTTP client
+	hc := &http.Client{
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout:   2 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+		},
+		Timeout: 60 * time.Second,
+	}
+
+	c := &auth.Client{
+		KubeClient:     clientset,
+		IAMClient:      iamc,
+		MetadataClient: metadata.NewClient(hc),
+		HTTPClient:     hc,
+	}
+
 	// setup provider grpc server
 	s := &server.Server{
-		KubeClient:   clientset,
 		SecretClient: sc,
+		AuthClient:   c,
 	}
 
 	socketPath := filepath.Join(os.Getenv("TARGET_DIR"), "gcp.sock")

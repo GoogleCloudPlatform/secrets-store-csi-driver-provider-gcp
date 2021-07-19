@@ -36,14 +36,13 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
 
 type Server struct {
 	RuntimeVersion string
-	KubeClient     *kubernetes.Clientset
+	AuthClient     *auth.Client
 	SecretClient   *secretmanager.Client
 }
 
@@ -69,7 +68,7 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	ts, err := auth.TokenSource(ctx, cfg, s.KubeClient)
+	ts, err := s.AuthClient.TokenSource(ctx, cfg)
 	if err != nil {
 		klog.ErrorS(err, "unable to obtain auth for mount", "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("unable to obtain auth for mount: %v", err))
