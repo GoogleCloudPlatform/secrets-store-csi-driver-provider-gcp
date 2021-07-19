@@ -63,6 +63,8 @@ $ kubectl exec -it mypod /bin/bash
 root@mypod:/# ls /var/secrets
 ```
 
+test
+
 ## Security Considerations
 
 This plugin is built to ensure compatibility between Secret Manager and
