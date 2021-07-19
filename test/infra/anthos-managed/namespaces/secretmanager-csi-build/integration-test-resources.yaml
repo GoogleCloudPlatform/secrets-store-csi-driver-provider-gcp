@@ -28,6 +28,33 @@ spec:
   replication:
     automatic: true
 ---
+# This secret will hold the exported service account credential for the
+# identity:
+#
+#    k8s-csi-test@secretmanager-csi-build.iam.gserviceaccount.com
+#
+# This exported SA cred will then be injected and used by the
+# https://github.com/kubernetes-sigs/secrets-store-csi-driver
+# test cases.
+#
+# This should be rotated with:
+#
+#   $ gcloud iam service-accounts keys create "key.json" \
+#     --project="secretmanager-csi-build" \
+#     --iam-account="k8s-csi-test@secretmanager-csi-build.iam.gserviceaccount.com"
+#
+#   $ gcloud secrets versions add k8s-oss-prow --project=secretmanager-csi-build --data-file=key.json
+#
+apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
+kind: SecretManagerSecret
+metadata:
+  name: k8s-oss-prow
+  labels:
+    replication-type: automatic
+spec:
+  replication:
+    automatic: true
+---
   apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
   kind: SecretManagerSecretVersion
   metadata:
@@ -53,3 +80,22 @@ spec:
     - role: roles/secretmanager.secretAccessor
       members:
         - serviceAccount:k8s-csi-test@secretmanager-csi-build.iam.gserviceaccount.com
+---
+# See
+# https://github.com/kubernetes/test-infra/blob/master/prow/prow_secrets.md#prow-secrets-management
+# and
+# https://github.com/kubernetes/test-infra/blob/master/config/prow/cluster/build_kubernetes-external-secrets_customresource.yaml
+# for information on secret syncing.
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicy
+metadata:
+  name: k8s-oss-prow-binding
+spec:
+  resourceRef:
+    apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
+    kind: SecretManagerSecret
+    name: k8s-oss-prow
+  bindings:
+    - role: roles/secretmanager.secretAccessor
+      members:
+        - serviceAccount:kubernetes-external-secrets-sa@k8s-prow-builds.iam.gserviceaccount.com
