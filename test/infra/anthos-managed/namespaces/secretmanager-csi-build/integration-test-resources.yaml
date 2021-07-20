@@ -18,6 +18,20 @@ metadata:
 spec:
   displayName: Integration Tests Service Account
 ---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicy
+metadata:
+  name: k8s-csi-test-bindings
+spec:
+  resourceRef:
+    apiVersion: iam.cnrm.cloud.google.com/v1beta1
+    kind: IAMServiceAccount
+    name: k8s-csi-test
+  bindings:
+    - role: roles/iam.workloadIdentityUser
+      members:
+        - serviceAccount:k8s-prow-builds.svc.id.goog[test-pods/secrets-store-csi-driver-gcp]
+---
 apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
 kind: SecretManagerSecret
 metadata:
@@ -80,6 +94,9 @@ spec:
     - role: roles/secretmanager.secretAccessor
       members:
         - serviceAccount:k8s-csi-test@secretmanager-csi-build.iam.gserviceaccount.com
+        # TODO: remove once https://github.com/kubernetes/test-infra/pull/22944
+        # is merged and switches workload identity to the k8s-csi-test SA.
+        - serviceAccount:k8s-prow-builds.svc.id.goog[test-pods/default]
 ---
 # See
 # https://github.com/kubernetes/test-infra/blob/master/prow/prow_secrets.md#prow-secrets-management
