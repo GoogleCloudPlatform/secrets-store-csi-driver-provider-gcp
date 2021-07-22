@@ -29,10 +29,12 @@ import (
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"github.com/googleapis/gax-go/v2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"google.golang.org/api/option"
 	credentialspb "google.golang.org/genproto/googleapis/iam/credentials/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/oauth"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -41,9 +43,16 @@ import (
 
 const cloudScope = "https://www.googleapis.com/auth/cloud-platform"
 
+type Client struct {
+	KubeClient     *kubernetes.Clientset
+	MetadataClient *metadata.Client
+	IAMClient      *credentials.IamCredentialsClient
+	HTTPClient     *http.Client
+}
+
 // TokenSource returns the correct oauth2.TokenSource depending on the auth
 // configuration of the MountConfig.
-func TokenSource(ctx context.Context, cfg *config.MountConfig, clientset *kubernetes.Clientset) (oauth2.TokenSource, error) {
+func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oauth2.TokenSource, error) {
 	if cfg.AuthNodePublishSecret {
 		creds, err := google.CredentialsFromJSON(ctx, cfg.AuthKubeSecret, cloudScope)
 		if err != nil {
@@ -57,7 +66,7 @@ func TokenSource(ctx context.Context, cfg *config.MountConfig, clientset *kubern
 	}
 
 	if cfg.AuthPodADC {
-		token, err := Token(ctx, cfg, clientset)
+		token, err := c.Token(ctx, cfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to obtain workload identity auth: %v", err)
 		}
@@ -84,24 +93,33 @@ func TokenSource(ctx context.Context, cfg *config.MountConfig, clientset *kubern
 // daemonset, including serviceaccounts/token create and serviceaccounts get.
 // These permissions could break node isolation and a long term solution is
 // tracked by Issue #13.
-func Token(ctx context.Context, cfg *config.MountConfig, clientset *kubernetes.Clientset) (*oauth2.Token, error) {
+func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.Token, error) {
 	// Determine Workload ID parameters from the GCE instance metadata.
-	idPool, err := fetchIDPool()
+	projectID, err := c.MetadataClient.ProjectID()
 	if err != nil {
-		return nil, fmt.Errorf("unable to determine idPool: %w", err)
+		return nil, fmt.Errorf("unable to get project id: %w", err)
 	}
+	idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
 
-	idProvider, err := fetchIDProvider()
+	clusterLocation, err := c.MetadataClient.InstanceAttributeValue("cluster-location")
 	if err != nil {
-		return nil, fmt.Errorf("unable to determine idProvider: %w", err)
+		return nil, fmt.Errorf("unable to determine cluster location: %w", err)
 	}
+	clusterName, err := c.MetadataClient.InstanceAttributeValue("cluster-name")
+	if err != nil {
+		return nil, fmt.Errorf("unable to determine cluster name: %w", err)
+	}
+	idProvider := fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", projectID, clusterLocation, clusterName)
 
 	klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
 
 	// Get iam.gke.io/gcp-service-account annotation to see if the
 	// identitybindingtoken token should be traded for a GCP SA token.
 	// See https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#creating_a_relationship_between_ksas_and_gsas
-	saResp, err := clientset.CoreV1().ServiceAccounts(cfg.PodInfo.Namespace).Get(ctx, cfg.PodInfo.ServiceAccount, v1.GetOptions{})
+	saResp, err := c.KubeClient.
+		CoreV1().
+		ServiceAccounts(cfg.PodInfo.Namespace).
+		Get(ctx, cfg.PodInfo.ServiceAccount, v1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch SA info: %w", err)
 	}
@@ -110,24 +128,29 @@ func Token(ctx context.Context, cfg *config.MountConfig, clientset *kubernetes.C
 
 	// Request a serviceaccount token for the pod
 	ttl := int64((15 * time.Minute).Seconds())
-	resp, err := clientset.CoreV1().ServiceAccounts(cfg.PodInfo.Namespace).CreateToken(ctx, cfg.PodInfo.ServiceAccount, &authenticationv1.TokenRequest{
-		Spec: authenticationv1.TokenRequestSpec{
-			ExpirationSeconds: &ttl,
-			Audiences:         []string{idPool},
-			BoundObjectRef: &authenticationv1.BoundObjectReference{
-				Kind:       "Pod",
-				APIVersion: "v1",
-				Name:       cfg.PodInfo.Name,
-				UID:        cfg.PodInfo.UID,
+	resp, err := c.KubeClient.CoreV1().
+		ServiceAccounts(cfg.PodInfo.Namespace).
+		CreateToken(ctx, cfg.PodInfo.ServiceAccount,
+			&authenticationv1.TokenRequest{
+				Spec: authenticationv1.TokenRequestSpec{
+					ExpirationSeconds: &ttl,
+					Audiences:         []string{idPool},
+					BoundObjectRef: &authenticationv1.BoundObjectReference{
+						Kind:       "Pod",
+						APIVersion: "v1",
+						Name:       cfg.PodInfo.Name,
+						UID:        cfg.PodInfo.UID,
+					},
+				},
 			},
-		},
-	}, v1.CreateOptions{})
+			v1.CreateOptions{},
+		)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch pod token: %w", err)
 	}
 
 	// Trade the kubernetes token for an identitybindingtoken token.
-	idBindToken, err := tradeIDBindToken(ctx, resp.Status.Token, idPool, idProvider)
+	idBindToken, err := tradeIDBindToken(ctx, c.HTTPClient, resp.Status.Token, idPool, idProvider)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch identitybindingtoken: %w", err)
 	}
@@ -139,22 +162,17 @@ func Token(ctx context.Context, cfg *config.MountConfig, clientset *kubernetes.C
 		return idBindToken, nil
 	}
 
-	gcpSAClient, err := credentials.NewIamCredentialsClient(ctx, option.WithTokenSource(oauth2.StaticTokenSource(idBindToken)))
-	if err != nil {
-		return nil, fmt.Errorf("unable to create credentials client: %w", err)
-	}
-	gcpSAResp, err := gcpSAClient.GenerateAccessToken(ctx, &credentialspb.GenerateAccessTokenRequest{
+	gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, &credentialspb.GenerateAccessTokenRequest{
 		Name:  fmt.Sprintf("projects/-/serviceAccounts/%s", gcpSA),
 		Scope: secretmanager.DefaultAuthScopes(),
-		// TODO: set expiration
-	})
+	}, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{TokenSource: oauth2.StaticTokenSource(idBindToken)})))
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch gcp service account token: %w", err)
 	}
 	return &oauth2.Token{AccessToken: gcpSAResp.GetAccessToken()}, nil
 }
 
-func tradeIDBindToken(ctx context.Context, k8sToken, idPool, idProvider string) (*oauth2.Token, error) {
+func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool, idProvider string) (*oauth2.Token, error) {
 	body, err := json.Marshal(map[string]string{
 		"grant_type":           "urn:ietf:params:oauth:grant-type:token-exchange",
 		"subject_token_type":   "urn:ietf:params:oauth:token-type:jwt",
@@ -173,7 +191,6 @@ func tradeIDBindToken(ctx context.Context, k8sToken, idPool, idProvider string) 
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -193,31 +210,4 @@ func tradeIDBindToken(ctx context.Context, k8sToken, idPool, idProvider string) 
 		return nil, err
 	}
 	return idBindToken, nil
-}
-
-func fetchIDPool() (string, error) {
-	id, err := metadata.ProjectID()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s.svc.id.goog", id), nil
-}
-
-func fetchIDProvider() (string, error) {
-	projectID, err := metadata.ProjectID()
-	if err != nil {
-		return "", err
-	}
-
-	clusterLocation, err := metadata.InstanceAttributeValue("cluster-location")
-	if err != nil {
-		return "", err
-	}
-
-	clusterName, err := metadata.InstanceAttributeValue("cluster-name")
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", projectID, clusterLocation, clusterName), nil
 }
