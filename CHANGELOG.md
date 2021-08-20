@@ -13,6 +13,10 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 * The `-write_secrets` flag has been removed. All writes to the pod filesystem will now be done by the CSI driver
   instead of this plugin. This requires `v0.0.21+` of the `secrets-store-csi-driver`. [#98](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/98)
 
+### Changed
+
+* Updated dependencies to bring in an updated Secret Manager client with better retry behavior for `RESOURCE_EXHAUSTED` errors. [#135](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/135)
+
 ## v0.5.0
 
 Images:
