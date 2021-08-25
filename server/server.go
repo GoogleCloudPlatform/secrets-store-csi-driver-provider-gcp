@@ -141,7 +141,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 	for i, secret := range cfg.Secrets {
 		result := results[i]
 		out.Files = append(out.Files, &v1alpha1.File{
-			Path:     secret.FileName,
+			Path:     secret.PathString(),
 			Mode:     int32(cfg.Permissions),
 			Contents: result.Payload.Data,
 		})

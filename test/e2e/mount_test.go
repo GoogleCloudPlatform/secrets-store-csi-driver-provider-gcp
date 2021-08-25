@@ -181,8 +181,7 @@ func runTest(m *testing.M) (code int) {
 	return m.Run()
 }
 
-// Execute a test job that writes the test secret to a configmap and verify that the
-// secret value is correct.
+// Execute a test job that mounts a secret and checks that the value is correct.
 func TestMountSecret(t *testing.T) {
 	podFile := filepath.Join(f.tempDir, "test-pod.yaml")
 	if err := replaceTemplate("templates/test-pod.yaml.tmpl", podFile); err != nil {
@@ -216,6 +215,72 @@ func TestMountSecret(t *testing.T) {
 	}
 	if !bytes.Equal(stdout.Bytes(), []byte(f.testSecretID)) {
 		t.Fatalf("Secret value is %v, want: %v", stdout.String(), f.testSecretID)
+	}
+}
+
+func TestMountNestedPath(t *testing.T) {
+	podFile := filepath.Join(f.tempDir, "test-nested.yaml")
+	if err := replaceTemplate("templates/test-nested.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-nested", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for job: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	command := exec.Command("kubectl", "exec", "test-secret-nested",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+		"--",
+		"cat", fmt.Sprintf("/var/gcp-test-secrets/my/nested/path/%s", f.testSecretID))
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
+	}
+	if !bytes.Equal(stdout.Bytes(), []byte(f.testSecretID)) {
+		t.Fatalf("Secret value is %v, want: %v", stdout.String(), f.testSecretID)
+	}
+}
+
+func TestMountInvalidPath(t *testing.T) {
+	podFile := filepath.Join(f.tempDir, "test-invalid.yaml")
+	if err := replaceTemplate("templates/test-invalid.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	// We cannot use a 'wait for condition' since we are expecting a failure (that gets retried indefinitely).
+	// Instead wait for enough time to give the kubelet a chance to attempt the mount and have it fail.
+	time.Sleep(15 * time.Second)
+
+	var stdout, stderr bytes.Buffer
+	command := exec.Command("kubectl", "get", "events", "--field-selector", "involvedObject.name=test-secret-invalid",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default")
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
+	}
+	if !strings.Contains(stdout.String(), "invalid path") {
+		t.Fatalf("Unable to find 'invalid path' error: %v", stdout.String())
 	}
 }
 
