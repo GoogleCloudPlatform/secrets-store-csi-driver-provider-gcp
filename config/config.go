@@ -21,11 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
 )
 
@@ -38,6 +36,9 @@ type Secret struct {
 
 	// FileName is where the contents of the secret are to be written.
 	FileName string `json:"fileName" yaml:"fileName"`
+
+	// Path is the relative path where the contents of the secret are written.
+	Path string `json:"path" yaml:"path"`
 }
 
 // PodInfo includes details about the pod that is receiving the mount event.
@@ -77,6 +78,14 @@ type MountParams struct {
 	KubeSecrets string
 	TargetPath  string
 	Permissions os.FileMode
+}
+
+// PathString returns either the FileName or Path parameter of the Secret.
+func (s *Secret) PathString() string {
+	if s.Path != "" {
+		return s.Path
+	}
+	return s.FileName
 }
 
 // Parse parses the input MountParams to the more structured MountConfig.
@@ -158,13 +167,6 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 	if err := yaml.Unmarshal([]byte(attrib["secrets"]), &out.Secrets); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal secrets attribute: %v", err)
-	}
-
-	for i := range out.Secrets {
-		name := out.Secrets[i].FileName
-		if errs := validation.IsConfigMapKey(name); len(errs) != 0 {
-			return nil, fmt.Errorf("%q is not a valid fileName for Secret: %s", name, strings.Join(errs, ";"))
-		}
 	}
 
 	return out, nil

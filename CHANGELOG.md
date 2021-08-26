@@ -7,6 +7,7 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 ### Added
 
 * `-sm_connection_pool_size` and `-iam_connection_pool_size` flags added with default value of `5`. Added as part of an optimization to reuse the same Secret Manager client across all `Mount` operations. [#94](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/94)
+* Secrets can now be written to nested paths. The `path` parameter is also added as an alias for `fileName` in the `SecretProviderClass`. [#125](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/125)
 
 ### Removed
 

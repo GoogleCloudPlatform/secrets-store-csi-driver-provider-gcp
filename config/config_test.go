@@ -258,57 +258,6 @@ func TestParseErrors(t *testing.T) {
 			},
 		},
 		{
-			name: "fileName with path",
-			in: &MountParams{
-				Attributes: `
-				{
-					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"../good1.txt\"\n",
-					"csi.storage.k8s.io/pod.namespace": "default",
-					"csi.storage.k8s.io/pod.name": "mypod",
-					"csi.storage.k8s.io/pod.uid": "123",
-					"csi.storage.k8s.io/serviceAccount.name": "mysa"
-				}
-				`,
-				KubeSecrets: "{}",
-				TargetPath:  "/tmp/foo",
-				Permissions: 777,
-			},
-		},
-		{
-			name: "fileName with filename separator",
-			in: &MountParams{
-				Attributes: `
-				{
-					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"a:good1.txt\"\n",
-					"csi.storage.k8s.io/pod.namespace": "default",
-					"csi.storage.k8s.io/pod.name": "mypod",
-					"csi.storage.k8s.io/pod.uid": "123",
-					"csi.storage.k8s.io/serviceAccount.name": "mysa"
-				}
-				`,
-				KubeSecrets: "{}",
-				TargetPath:  "/tmp/foo",
-				Permissions: 777,
-			},
-		},
-		{
-			name: "fileName with path separator",
-			in: &MountParams{
-				Attributes: `
-				{
-					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"a/good1.txt\"\n",
-					"csi.storage.k8s.io/pod.namespace": "default",
-					"csi.storage.k8s.io/pod.name": "mypod",
-					"csi.storage.k8s.io/pod.uid": "123",
-					"csi.storage.k8s.io/serviceAccount.name": "mysa"
-				}
-				`,
-				KubeSecrets: "{}",
-				TargetPath:  "/tmp/foo",
-				Permissions: 777,
-			},
-		},
-		{
 			name: "both nodePublishSecretRef and provider-adc",
 			in: &MountParams{
 				Attributes: `
