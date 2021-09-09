@@ -35,6 +35,7 @@ type testFixture struct {
 	gcpProviderBranch  string
 	testClusterName    string
 	testSecretID       string
+	testRotateSecretID string
 	kubeconfigFile     string
 	testProjectID      string
 	secretStoreVersion string
@@ -94,7 +95,7 @@ func setupTestSuite() {
 	f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
 	if len(f.secretStoreVersion) == 0 {
 		log.Println("SECRET_STORE_VERSION is empty, defaulting to 'master'")
-		f.secretStoreVersion = "master"
+		f.secretStoreVersion = "main"
 	}
 	// Version of the GKE cluster to run the tests on
 	// spec.releaseChannel.channel from:
@@ -115,6 +116,7 @@ func setupTestSuite() {
 	f.tempDir = tempDir
 	f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
 	f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
+	f.testRotateSecretID = f.testSecretID + "-rotate"
 
 	// Build the plugin deploy yaml
 	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
@@ -157,9 +159,38 @@ func setupTestSuite() {
 
 // Executed after tests are run. Teardown is only run once for all tests in the suite.
 func teardownTestSuite() {
+	// print cluster information, useful when debugging
+	execCmd(exec.Command(
+		"kubectl", "describe", "pods",
+		"--all-namespaces",
+		"--kubeconfig", f.kubeconfigFile,
+	))
+	execCmd(exec.Command(
+		"kubectl", "logs", "-l", "app=csi-secrets-store",
+		"--tail", "-1",
+		"-n", "kube-system",
+		"--kubeconfig", f.kubeconfigFile,
+	))
+	execCmd(exec.Command(
+		"kubectl", "logs", "-l", "app=csi-secrets-store-provider-gcp",
+		"--tail", "-1",
+		"-n", "kube-system",
+		"--kubeconfig", f.kubeconfigFile,
+	))
+
+	// cleanup
 	os.RemoveAll(f.tempDir)
 	execCmd(exec.Command("kubectl", "delete", "containercluster", f.testClusterName))
-	execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--project", f.testProjectID, "--quiet"))
+	execCmd(exec.Command(
+		"gcloud", "secrets", "delete", f.testSecretID,
+		"--project", f.testProjectID,
+		"--quiet",
+	))
+	execCmd(exec.Command(
+		"gcloud", "secrets", "delete", f.testRotateSecretID,
+		"--project", f.testProjectID,
+		"--quiet",
+	))
 }
 
 // Entry point for go test.
@@ -289,5 +320,98 @@ func TestMountSyncSecret(t *testing.T) {
 }
 
 func TestMountRotateSecret(t *testing.T) {
-	t.Skip("TODO: test rotate")
+	secretA := []byte("secreta")
+	secretB := []byte("secretb")
+
+	// Enable rotation.
+	check(execCmd(exec.Command("enable-rotation.sh", f.kubeconfigFile)))
+
+	// Wait for deployment to finish.
+	time.Sleep(45 * time.Second)
+
+	// Create test secret.
+	secretFileA := filepath.Join(f.tempDir, "secretValue-A")
+	check(ioutil.WriteFile(secretFileA, secretA, 0644))
+	check(execCmd(exec.Command(
+		"gcloud", "secrets", "create", f.testRotateSecretID,
+		"--replication-policy", "automatic",
+		"--data-file", secretFileA,
+		"--project", f.testProjectID,
+	)))
+
+	// Deploy the test pod.
+	podFile := filepath.Join(f.tempDir, "test-rotate.yaml")
+	if err := replaceTemplate("templates/test-rotate.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command(
+		"kubectl", "wait", "pod/test-secret-mounter-rotate",
+		"--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default",
+		"--timeout", "5m",
+	)); err != nil {
+		t.Fatalf("Error waiting for job: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	command := exec.Command(
+		"kubectl", "exec", "test-secret-mounter-rotate",
+		"--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default",
+		"--",
+		"cat", "/var/gcp-test-secrets/rotate")
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
+	}
+	if !bytes.Equal(stdout.Bytes(), secretA) {
+		t.Fatalf("Secret value is %x, want: %x", stdout, secretA)
+	}
+
+	// Rotate the secret.
+	secretFileB := filepath.Join(f.tempDir, "secretValue-B")
+	check(ioutil.WriteFile(secretFileB, secretB, 0644))
+	check(execCmd(exec.Command(
+		"gcloud", "secrets", "versions", "add", f.testRotateSecretID,
+		"--data-file", secretFileB,
+		"--project", f.testProjectID,
+	)))
+
+	// Wait for update. Keep in sync with driver's --rotation-poll-interval to
+	// ensure enough time.
+	time.Sleep(30 * time.Second)
+
+	// Verify update.
+	stdout.Reset()
+	stderr.Reset()
+	command = exec.Command(
+		"kubectl", "exec", "test-secret-mounter-rotate",
+		"--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default",
+		"--",
+		"cat", "/var/gcp-test-secrets/rotate",
+	)
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
+	}
+	if !bytes.Equal(stdout.Bytes(), secretB) {
+		t.Fatalf("Secret value is %x, want: %x", stdout, secretB)
+	}
 }
