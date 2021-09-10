@@ -14,6 +14,7 @@ FROM gcr.io/google.com/cloudsdktool/cloud-sdk:debian_component_based
 
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/e2e.test /bin/
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/templates /test/templates
+COPY enable-rotation.sh /bin/
 
 WORKDIR /test
 ENTRYPOINT ["/bin/e2e.test"]
