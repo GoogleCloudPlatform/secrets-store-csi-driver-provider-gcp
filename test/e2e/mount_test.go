@@ -316,7 +316,49 @@ func TestMountInvalidPath(t *testing.T) {
 }
 
 func TestMountSyncSecret(t *testing.T) {
-	t.Skip("TODO: test secret sync")
+	podFile := filepath.Join(f.tempDir, "test-sync.yaml")
+	if err := replaceTemplate("templates/test-sync.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command(
+		"kubectl", "apply", "-f", podFile,
+		"--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default",
+	)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command(
+		"kubectl", "wait", "pod/test-secret-mounter-sync",
+		"--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default",
+		"--timeout", "5m",
+	)); err != nil {
+		t.Fatalf("Error waiting for job: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	command := exec.Command(
+		"kubectl", "exec", "test-secret-mounter-sync",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+		"--",
+		"printenv",
+	)
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
+	}
+	if got := stdout.Bytes(); !bytes.Contains(got, []byte(f.testSecretID)) {
+		t.Fatalf("pod env value is %s, does not contain: %s", string(got), f.testSecretID)
+	}
 }
 
 func TestMountRotateSecret(t *testing.T) {
@@ -377,8 +419,8 @@ func TestMountRotateSecret(t *testing.T) {
 		fmt.Println("Stderr:", stderr.String())
 		t.Fatalf("Could not read secret from container: %v", err)
 	}
-	if !bytes.Equal(stdout.Bytes(), secretA) {
-		t.Fatalf("Secret value is %x, want: %x", stdout, secretA)
+	if got := stdout.Bytes(); !bytes.Equal(got, secretA) {
+		t.Fatalf("Secret value is %v, want: %v", got, secretA)
 	}
 
 	// Rotate the secret.
@@ -411,7 +453,7 @@ func TestMountRotateSecret(t *testing.T) {
 		fmt.Println("Stderr:", stderr.String())
 		t.Fatalf("Could not read secret from container: %v", err)
 	}
-	if !bytes.Equal(stdout.Bytes(), secretB) {
-		t.Fatalf("Secret value is %x, want: %x", stdout, secretB)
+	if got := stdout.Bytes(); !bytes.Equal(got, secretB) {
+		t.Fatalf("Secret value is %v, want: %v", got, secretB)
 	}
 }
