@@ -16,7 +16,7 @@ VETTERS = "asmdecl,assign,atomic,bools,buildtag,cgocall,composites,copylocks,err
 GOFMT_FILES = $(shell go list -f '{{.Dir}}' ./...)
 
 fmtcheck:
-	@command -v goimports > /dev/null 2>&1 || (cd tools && go get golang.org/x/tools/cmd/goimports && cd ..)
+	@command -v goimports > /dev/null 2>&1 || (cd tools && go install golang.org/x/tools/cmd/goimports && cd ..)
 	@CHANGES="$$(goimports -d $(GOFMT_FILES))"; \
 		if [ -n "$${CHANGES}" ]; then \
 			echo "Unformatted (run goimports -w .):\n\n$${CHANGES}\n\n"; \
@@ -31,32 +31,32 @@ fmtcheck:
 .PHONY: fmtcheck
 
 spellcheck:
-	@command -v misspell > /dev/null 2>&1 || (cd tools && go get github.com/client9/misspell/cmd/misspell && cd ..)
+	@command -v misspell > /dev/null 2>&1 || (cd tools && go install github.com/client9/misspell/cmd/misspell && cd ..)
 	@misspell -error -source="text" **/*
 .PHONY: spellcheck
 
 staticcheck:
-	@command -v staticcheck > /dev/null 2>&1 || (cd tools && go get honnef.co/go/tools/cmd/staticcheck && cd ..)
+	@command -v staticcheck > /dev/null 2>&1 || (cd tools && go install honnef.co/go/tools/cmd/staticcheck && cd ..)
 	@staticcheck -checks="all" -tests $(GOFMT_FILES)
 .PHONY: staticcheck
 
 licensescsv:
-	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go get github.com/google/go-licenses && cd ..)
+	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
 	@go-licenses csv . | sort > licenses.csv
 .PHONY: licensescsv
 
 licensescheck:
-	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go get github.com/google/go-licenses && cd ..)
+	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
 	@go-licenses check . 
 .PHONY: licensescheck
 
 licensessave:
-	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go get github.com/google/go-licenses && cd ..)
+	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
 	@go-licenses save . --save_path=licenses
 .PHONY: licensessave
 
 gosec:
-	@command -v gosec > /dev/null 2>&1 || (cd tools && go get github.com/securego/gosec/cmd/gosec && cd ..)
+	@command -v gosec > /dev/null 2>&1 || (cd tools && go install github.com/securego/gosec/cmd/gosec && cd ..)
 	@gosec ./...
 .PHONY: gosec
 
