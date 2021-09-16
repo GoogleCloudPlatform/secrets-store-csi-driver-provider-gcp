@@ -1,5 +1,7 @@
 # Google Secret Manager Provider for Secret Store CSI Driver
 
+[![googleoss-secrets-store-csi-driver-provider-gcp/periodic](https://testgrid.k8s.io/q/summary/googleoss-secrets-store-csi-driver-provider-gcp/periodic/tests_status?style=svg)](https://testgrid.k8s.io/googleoss-secrets-store-csi-driver-provider-gcp#periodic)
+
 [Google Secret Manager](https://cloud.google.com/secret-manager/) provider for
 the [Secret Store CSI
 Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver). Allows you
