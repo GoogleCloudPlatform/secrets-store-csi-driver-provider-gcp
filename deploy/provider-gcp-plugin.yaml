@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -26,27 +27,27 @@ roleRef:
   kind: ClusterRole
   name: secrets-store-csi-driver-provider-gcp-role
 subjects:
-- kind: ServiceAccount
-  name: secrets-store-csi-driver-provider-gcp
-  namespace: kube-system
+  - kind: ServiceAccount
+    name: secrets-store-csi-driver-provider-gcp
+    namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: secrets-store-csi-driver-provider-gcp-role
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - serviceaccounts/token
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resources:
-  - serviceaccounts
-  verbs:
-  - get
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts/token
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - get
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -98,7 +99,7 @@ spec:
       volumes:
         - name: providervol
           hostPath:
-              path: /etc/kubernetes/secrets-store-csi-providers
+            path: /etc/kubernetes/secrets-store-csi-providers
         - name: mountpoint-dir
           hostPath:
             path: /var/lib/kubelet/pods
