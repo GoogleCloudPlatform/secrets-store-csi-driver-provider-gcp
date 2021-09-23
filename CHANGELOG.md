@@ -4,6 +4,16 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
+## v0.6.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v0.6.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v0.6.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v0.6.0`
+
+Digest: `sha256:2733764e6c008fd5d846f7e8a0795502acdc5c0997aac2effb66f39776386786`
+
 ### Added
 
 * `-sm_connection_pool_size` and `-iam_connection_pool_size` flags added with default value of `5`. Added as part of an optimization to reuse the same Secret Manager client across all `Mount` operations. [#94](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/94)
@@ -17,6 +27,7 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 ### Changed
 
 * Updated dependencies to bring in an updated Secret Manager client with better retry behavior for `RESOURCE_EXHAUSTED` errors. [#135](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/135)
+* Updated build to use go1.17 [#137](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/137)
 
 ## v0.5.0
 
