@@ -70,7 +70,7 @@ spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
       containers:
         - name: provider
-          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:f2e84e7ae583ae048be54c8083fe6c2708116d540c5955b9ad732ac512d50dd4
+          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:2733764e6c008fd5d846f7e8a0795502acdc5c0997aac2effb66f39776386786
           imagePullPolicy: IfNotPresent
           resources:
             requests:
