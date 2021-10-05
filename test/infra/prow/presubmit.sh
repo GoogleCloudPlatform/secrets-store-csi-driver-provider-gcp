@@ -21,7 +21,7 @@ set -x          # Print each command as it is run
 
 export CLUSTER_NAME=management-cluster
 export PROJECT_ID=secretmanager-csi-build
-export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v0.0.23}
+export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v1.0.0-rc.1}
 export GKE_VERSION=${GKE_VERSION:-STABLE}
 
 # Populated by prow pod utilities
