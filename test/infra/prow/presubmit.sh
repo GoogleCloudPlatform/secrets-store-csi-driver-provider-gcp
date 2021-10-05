@@ -42,7 +42,7 @@ sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s
     test/e2e/e2e-test-job.yaml.tmpl | kubectl apply -f -
 
 # Wait until job start, then subscribe to job logs
-kubectl wait pod --for=condition=ready -l job-name="${JOB_NAME}" -n e2e-test
+kubectl wait pod --for=condition=ready -l job-name="${JOB_NAME}" -n e2e-test --timeout 2m
 kubectl logs -n e2e-test -l job-name="${JOB_NAME}" -f | sed "s/^/TEST: /" &
 
 while true; do
