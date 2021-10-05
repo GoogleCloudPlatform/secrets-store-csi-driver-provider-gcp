@@ -21,7 +21,7 @@ set -x          # Print each command as it is run
 
 export CLUSTER_NAME=management-cluster
 export PROJECT_ID=secretmanager-csi-build
-export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v0.0.23}
+export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v1.0.0-rc.1}
 export GKE_VERSION=${GKE_VERSION:-STABLE}
 
 # Populated by prow pod utilities
@@ -42,7 +42,7 @@ sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s
     test/e2e/e2e-test-job.yaml.tmpl | kubectl apply -f -
 
 # Wait until job start, then subscribe to job logs
-kubectl wait pod --for=condition=ready -l job-name="${JOB_NAME}" -n e2e-test
+kubectl wait pod --for=condition=ready -l job-name="${JOB_NAME}" -n e2e-test --timeout 2m
 kubectl logs -n e2e-test -l job-name="${JOB_NAME}" -f | sed "s/^/TEST: /" &
 
 while true; do
