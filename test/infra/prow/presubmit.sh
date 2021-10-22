@@ -23,10 +23,7 @@ export CLUSTER_NAME=management-cluster
 export PROJECT_ID=secretmanager-csi-build
 export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v1.0.0-rc.1}
 export GKE_VERSION=${GKE_VERSION:-STABLE}
-
-# Populated by prow pod utilities
-# https://github.com/kubernetes/test-infra/blob/master/prow/pod-utilities.md#pod-utilities
-export GCP_PROVIDER_SHA=${GCP_PROVIDER_SHA:-$PULL_PULL_SHA}
+export GCP_PROVIDER_SHA=${GCP_PROVIDER_SHA:-$GITHUB_SHA}
 
 # Build the driver image
 gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID
