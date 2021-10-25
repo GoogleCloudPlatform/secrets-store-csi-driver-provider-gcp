@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 apiVersion: v1
-kind: ServiceAccount
+kind: Namespace
 metadata:
-  name: prow-test-sa
+  name: secretmanager-csi-build
   annotations:
-    iam.gke.io/gcp-service-account: prow-pod-utils@secretmanager-csi-build.iam.gserviceaccount.com
+    cnrm.cloud.google.com/project-id: secretmanager-csi-build

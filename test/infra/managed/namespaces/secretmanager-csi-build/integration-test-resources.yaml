@@ -15,6 +15,7 @@ apiVersion: iam.cnrm.cloud.google.com/v1beta1
 kind: IAMServiceAccount
 metadata:
   name: k8s-csi-test
+  namespace: secretmanager-csi-build
 spec:
   displayName: Prow Integration Tests Service Account
   description: The Identity for secrets-store-csi-driver-e2e-gcp test cases in https://github.com/kubernetes/test-infra
@@ -23,6 +24,7 @@ apiVersion: iam.cnrm.cloud.google.com/v1beta1
 kind: IAMPolicy
 metadata:
   name: k8s-csi-test-bindings
+  namespace: secretmanager-csi-build
 spec:
   resourceRef:
     apiVersion: iam.cnrm.cloud.google.com/v1beta1
@@ -40,28 +42,31 @@ apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
 kind: SecretManagerSecret
 metadata:
   name: test-secret-a
+  namespace: secretmanager-csi-build
   labels:
     replication-type: automatic
 spec:
   replication:
     automatic: true
 ---
-  apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
-  kind: SecretManagerSecretVersion
-  metadata:
-    name: test-secret-a-version
-  spec:
-    enabled: true
-    secretData:
-      # "hunter2"
-      value: "aHVudGVyMg=="
-    secretRef:
-      name: test-secret-a
+apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
+kind: SecretManagerSecretVersion
+metadata:
+  name: test-secret-a-version
+  namespace: secretmanager-csi-build
+spec:
+  enabled: true
+  secretData:
+    # "hunter2"
+    value: "aHVudGVyMg=="
+  secretRef:
+    name: test-secret-a
 ---
 apiVersion: iam.cnrm.cloud.google.com/v1beta1
 kind: IAMPolicy
 metadata:
   name: test-secret-a-binding
+  namespace: secretmanager-csi-build
 spec:
   resourceRef:
     apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
