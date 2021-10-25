@@ -14,19 +14,24 @@
 
 name: e2e
 on:
-  schedule:
-    - cron: "30 5,17 * * *"
-  workflow_dispatch:
+  push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
     environment:
       name: e2e-test
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
+      # TODO: replace with https://github.com/google-github-actions/auth and
+      # workload identity instead of an exported SA credential.
       - uses: google-github-actions/setup-gcloud@master
         with:
           project_id: "secretmanager-csi-build"
@@ -34,8 +39,7 @@ jobs:
           export_default_credentials: true
       - name: Test
         run: |
-          test/infra/prow/presubmit.sh
+          test/infra/runner.sh
         env:
           GKE_VERSION: RAPID
-          GCP_PROVIDER_SHA: main
           SECRET_STORE_VERSION: main

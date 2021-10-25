@@ -11,15 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-apiVersion: configmanagement.gke.io/v1
-kind: ConfigManagement
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: config-management
-spec:
-  # main GKE cluster used to run integration tests and create other GKE clusters
-  clusterName: management-cluster
-  git:
-    syncRepo: https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp.git
-    syncBranch: main
-    secretType: none
-    policyDir: "test/infra/anthos-managed"
+  name: e2e-test-sa
+  namespace: e2e-test
+  annotations:
+    iam.gke.io/gcp-service-account: e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com

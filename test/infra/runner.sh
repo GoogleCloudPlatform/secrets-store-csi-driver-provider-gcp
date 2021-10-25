@@ -19,11 +19,11 @@ set -o pipefail # Check the exit code of *all* commands in a pipeline
 set -o nounset  # Error if accessing an unbound variable
 set -x          # Print each command as it is run
 
-export CLUSTER_NAME=management-cluster
+export CLUSTER_NAME=test-mgmt-cluster
 export PROJECT_ID=secretmanager-csi-build
-export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v1.0.0-rc.1}
+export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v1.0.0}
 export GKE_VERSION=${GKE_VERSION:-STABLE}
-export GCP_PROVIDER_SHA=${GCP_PROVIDER_SHA:-$GITHUB_SHA}
+export GCP_PROVIDER_SHA=${GITHUB_SHA:-main}
 
 # Build the driver image
 gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID
@@ -55,5 +55,5 @@ while true; do
         exit 1
     fi
 
-    sleep 30
+    sleep 60
 done

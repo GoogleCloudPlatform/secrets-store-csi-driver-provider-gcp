@@ -1,143 +1,102 @@
-## TODO: Add architecture diagram
-
-# Overview
+# Testing Infrastructure
 
 This folder codifies the test infrastructure used to execute end-to-end integration tests. Use these instruction to perform one-time provisioning of a GKE "management cluster".
 
 E2E tests are executed in the management cluster and create/teardown separate test clusters for testing. See [test/e2e](test/e2e/README.md) for instructions on running the tests.
 
-# Set up Config Connector via Anthos Config Management
-
-Set up Anthos Config Management on the management cluster to declaratively manage objects.
-
-Follow the [instructions](https://cloud.google.com/anthos-config-management/docs/how-to/installing) to install Anthos Config Management.
-
-1. Create and connect to a `management-cluster` GKE cluster in the project
+## Manual/Local Testing
 
 ```sh
-$ export PROJECT_ID=<test infra project id>
-$ gcloud config set project ${PROJECT_ID}
-
-# Create the management cluster with workload identity enabled
-$ gcloud container clusters create management-cluster \
-  --release-channel regular \
-  --zone us-central1-c \
-  --workload-pool=${PROJECT_ID}.svc.id.goog
-
-# This documentation assumes a default kubeconfig that connects to `management-cluster`
-$ gcloud container clusters get-credentials management-cluster --zone us-central1-c --project ${PROJECT_ID}
+$ ./scripts/build.sh
+<redacted>
+$ ./scripts/deploy.sh
+<redacted>
 ```
 
-1. Install Anthos Config Management and Config Connector in the management cluster.
+## Management Cluster
+
+Cluster created with:
 
 ```sh
-# Enable the Anthos, Resource Manager, Secret Manager APIs
-$ gcloud services enable anthos.googleapis.com
-$ gcloud services enable cloudresourcemanager.googleapis.com
-$ gcloud services enable secretmanager.googleapis.com
-
-# Install Config Management Operator
-# Obtain from gs://config-management-release/released/latest/config-management-operator.yaml
-$ kubectl apply -f configs/config-management-operator.yaml
-
-# Create ConfigManagement CRD
-$ kubectl apply -f configs/config-management.yaml
-
-# Install KCC (ACM does not yet support Workload Identity with KCC)
-$ kubectl apply -f configs/kcc-bundle/install-bundle-workload-identity/
+gcloud container --project "secretmanager-csi-build" clusters create "test-mgmt-cluster" \
+  --zone "us-central1-c" \
+  --release-channel "regular" \
+  --num-nodes "1" \
+  --machine-type "e2-standard-4" \
+  --disk-size "100" \
+  --enable-ip-alias \
+  --no-enable-master-authorized-networks \
+  --addons ConfigConnector \
+  --enable-autorepair \
+  --workload-pool "secretmanager-csi-build.svc.id.goog" \
+  --node-locations "us-central1-c" \
+  --enable-stackdriver-kubernetes
 ```
 
-Wait for `cnrm-controller-manager-0` in namespace `cnrm-system` to be running.
-
-1. Create a service account for Config Connector to use (via Workload Identity) to manage GCP resources.
+Cluster configured with [config connector](https://cloud.google.com/config-connector/docs/how-to/install-upgrade-uninstall) and manually setup:
 
 ```sh
-$ gcloud iam service-accounts create cnrm-system --project ${PROJECT_ID}
-
-# Allow KCC K8S SA to use cnrm-system IAM SA via Workload identity
-$ gcloud iam service-accounts add-iam-policy-binding \
- cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com \
- --member="serviceAccount:${PROJECT_ID}.svc.id.goog[cnrm-system/cnrm-controller-manager]" \
- --role="roles/iam.workloadIdentityUser"
-
-# Grant Config Connector permissions the project
-
-$ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
- --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
- --role "roles/iam.securityAdmin"
-
-$ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
- --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
- --role "roles/iam.serviceAccountAdmin"
-
-$ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
- --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
- --role "roles/compute.instanceAdmin.v1"
-
-$ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
- --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
- --role "roles/container.admin"
-
-$ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
- --member "serviceAccount:cnrm-system@${PROJECT_ID}.iam.gserviceaccount.com" \
- --role "roles/iam.serviceAccountUser"
+gcloud iam service-accounts create cnrm-system
+gcloud iam service-accounts add-iam-policy-binding \
+cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com \
+    --member="serviceAccount:secretmanager-csi-build.svc.id.goog[cnrm-system/cnrm-controller-manager]" \
+    --role="roles/iam.workloadIdentityUser"
+kubectl apply -f test/infra/managed/bootstrap/connector.yaml
+kubectl apply -f test/infra/managed/namespaces/secretmanager-csi-build/namespace.yaml
+kubectl apply --recursive -f ./test/infra/managed/
 ```
 
-1. [Install](https://cloud.google.com/anthos-config-management/docs/how-to/nomos-command#installing) the `nomos` tool
+`test-mgmt-cluster` has a namespace `cnrm-system` with k8s service account `cnrm-controller-manager` that will actuate
+all changes. This is tied to the `cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com` GCP identity which has
+wide privileges in the project.
 
-1. Use `nomos` to verify that the Anthos Config Management installation succeeded
+## Test Workflow
 
-```sh
-# PENDING or SYNCED status means that the cluster is configured properly
-$ nomos status
+```
+Github Action   -> Cloud Build -> Driver docker image
+                -> Cloud Build -> e2e test image
+                -> Kubernetes
+                                -> E2E Test
+                                -> CNRM - New Cluster
+                                -> CNRM - Secrets
+                                            New Cluster
+                                                Driver
+                                                Test Worklows
 ```
 
-1. View KCC logs to verify that installation succeeded
+## Service Accounts
+
+* cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
+  * Root in project, YAML for managing cluster resources
+
+* gh-e2e-runner@secretmanager-csi-build.iam.gserviceaccount.com
+  * Build e2e test images
+  * Submit e2e yaml to `test-mgmt-cluster`
+
+* e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
+  * Service account that the e2e test container runs as
+  * Writes yaml to cluster to create the test cluster and install CSI driver
+  * Manages secrets for the integration test
+
+* `secretmanager-csi-build.svc.id.goog[default/test-cluster-sa]`
+  * Workload Identity used in number of e2e test (ephemeral test clusters)
+
+* k8s-csi-test@secretmanager-csi-build.iam.gserviceaccount.com
+  * The Identity for `secrets-store-csi-driver-e2e-gcp` test cases in https://github.com/kubernetes/test-infra
+  * The workload identity of prow used in driver test cases
+
+## Mgmt Cluster Configuration
+
+To add or update resources make the change then run:
 
 ```sh
-$ kubectl logs cnrm-controller-manager-0 -n cnrm-system -f
+# switch to correct cluster
+kubectl apply --recursive -f ./test/infra/managed/
 ```
 
-# Test changes to anthos-managed
-
-To test changes, use the `nomos` command to generate a YAML to apply to the management cluster:
-
-```sh
-$ cd anthos-managed
-$ nomos hydrate --flat
-$ kubectl apply -f compiled
-```
-
-# Configure Prow
-
-1. Export service account key for `prow-pod-utils` IAM service account and store it in a k8s secret in the `test-pod` namespace for Prow Pod Utilities to access.
+Note: to delete resources you will need to delete the K8s resource, removing the
+yaml from the repo will not delete the resource.
 
 ```sh
-$ gcloud iam service-accounts keys create "sa-key.json" --project="${PROJECT}" --iam-account="prow-pod-utils@${PROJECT_ID}.iam.gserviceaccount.com"
-
-$ kubectl create secret generic "service-account" -n "test-pods" --from-file="service-account.json=sa-key.json"
-
-$ rm sa-key.json
-```
-
-This service account is granted access to the Prow instance GCS bucket that stores execution logs. Prow pod utils wrap logs and use the service account to store them.
-
-# Prow kubeconfig
-
-[Prow](https://github.com/GoogleCloudPlatform/oss-test-infra/blob/master/prow/prowjobs/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/secrets-store-csi-driver-provider-gcp-config.yaml) has these credentials to schedule jobs in our cluster.
-
-1. Generate a JWT kubeconfig file to store in Prow cluster to allow Prow to schedule pods.
-
-```sh
-$ git clone https://github.com/kubernetes/test-infra --depth=1
-$ cd test-infra
-$ bazel run //gencred -- --context="$(kubectl config current-context)" --name "build-secretmanager-csi" > build-cluster-kubeconfig.yaml
-```
-
-1. Supply `build-cluster-kubeconfig.yaml` and `prow-pod-utils@${PROJECT_ID}.iam.gserviceaccount.com` service account name to Prow admin to store in Prow cluster K8S secrets.
-
-1. Clean up
-
-```sh
-$ rm build-cluster-kubeconfig.ymal
+kubectl delete <resource>
 ```

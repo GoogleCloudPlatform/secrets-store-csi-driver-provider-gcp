@@ -11,14 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMServiceAccount
 metadata:
-  name: e2e-test-sa-cluster-admin
-subjects:
-  - kind: ServiceAccount
-    name: e2e-test-sa
-roleRef:
-  kind: Role
-  name: cluster-admin
-  apiGroup: rbac.authorization.k8s.io
+  name: e2e-test-sa
+  namespace: secretmanager-csi-build
+spec:
+  displayName: E2E Tests Service Account
