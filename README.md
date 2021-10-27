@@ -1,6 +1,6 @@
 # Google Secret Manager Provider for Secret Store CSI Driver
 
-[![googleoss-secrets-store-csi-driver-provider-gcp/periodic](https://testgrid.k8s.io/q/summary/googleoss-secrets-store-csi-driver-provider-gcp/periodic/tests_status?style=svg)](https://testgrid.k8s.io/googleoss-secrets-store-csi-driver-provider-gcp#periodic)
+[![e2e](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/actions/workflows/e2e.yml/badge.svg)](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/actions/workflows/e2e.yml)
 
 [Google Secret Manager](https://cloud.google.com/secret-manager/) provider for
 the [Secret Store CSI
