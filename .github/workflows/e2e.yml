@@ -21,6 +21,9 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    # run daily @ 14:30 UTC against the default branch (main)
+    - cron: "30 14 * * *"
 
 jobs:
   e2e-test:
