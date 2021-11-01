@@ -4,6 +4,24 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
+## v1.0.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.0.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.0.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.0.0`
+
+Digest: `sha256:cb491d4af4776ac352aac415676918fa7cd4ef1671e71c579175ef3e2820af09`
+
+### Changed
+
+* No code changes. This release is corresponds with the `v1.0.0` release of the
+[secrets-store-csi-driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver/releases/tag/v1.0.0).
+* The deploy yaml no longer includes the `/var/lib/kubelet/pods` HostPath. This
+was needed when the plugin wrote the files to the pod filesystems but is not
+used since `v.0.5.0` set `-write_secrets=false`.
+
 ## v0.6.0
 
 Images:
