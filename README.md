@@ -76,9 +76,9 @@ When evaluating this plugin consider the following threats:
 
 * When a secret is accessible on the **filesystem**, application vulnerabilities
   like [directory traversal][directory-traversal] attacks can become higher
-  severity as the attacker may gain the ability read the secret material.
+  severity as the attacker may gain the ability to read the secret material.
 * When a secret is consumed through **environment variables**, misconfigurations
-  such as enabling a debug endpoints or including dependencies that log process
+  such as enabling a debug endpoint or including dependencies that log process
   environment details may leak secrets.
 * When **syncing** secret material to another data store (like Kubernetes
   Secrets), consider whether the access controls on that data store are
