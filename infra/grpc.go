@@ -31,13 +31,13 @@ func LogInterceptor() grpc.UnaryServerInterceptor {
 		start := time.Now()
 		deadline, _ := ctx.Deadline()
 		dd := time.Until(deadline).String()
-		if klog.V(5).Enabled() {
-			klog.V(5).InfoS("request", "method", info.FullMethod, "deadline", dd)
+		if klog.V(3).Enabled() {
+			klog.V(3).InfoS("request", "method", info.FullMethod, "deadline", dd)
 		}
 		resp, err := handler(ctx, req)
-		if klog.V(5).Enabled() {
+		if klog.V(2).Enabled() {
 			s, _ := status.FromError(err)
-			klog.V(5).InfoS("response", "method", info.FullMethod, "deadline", dd, "duration", time.Since(start).String(), "status.code", s.Code(), "status.message", s.Message())
+			klog.V(2).InfoS("response", "method", info.FullMethod, "deadline", dd, "duration", time.Since(start).String(), "status.code", s.Code(), "status.message", s.Message())
 		}
 		return resp, err
 	}

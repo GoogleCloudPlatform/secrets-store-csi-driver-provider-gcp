@@ -143,13 +143,13 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 
 	if out.AuthNodePublishSecret {
-		klog.InfoS("parsed auth", "auth", "nodePublishSecretRef", "pod", podInfo)
+		klog.V(3).InfoS("parsed auth", "auth", "nodePublishSecretRef", "pod", podInfo)
 	}
 	if out.AuthPodADC {
-		klog.InfoS("parsed auth", "auth", "pod-adc", "pod", podInfo)
+		klog.V(3).InfoS("parsed auth", "auth", "pod-adc", "pod", podInfo)
 	}
 	if out.AuthProviderADC {
-		klog.InfoS("parsed auth", "auth", "provider-adc", "pod", podInfo)
+		klog.V(3).InfoS("parsed auth", "auth", "provider-adc", "pod", podInfo)
 	}
 
 	if os.Getenv("DEBUG") == "true" {
