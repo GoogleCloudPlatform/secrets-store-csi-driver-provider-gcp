@@ -14,12 +14,15 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
   on an existing cluster.
 * Install the
   [Secret Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation.html)
-  v0.0.21 or higher to the cluster.
+  v1.0.1 or higher to the cluster.
 * Install the Google plugin DaemonSet & additional RoleBindings:
 
 ```shell
-$ kubectl apply -f deploy/provider-gcp-plugin.yaml
+kubectl apply -f deploy/provider-gcp-plugin.yaml
 ```
+
+NOTE: The driver's rotation and secret syncing functionality is still in Alpha and requires [additional installation
+steps](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation.html#optional-values).
 
 ## Usage
 
