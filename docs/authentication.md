@@ -18,7 +18,7 @@ annotations.
 In the `SecretProviderClass` you can set
 
 ```yaml
-apiVersion: secrets-store.csi.x-k8s.io/v1alpha1
+apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
   name: app-secrets
