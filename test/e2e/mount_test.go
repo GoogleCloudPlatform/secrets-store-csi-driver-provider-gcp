@@ -94,7 +94,7 @@ func setupTestSuite() {
 	}
 	f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
 	if len(f.secretStoreVersion) == 0 {
-		log.Println("SECRET_STORE_VERSION is empty, defaulting to 'master'")
+		log.Println("SECRET_STORE_VERSION is empty, defaulting to 'main'")
 		f.secretStoreVersion = "main"
 	}
 	// Version of the GKE cluster to run the tests on
