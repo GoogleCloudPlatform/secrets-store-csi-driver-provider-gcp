@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"strings"
 	"testing"
@@ -182,7 +183,7 @@ func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {
 		func(context.Context, string) (net.Conn, error) {
 			return l.Dial()
 		}),
-		grpc.WithInsecure())
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("failed to dial: %v", err)
 	}
