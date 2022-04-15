@@ -56,7 +56,7 @@ licensessave:
 .PHONY: licensessave
 
 gosec:
-	@command -v gosec > /dev/null 2>&1 || (cd tools && go install github.com/securego/gosec/cmd/gosec && cd ..)
+	@command -v gosec > /dev/null 2>&1 || (cd tools && go install github.com/securego/gosec/v2/cmd/gosec && cd ..)
 	@gosec ./...
 .PHONY: gosec
 
