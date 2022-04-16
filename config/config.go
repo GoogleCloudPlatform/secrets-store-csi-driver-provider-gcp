@@ -27,6 +27,13 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	attributePodName            = "csi.storage.k8s.io/pod.name"
+	attributePodNamespace       = "csi.storage.k8s.io/pod.namespace"
+	attributePodUID             = "csi.storage.k8s.io/pod.uid"
+	attributeServiceAccountName = "csi.storage.k8s.io/serviceAccount.name"
+)
+
 // Secret holds the parameters of the SecretProviderClass CRD. Links the GCP
 // secret resource name to a path in the filesystem.
 type Secret struct {
@@ -103,10 +110,10 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 
 	out.PodInfo = &PodInfo{
-		Namespace:      attrib["csi.storage.k8s.io/pod.namespace"],
-		Name:           attrib["csi.storage.k8s.io/pod.name"],
-		UID:            types.UID(attrib["csi.storage.k8s.io/pod.uid"]),
-		ServiceAccount: attrib["csi.storage.k8s.io/serviceAccount.name"],
+		Namespace:      attrib[attributePodNamespace],
+		Name:           attrib[attributePodName],
+		UID:            types.UID(attrib[attributePodUID]),
+		ServiceAccount: attrib[attributeServiceAccountName],
 	}
 
 	podInfo := klog.ObjectRef{Namespace: out.PodInfo.Namespace, Name: out.PodInfo.Name}

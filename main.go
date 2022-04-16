@@ -44,9 +44,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/component-base/config"
 	jlogs "k8s.io/component-base/logs/json"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
+
+	"k8s.io/klog/v2"
 )
 
 var (
@@ -66,11 +68,14 @@ func main() {
 	klog.InitFlags(nil)
 	defer klog.Flush()
 
+	flag.Parse()
+
 	if *logFormatJSON {
-		klog.SetLogger(jlogs.JSONLogger)
+		jsonFactory := jlogs.Factory{}
+		logger, _ := jsonFactory.Create(config.FormatOptions{})
+		klog.SetLogger(logger)
 	}
 
-	flag.Parse()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

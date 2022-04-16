@@ -25,6 +25,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -182,7 +183,7 @@ func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {
 		func(context.Context, string) (net.Conn, error) {
 			return l.Dial()
 		}),
-		grpc.WithInsecure())
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("failed to dial: %v", err)
 	}
