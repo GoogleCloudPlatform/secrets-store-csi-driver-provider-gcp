@@ -4,6 +4,22 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
+## v1.1.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.1.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.1.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.1.0`
+
+Digest: `sha256:f7fd197984e95f777557ba9f6daef6c578f49bcddd1080fba0fe8f2c19fffd84`
+
+### Changed
+
+* Remove default logging of request/responses. This is intended to make logs
+  less verbose and more actionable.
+  [#161](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/161)
+
 ## v1.0.0
 
 Images:
