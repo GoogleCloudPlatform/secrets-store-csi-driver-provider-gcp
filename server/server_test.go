@@ -86,6 +86,96 @@ func TestHandleMountEvent(t *testing.T) {
 	}
 }
 
+func TestHandleMountEvent_GoodChecksum(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			var checksum int64 = 1064160727
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data:       []byte("My Secret"),
+					DataCrc32C: &checksum,
+				},
+			}, nil
+		},
+	})
+
+	want := &v1alpha1.MountResponse{
+		ObjectVersion: []*v1alpha1.ObjectVersion{
+			{
+				Id:      "projects/project/secrets/test/versions/latest",
+				Version: "projects/project/secrets/test/versions/2",
+			},
+		},
+		Files: []*v1alpha1.File{
+			{
+				Path:     "good1.txt",
+				Mode:     777,
+				Contents: []byte("My Secret"),
+			},
+		},
+	}
+
+	got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+}
+
+func TestHandleMountEvent_BadChecksum(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			var checksum int64 = 123 // 1064160727
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data:       []byte("My Secret"),
+					DataCrc32C: &checksum,
+				},
+			}, nil
+		},
+	})
+
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
+	if got == nil {
+		t.Fatalf("handleMountEvent() got success, want err")
+	}
+	if !strings.Contains(got.Error(), "crc32c missmatch") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+}
+
 func TestHandleMountEventSMError(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
