@@ -99,6 +99,40 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "static value",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- staticValue: \"my-good-secret\"\n  path: \"good1.txt\"\n",
+					"csi.storage.k8s.io/pod.namespace": "default",
+					"csi.storage.k8s.io/pod.name": "mypod",
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
+				}
+				`,
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+			want: &MountConfig{
+				Secrets: []*Secret{
+					{
+						StaticValue: "my-good-secret",
+						Path:        "good1.txt",
+					},
+				},
+				PodInfo: &PodInfo{
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
+				},
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+				AuthPodADC:  true,
+			},
+		},
+		{
 			name: "nodePublishSecretRef",
 			in: &MountParams{
 				Attributes: `
@@ -253,6 +287,23 @@ func TestParseErrors(t *testing.T) {
 				}
 				`,
 				KubeSecrets: "",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+		},
+		{
+			name: "conflicting static value",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- staticValue: \"my-good-secret\"\n  resourceName: \"projects/project/secrets/test/versions/latest\"\n  path: \"good1.txt\"\n",
+					"csi.storage.k8s.io/pod.namespace": "default",
+					"csi.storage.k8s.io/pod.name": "mypod",
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
+				}
+				`,
+				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},

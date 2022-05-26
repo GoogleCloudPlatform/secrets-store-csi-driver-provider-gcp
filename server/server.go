@@ -18,6 +18,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
 	"os"
 	"strconv"
 	"strings"
@@ -47,6 +48,7 @@ type Server struct {
 }
 
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
+var crc32c *crc32.Table = crc32.MakeTable(crc32.Castagnoli)
 
 // Mount implements provider csi-provider method
 func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alpha1.MountResponse, error) {
@@ -111,6 +113,15 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 		i, secret := i, secret
 		go func() {
 			defer wg.Done()
+
+			if secret.StaticValue != "" {
+				results[i] = &secretmanagerpb.AccessSecretVersionResponse{
+					Payload: &secretmanagerpb.SecretPayload{
+						Data: []byte(secret.StaticValue),
+					},
+				}
+				return
+			}
 			req := &secretmanagerpb.AccessSecretVersionRequest{
 				Name: secret.ResourceName,
 			}
@@ -147,9 +158,20 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 		})
 		klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 
+		id := secret.ResourceName
+		version := result.GetName()
+
+		// When StaticString is used we will use the file path as the ID and a
+		// hash of the contents as the version. This should be enough to notify
+		// anything watching the status of changes to contents.
+		//
+		if id == "" {
+			id = secret.PathString()
+			version = fmt.Sprintf("%08x", crc32.Checksum([]byte(secret.StaticValue), crc32c))
+		}
 		ovs[i] = &v1alpha1.ObjectVersion{
-			Id:      secret.ResourceName,
-			Version: result.GetName(),
+			Id:      id,
+			Version: version,
 		}
 	}
 	out.ObjectVersion = ovs

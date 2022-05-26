@@ -249,6 +249,42 @@ func TestMountSecret(t *testing.T) {
 	}
 }
 
+func TestMountSecretStatic(t *testing.T) {
+	podFile := filepath.Join(f.tempDir, "test-static.yaml")
+	if err := replaceTemplate("templates/test-static.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter-static", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for job: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	command := exec.Command("kubectl", "exec", "test-secret-mounter-static",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+		"--",
+		"cat", "/var/gcp-test-secrets/foo.txt")
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
+	}
+	if !bytes.Equal(stdout.Bytes(), []byte("static-value")) {
+		t.Fatalf("Secret value is %v, want: %v", stdout.String(), "static-value")
+	}
+}
+
 func TestMountNestedPath(t *testing.T) {
 	podFile := filepath.Join(f.tempDir, "test-nested.yaml")
 	if err := replaceTemplate("templates/test-nested.yaml.tmpl", podFile); err != nil {
