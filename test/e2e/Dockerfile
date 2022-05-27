@@ -10,6 +10,7 @@ RUN go get -t ./...
 RUN go test -c .
 
 # Use Cloud SDK image to use gCloud in tests
+ARG INSTALL_COMPONENTS=gke-gcloud-auth-plugin
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:debian_component_based
 
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/e2e.test /bin/
