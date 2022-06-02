@@ -41,6 +41,11 @@ type Secret struct {
 	// projects/*/secrets/*/versions/*.
 	ResourceName string `json:"resourceName" yaml:"resourceName"`
 
+	// StaticValue can be used to map a non-secret string to a value in the
+	// mount. The contents of StaticValue will be written to the File path.
+	// Cannot be used if ResourceName is set.
+	StaticValue string `json:"staticValue" yaml:"staticValue"`
+
 	// FileName is where the contents of the secret are to be written.
 	FileName string `json:"fileName" yaml:"fileName"`
 
@@ -174,6 +179,12 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 	if err := yaml.Unmarshal([]byte(attrib["secrets"]), &out.Secrets); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal secrets attribute: %v", err)
+	}
+
+	for _, v := range out.Secrets {
+		if v.StaticValue != "" && v.ResourceName != "" {
+			return nil, fmt.Errorf("invalid configuration, cannot specify both StaticValue and ResourceName: %v", v)
+		}
 	}
 
 	return out, nil

@@ -86,6 +86,70 @@ func TestHandleMountEvent(t *testing.T) {
 	}
 }
 
+func TestHandleMountEvent_static(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+			{
+				StaticValue: "a very good secret",
+				FileName:    "good2.txt",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	want := &v1alpha1.MountResponse{
+		ObjectVersion: []*v1alpha1.ObjectVersion{
+			{
+				Id:      "projects/project/secrets/test/versions/latest",
+				Version: "projects/project/secrets/test/versions/2",
+			},
+			{
+				Id:      "good2.txt",
+				Version: "cf6942c4",
+			},
+		},
+		Files: []*v1alpha1.File{
+			{
+				Path:     "good1.txt",
+				Mode:     777,
+				Contents: []byte("My Secret"),
+			},
+			{
+				Path:     "good2.txt",
+				Mode:     777,
+				Contents: []byte("a very good secret"),
+			},
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte("My Secret"),
+				},
+			}, nil
+		},
+	})
+
+	got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+}
+
 func TestHandleMountEventSMError(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
