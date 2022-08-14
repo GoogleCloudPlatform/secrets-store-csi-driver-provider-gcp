@@ -68,6 +68,32 @@ $ kubectl exec -it mypod /bin/bash
 root@mypod:/# ls /var/secrets
 ```
 
+
+### Mapping to Kubernetes Secrets
+
+A particular use case for this plugin is to manage and map to Kubernetes secrets. Below is an example of how to set up a `SecretsProviderClass` to do so:
+
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1alpha1
+kind: SecretProviderClass
+metadata:
+  name: cbci-mc-secret-provider
+  namespace: cloudbees-core
+spec:
+  provider: gcp
+  secretObjects:
+  - secretName: cbci-mc-secret
+    type: Opaque
+    data: 
+    - objectName: token
+      key: token
+  parameters:
+    secrets: |
+      - resourceName: "projects/core-workshop/secrets/cbci-workshop-token/versions/latest"
+        fileName: "token"
+```
+
+Note that the `secretObject.data.objectName` must match the fileName of the secret.
 ## Security Considerations
 
 This plugin is built to ensure compatibility between Secret Manager and
