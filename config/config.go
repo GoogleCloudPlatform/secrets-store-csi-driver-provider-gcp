@@ -46,6 +46,10 @@ type Secret struct {
 
 	// Path is the relative path where the contents of the secret are written.
 	Path string `json:"path" yaml:"path"`
+
+	// Mode is the optional file mode for the file containing the secret. Must be
+	// an octal value between 0000 and 0777 or a decimal value between 0 and 511
+	Mode *int32 `json:"mode,omitempty" yaml:"mode,omitempty"`
 }
 
 // PodInfo includes details about the pod that is receiving the mount event.

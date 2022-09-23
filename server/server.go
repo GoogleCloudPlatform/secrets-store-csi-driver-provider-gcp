@@ -139,10 +139,15 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 	// Add secrets to response.
 	ovs := make([]*v1alpha1.ObjectVersion, len(cfg.Secrets))
 	for i, secret := range cfg.Secrets {
+		mode := int32(cfg.Permissions)
+		if secret.Mode != nil {
+			mode = *secret.Mode
+		}
+
 		result := results[i]
 		out.Files = append(out.Files, &v1alpha1.File{
 			Path:     secret.PathString(),
-			Mode:     int32(cfg.Permissions),
+			Mode:     mode,
 			Contents: result.Payload.Data,
 		})
 		klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})

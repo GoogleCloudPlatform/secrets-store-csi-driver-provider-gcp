@@ -61,6 +61,41 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "single secret with mode",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  mode: 0600\n",
+					"csi.storage.k8s.io/pod.namespace": "default",
+					"csi.storage.k8s.io/pod.name": "mypod",
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
+				}
+				`,
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+			want: &MountConfig{
+				Secrets: []*Secret{
+					{
+						ResourceName: "projects/project/secrets/test/versions/latest",
+						FileName:     "good1.txt",
+						Mode:         int32Ptr(384), // octal 0600
+					},
+				},
+				PodInfo: &PodInfo{
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
+				},
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+				AuthPodADC:  true,
+			},
+		},
+		{
 			name: "multiple secret",
 			in: &MountParams{
 				Attributes: `
@@ -85,6 +120,46 @@ func TestParse(t *testing.T) {
 					{
 						ResourceName: "projects/project/secrets/test2/versions/latest",
 						FileName:     "good2.txt",
+					},
+				},
+				PodInfo: &PodInfo{
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
+				},
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+				AuthPodADC:  true,
+			},
+		},
+		{
+			name: "multiple secrets with decimal and octal modes",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  mode: 256\n- resourceName: \"projects/project/secrets/test2/versions/latest\"\n  fileName: \"good2.txt\"\n  mode: 0600\n",
+					"csi.storage.k8s.io/pod.namespace": "default",
+					"csi.storage.k8s.io/pod.name": "mypod",
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
+				}
+				`,
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+			want: &MountConfig{
+				Secrets: []*Secret{
+					{
+						ResourceName: "projects/project/secrets/test/versions/latest",
+						FileName:     "good1.txt",
+						Mode:         int32Ptr(256), // octal 0400
+					},
+					{
+						ResourceName: "projects/project/secrets/test2/versions/latest",
+						FileName:     "good2.txt",
+						Mode:         int32Ptr(384), // octal 0600
 					},
 				},
 				PodInfo: &PodInfo{
@@ -242,6 +317,19 @@ func TestParseErrors(t *testing.T) {
 			},
 		},
 		{
+			name: "unparsable secrets mode",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  mode: \"-rw-------\"",
+				}
+				`,
+				KubeSecrets: "",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+		},
+		{
 			name: "unparsable kubernetes secrets",
 			in: &MountParams{
 				Attributes: `
@@ -320,4 +408,8 @@ func TestParseErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func int32Ptr(i int32) *int32 {
+	return &i
 }
