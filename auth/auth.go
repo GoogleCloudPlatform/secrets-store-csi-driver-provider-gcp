@@ -23,6 +23,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
@@ -48,6 +51,18 @@ type Client struct {
 	MetadataClient *metadata.Client
 	IAMClient      *credentials.IamCredentialsClient
 	HTTPClient     *http.Client
+}
+
+// JSON key file types.
+const (
+	externalAccountKey = "external_account"
+)
+
+// credentialsFile is the unmarshalled representation of a credentials file.
+type credentialsFile struct {
+	Type string `json:"type"`
+	// External Account fields
+	Audience string `json:"audience"`
 }
 
 // TokenSource returns the correct oauth2.TokenSource depending on the auth
@@ -94,22 +109,14 @@ func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oaut
 // These permissions could break node isolation and a long term solution is
 // tracked by Issue #13.
 func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.Token, error) {
-	// Determine Workload ID parameters from the GCE instance metadata.
-	projectID, err := c.MetadataClient.ProjectID()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get project id: %w", err)
-	}
-	idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
 
-	clusterLocation, err := c.MetadataClient.InstanceAttributeValue("cluster-location")
+	idPool, idProvider, err := c.gkeWorkloadIdentity(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("unable to determine cluster location: %w", err)
+		idPool, idProvider, err = c.fleetWorkloadIdentity(ctx, cfg)
+		if err != nil {
+			return nil, err
+		}
 	}
-	clusterName, err := c.MetadataClient.InstanceAttributeValue("cluster-name")
-	if err != nil {
-		return nil, fmt.Errorf("unable to determine cluster name: %w", err)
-	}
-	idProvider := fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", projectID, clusterLocation, clusterName)
 
 	klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
 
@@ -170,6 +177,58 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 		return nil, fmt.Errorf("unable to fetch gcp service account token: %w", err)
 	}
 	return &oauth2.Token{AccessToken: gcpSAResp.GetAccessToken()}, nil
+}
+
+func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, error) {
+	// Determine Workload ID parameters from the GCE instance metadata.
+	projectID, err := c.MetadataClient.ProjectID()
+	if err != nil {
+		return "", "", fmt.Errorf("unable to get project id: %w", err)
+	}
+	idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
+
+	clusterLocation, err := c.MetadataClient.InstanceAttributeValue("cluster-location")
+	if err != nil {
+		return "", "", fmt.Errorf("unable to determine cluster location: %w", err)
+	}
+	clusterName, err := c.MetadataClient.InstanceAttributeValue("cluster-name")
+	if err != nil {
+		return "", "", fmt.Errorf("unable to determine cluster name: %w", err)
+	}
+	idProvider := fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", projectID, clusterLocation, clusterName)
+
+	return idPool, idProvider, nil
+}
+
+func (c *Client) fleetWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, error) {
+	const envVar = "GOOGLE_APPLICATION_CREDENTIALS"
+	var jsonData []byte
+	var err error
+	if filename := os.Getenv(envVar); filename != "" {
+		jsonData, err = ioutil.ReadFile(filepath.Clean(filename))
+		if err != nil {
+			return "", "", fmt.Errorf("google: error getting credentials using %v environment variable: %v", envVar, err)
+		}
+	}
+
+	// Parse jsonData as one of the other supported credentials files.
+	var f credentialsFile
+	if err := json.Unmarshal(jsonData, &f); err != nil {
+		return "", "", err
+	}
+
+	if f.Type != externalAccountKey {
+		return "", "", fmt.Errorf("google: unexpected credentials type: %v, expected: %v", f.Type, externalAccountKey)
+	}
+
+	split := strings.SplitN(f.Audience, ":", 3)
+	if split == nil || len(split) < 3 {
+		return "", "", fmt.Errorf("google: unexpected audience value: %v", f.Audience)
+	}
+	idPool := split[1]
+	idProvider := split[2]
+
+	return idPool, idProvider, nil
 }
 
 func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool, idProvider string) (*oauth2.Token, error) {
