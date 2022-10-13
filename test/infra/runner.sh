@@ -40,6 +40,13 @@ sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s
     test/e2e/e2e-test-job.yaml.tmpl | kubectl apply -f -
 
 # Wait until job start, then subscribe to job logs
+# kubctl wait doesn't work if the resource doesnt exist yet, so poll for the pod
+# https://github.com/kubernetes/kubernetes/issues/83242
+until kubectl get pod -l job-name="${JOB_NAME}" -n e2e-test -o=jsonpath='{.items[0].metadata.name}' >/dev/null 2>&1; do
+    echo "Waiting for pod"
+    sleep 1
+done
+
 kubectl wait pod --for=condition=ready -l job-name="${JOB_NAME}" -n e2e-test --timeout 2m
 kubectl logs -n e2e-test -l job-name="${JOB_NAME}" -f | sed "s/^/TEST: /" &
 
