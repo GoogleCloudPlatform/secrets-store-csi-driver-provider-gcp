@@ -249,6 +249,43 @@ func TestMountSecret(t *testing.T) {
 	}
 }
 
+func TestMountSecretFileMode(t *testing.T) {
+	podFile := filepath.Join(f.tempDir, "test-mode.yaml")
+	if err := replaceTemplate("templates/test-mode.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing mode template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mode", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for job: %v", err)
+	}
+
+	// stat the file in the symlinked '..data' directory, symlink will always return 777 otherwise
+	var stdout, stderr bytes.Buffer
+	command := exec.Command("kubectl", "exec", "test-secret-mode",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+		"--",
+		"stat", "--printf", "%a", fmt.Sprintf("/var/gcp-test-secrets/..data/%s", f.testSecretID))
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
+	}
+	if !bytes.Equal(stdout.Bytes(), []byte("400")) {
+		t.Fatalf("Secret file mode is %v, want: %v", stdout.String(), "400")
+	}
+}
+
 func TestMountNestedPath(t *testing.T) {
 	podFile := filepath.Join(f.tempDir, "test-nested.yaml")
 	if err := replaceTemplate("templates/test-nested.yaml.tmpl", podFile); err != nil {
