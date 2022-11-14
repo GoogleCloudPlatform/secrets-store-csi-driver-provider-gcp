@@ -20,7 +20,8 @@ options:
   machineType: N1_HIGHCPU_8
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', 
+  args: ['buildx', 'build',
+         '--platform=linux/amd64,linux/arm64',
          '--build-arg',
          'VERSION=$TAG_NAME',
          '-t',
