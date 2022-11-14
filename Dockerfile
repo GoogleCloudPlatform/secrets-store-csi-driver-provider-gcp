@@ -1,11 +1,12 @@
 FROM golang:1.18 as build-env
 
+ARG TARGETARCH
 ARG VERSION=dev
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=amd64
+    GOARCH=$TARGETARCH
 
 WORKDIR /tmp/secrets-store-csi-driver-provider-gcp
 COPY . ./

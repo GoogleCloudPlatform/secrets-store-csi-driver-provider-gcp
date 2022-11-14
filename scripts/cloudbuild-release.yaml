@@ -25,7 +25,8 @@ steps:
 - name: 'gcr.io/cloud-builders/git'
   args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
 - name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build',
+  args: [ 'buildx', 'build',
+          '--platform=linux/amd64,linux/arm64',
           '--build-arg',
           'VERSION=$_VERSION',
           '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
