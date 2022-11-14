@@ -68,6 +68,11 @@ spec:
         app: csi-secrets-store-provider-gcp
     spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
+      tolerations:
+        - key: kubernetes.io/arch
+          operator: Equal
+          value: arm64
+          effect: NoSchedule
       containers:
         - name: provider
           image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:f7fd197984e95f777557ba9f6daef6c578f49bcddd1080fba0fe8f2c19fffd84
