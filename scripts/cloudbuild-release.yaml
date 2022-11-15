@@ -18,7 +18,7 @@
 #
 # Requires permission for Cloud Build and the secretmanager-csi Artifact
 # Registry repos.
-timeout: 600s
+timeout: 1200s
 options:
   machineType: N1_HIGHCPU_8
 steps:
@@ -34,8 +34,5 @@ steps:
           '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
           '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
           '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
+          '--push',
           'secrets-store-csi-driver-provider-gcp' ]
-images:
-- 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin'
-- 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin'
-- 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin'
