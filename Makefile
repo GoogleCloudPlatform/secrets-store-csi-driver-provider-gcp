@@ -51,8 +51,9 @@ licensescheck:
 .PHONY: licensescheck
 
 licensessave:
+	rm -rf kodata/licenses/
 	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
-	@go-licenses save . --save_path=licenses
+	@go-licenses save . --save_path=kodata/licenses
 .PHONY: licensessave
 
 gosec:

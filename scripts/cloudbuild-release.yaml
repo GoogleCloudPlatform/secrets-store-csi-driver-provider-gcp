@@ -22,17 +22,41 @@ timeout: 1200s
 options:
   machineType: N1_HIGHCPU_8
 steps:
-- name: 'gcr.io/cloud-builders/git'
+- name: 'cgr.dev/chainguard/git:root'
   args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['buildx', 'create', '--use']
-- name: 'gcr.io/cloud-builders/docker'
-  args: [ 'buildx', 'build',
-          '--platform=linux/amd64,linux/arm64',
-          '--build-arg',
-          'VERSION=$_VERSION',
-          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
-          '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
-          '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
-          '--push',
-          'secrets-store-csi-driver-provider-gcp' ]
+
+- name: 'golang'
+  dir: 'secrets-store-csi-driver-provider-gcp'
+  args:
+    - 'make'
+    - 'licensessave'
+
+- name: 'ghcr.io/ko-build/ko'
+  env:
+    - 'VERSION=$_VERSION'
+    - 'KO_DOCKER_REPO=gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp'
+  dir: 'secrets-store-csi-driver-provider-gcp'
+  args:
+    - 'build'
+    - '--platform=linux/amd64,linux/arm64'
+    - '--tags=$_VERSION'
+    - '--bare'
+
+- name: 'gcr.io/go-containerregistry/crane'
+  args:
+    - 'cp'
+    - 'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$_VERSION'
+    - 'us-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION'
+
+- name: 'gcr.io/go-containerregistry/crane'
+  args:
+    - 'cp'
+    - 'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$_VERSION'
+    - 'europe-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION'
+
+- name: 'gcr.io/go-containerregistry/crane'
+  args:
+    - 'cp'
+    - 'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$_VERSION'
+    - 'asia-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION'
+

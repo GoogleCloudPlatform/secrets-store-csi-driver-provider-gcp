@@ -19,14 +19,17 @@ timeout: 1200s
 options:
   machineType: N1_HIGHCPU_8
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['buildx', 'create', '--use']
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['buildx', 'build',
-         '--platform=linux/amd64,linux/arm64',
-         '--build-arg',
-         'VERSION=$TAG_NAME',
-         '-t',
-         'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$TAG_NAME',
-         '--push',
-         '.']
+- name: 'golang'
+  args:
+    - 'make'
+    - 'licensessave'
+
+- name: 'ghcr.io/ko-build/ko'
+  env:
+    - 'KO_DOCKER_REPO=gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp'
+    - 'VERSION=dev'
+  args:
+    - 'build'
+    - '--platform=linux/amd64,linux/arm64'
+    - '--tags=$TAG_NAME'
+    - '--bare'

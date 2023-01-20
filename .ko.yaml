@@ -1,0 +1,7 @@
+builds:
+  - id: 'main'
+    ldflags:
+      - -s -w
+      - -extldflags "-static"
+      - -X main.version={{.Env.VERSION}}
+
