@@ -178,9 +178,7 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 		return idBindToken, nil
 	}
 
-	gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, req, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{
-		TokenSource: oauth2.StaticTokenSource(idBindToken)
-	})))
+	gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, req, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{TokenSource: oauth2.StaticTokenSource(idBindToken)})))
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch gcp service account token: %w", err)
 	}
