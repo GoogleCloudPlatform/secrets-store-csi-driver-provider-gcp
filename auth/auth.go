@@ -120,18 +120,27 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 
 	klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
 
-	// Get iam.gke.io/gcp-service-account annotation to see if the
-	// identitybindingtoken token should be traded for a GCP SA token.
-	// See https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#creating_a_relationship_between_ksas_and_gsas
-	saResp, err := c.KubeClient.
-		CoreV1().
-		ServiceAccounts(cfg.PodInfo.Namespace).
-		Get(ctx, cfg.PodInfo.ServiceAccount, v1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch SA info: %w", err)
-	}
-	gcpSA := saResp.Annotations["iam.gke.io/gcp-service-account"]
-	klog.V(5).InfoS("matched service account", "service_account", gcpSA)
+        // Get iam.gke.io/gcp-service-account and iam.gke.io/gcp-service-account-delegates
+        // annotation to see if the identitybindingtoken token should be
+        // traded for a GCP SA token.
+        // See https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#creating_a_relationship_between_ksas_and_gsas
+        saResp, err := c.KubeClient.
+                CoreV1().
+                ServiceAccounts(cfg.PodInfo.Namespace).
+                Get(ctx, cfg.PodInfo.ServiceAccount, v1.GetOptions{})
+        if err != nil {
+                return nil, fmt.Errorf("unable to fetch SA info: %w", err)
+        }
+        gcpSA := saResp.Annotations["iam.gke.io/gcp-service-account"]
+        klog.V(5).InfoS("matched service account", "service_account", gcpSA)
+        req := &credentialspb.GenerateAccessTokenRequest{
+                Name:  fmt.Sprintf("projects/-/serviceAccounts/%s", gcpSA),
+                Scope: secretmanager.DefaultAuthScopes(),
+        }
+        if gcpSADelegate, ok := saResp.Annotations["iam.gke.io/gcp-service-account-delegates"]; ok {
+                klog.V(5).InfoS("matched service account delegate %s", gcpSADelegate)
+                req.Delegates = append(req.Delegates, gcpSADelegate)  
+        }
 
 	// Request a serviceaccount token for the pod
 	ttl := int64((15 * time.Minute).Seconds())
@@ -169,10 +178,9 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 		return idBindToken, nil
 	}
 
-	gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, &credentialspb.GenerateAccessTokenRequest{
-		Name:  fmt.Sprintf("projects/-/serviceAccounts/%s", gcpSA),
-		Scope: secretmanager.DefaultAuthScopes(),
-	}, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{TokenSource: oauth2.StaticTokenSource(idBindToken)})))
+	gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, req, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{
+		TokenSource: oauth2.StaticTokenSource(idBindToken)
+	})))
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch gcp service account token: %w", err)
 	}
