@@ -1,4 +1,4 @@
-FROM golang:1.18 as build-env
+FROM golang:1.20 as build-env
 
 ARG TARGETARCH
 ARG VERSION=dev
