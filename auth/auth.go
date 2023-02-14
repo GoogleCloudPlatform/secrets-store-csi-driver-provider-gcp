@@ -139,7 +139,7 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
         }
         if gcpSADelegate, ok := saResp.Annotations["iam.gke.io/gcp-service-account-delegates"]; ok {
                 klog.V(5).InfoS("matched service account delegate %s", gcpSADelegate)
-                req.Delegates = append(req.Delegates, gcpSADelegate)  
+                req.Delegates = append(req.Delegates, gcpSADelegate)
         }
 
 	// Request a serviceaccount token for the pod
@@ -178,10 +178,10 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 		return idBindToken, nil
 	}
 
-	gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, req, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{TokenSource: oauth2.StaticTokenSource(idBindToken)})))
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch gcp service account token: %w", err)
-	}
+        gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, req, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{TokenSource: oauth2.StaticTokenSource(idBindToken)})))
+        if err != nil {
+                return nil, fmt.Errorf("unable to fetch gcp service account token: %w", err)
+        }
 	return &oauth2.Token{AccessToken: gcpSAResp.GetAccessToken()}, nil
 }
 
