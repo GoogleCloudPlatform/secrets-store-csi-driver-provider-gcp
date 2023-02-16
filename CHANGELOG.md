@@ -4,6 +4,28 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
+## v1.2.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.2.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.2.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.2.0`
+
+Digest: `sha256:b7dde5ed536b2c6500c9237e14f6851cf8a2ff6d7a72656c3741be38e2cddf4d`
+
+See CHANGELOG.md for more details.
+
+### Added
+
+* Per-secret file permissions [#182](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/182).
+* `arm64` multi-platform image [#193](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/193).
+* Fleet Workload Identity (Anthos Bare Metal) Support [#190](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/190) (read more at [docs/fleet-wif-notes.md](docs/fleet-wif-notes.md)).
+
+### Changed
+
+* Many dependencies updated and now built with go 1.20.
+
 ## v1.1.0
 
 Images:
