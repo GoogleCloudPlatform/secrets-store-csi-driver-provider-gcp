@@ -18,15 +18,15 @@ go 1.18
 
 require (
 	cloud.google.com/go/compute/metadata v0.2.3
-	cloud.google.com/go/iam v0.10.0
+	cloud.google.com/go/iam v0.12.0
 	cloud.google.com/go/secretmanager v1.10.0
 	github.com/google/go-cmp v0.5.9
 	github.com/googleapis/gax-go/v2 v2.7.0
 	github.com/prometheus/client_golang v1.14.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.32.3
 	golang.org/x/oauth2 v0.5.0
-	google.golang.org/api v0.109.0
-	google.golang.org/genproto v0.0.0-20230202175211-008b39050e57
+	google.golang.org/api v0.110.0
+	google.golang.org/genproto v0.0.0-20230216225411-c8e22ba71e44
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -56,7 +56,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.2.2 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
