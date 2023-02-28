@@ -36,7 +36,6 @@ import (
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"google.golang.org/api/option"
@@ -204,13 +203,13 @@ func main() {
 	}
 	defer ms.Shutdown(ctx)
 
-	ex := otelprom.New()
-	registry := prometheus.NewRegistry()
-	if err := registry.Register(ex.Collector); err != nil {
+	_, err = otelprom.New()
+	if err != nil {
 		klog.ErrorS(err, "unable to initialize prometheus registry")
 		klog.Fatalln("unable to initialize prometheus registry")
 	}
-	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
