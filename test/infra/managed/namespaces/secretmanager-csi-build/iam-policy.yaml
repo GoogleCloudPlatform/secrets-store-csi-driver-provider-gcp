@@ -90,4 +90,5 @@ spec:
     - members:
         - user:tommymurphy@google.com
         - user:amitmodak@google.com
+        - user:anujsg@google.com
       role: roles/owner
