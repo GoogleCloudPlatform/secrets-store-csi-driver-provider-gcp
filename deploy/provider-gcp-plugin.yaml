@@ -97,5 +97,10 @@ spec:
         - name: providervol
           hostPath:
             path: /etc/kubernetes/secrets-store-csi-providers
+      tolerations:
+        - key: kubernetes.io/arch
+          operator: Equal
+          value: arm64
+          effect: NoSchedule
       nodeSelector:
         kubernetes.io/os: linux
