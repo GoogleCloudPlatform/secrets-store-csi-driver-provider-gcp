@@ -21,42 +21,88 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
-	"net/http"
+	"net"      //	For more details see: https://pkg.go.dev/net
+	"net/http" //	Package http provides HTTP client and server implementations. For details see: https://pkg.go.dev/net/http
+
+	/*
+		pprof is a tool for visualization and analysis of profiling data.
+		For more details see: https://pkg.go.dev/net/http/pprof
+	*/
 	"net/http/pprof"
 	"os"
-	"os/signal"
+	"os/signal" //	For details see: https://pkg.go.dev/os/signal
 	"path/filepath"
 	"syscall"
 	"time"
 
+	/*
+		This is a utility library for communicating with Google Cloud metadata service on Google Cloud.
+		For more details see: https://pkg.go.dev/cloud.google.com/go/compute/metadata#section-readme
+	*/
 	"cloud.google.com/go/compute/metadata"
+
+	/*
+		Credentials package creates short-lived, limited-privilege credentials for IAM service accounts.
+		For more details see: https://pkg.go.dev/cloud.google.com/go/iam/credentials/apiv1
+	*/
 	iam "cloud.google.com/go/iam/credentials/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+
+	/*
+		Package auth includes obtains auth tokens for workload identity.
+		For more details see: https://pkg.go.dev/github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth
+	*/
+
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/promhttp" // For more details see: https://pkg.go.dev/github.com/prometheus/client_golang/prometheus/promhttp
+
+	/*
+		Prometheus is an open-source technology designed to provide monitoring and alerting functionality for cloud-native environments, including Kubernetes.
+		For more details see: https://pkg.go.dev/go.opentelemetry.io/otel/exporters/prometheus
+	*/
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
-	"google.golang.org/api/option"
-	"google.golang.org/grpc"
+	"google.golang.org/api/option" // For more details see: https://pkg.go.dev/google.golang.org/api/option
+	"google.golang.org/grpc"       // RPC = Remote Procedural Call. For more details see: https://pkg.go.dev/google.golang.org/grpc
 	"google.golang.org/grpc/credentials"
+
+	/*
+		Package kubernetes holds packages which implement a clientset for Kubernetes APIs.
+		For more details see: https://pkg.go.dev/k8s.io/client-go/kubernetes
+	*/
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"            // For more details see: https://pkg.go.dev/k8s.io/client-go/rest
+	"k8s.io/client-go/tools/clientcmd" // For more details see: https://pkg.go.dev/k8s.io/client-go/tools/clientcmd
 	logsapi "k8s.io/component-base/logs/api/v1"
+
+	/*
+		For more details check: https://pkg.go.dev/k8s.io/component-base@v0.27.2/logs/json
+		TODO: Is package import depriciated and needs to be changed?
+	*/
 	jlogs "k8s.io/component-base/logs/json"
+
+	/*
+		Klog. klog is the Kubernetes logging library.
+		klog generates log messages for the Kubernetes system components.
+	*/
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
 
+/*
+Creates flags of different data types. 3 Arguments are:
+1) Name of flag (analogical to variable name)
+2) default value
+3) usage string to define the purpose the flag is created for
+*/
 var (
 	kubeconfig            = flag.String("kubeconfig", "", "absolute path to kubeconfig file")
 	logFormatJSON         = flag.Bool("log-format-json", true, "set log formatter to json")
 	metricsAddr           = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
 	enableProfile         = flag.Bool("enable-pprof", false, "enable pprof profiling")
 	debugAddr             = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
-	_                     = flag.Bool("write_secrets", false, "[unused]")
+	_                     = flag.Bool("write_secrets", false, "[unused]") // TODO: Can this be deleted?
 	smConnectionPoolSize  = flag.Int("sm_connection_pool_size", 5, "size of the connection pool for the secret manager API client")
 	iamConnectionPoolSize = flag.Int("iam_connection_pool_size", 5, "size of the connection pool for the IAM API client")
 
@@ -64,31 +110,44 @@ var (
 )
 
 func main() {
-	klog.InitFlags(nil)
-	defer klog.Flush()
+	klog.InitFlags(nil) //  explicitly for initializing global flags
+	defer klog.Flush()  //	delay flushing log I/O that is to be written
+	// function calls with defer before them means it executes towards after all other lines in the function are executed i.e. towards the end of the function.
 
-	flag.Parse()
+	flag.Parse() /*	Parse parses the command-line flags from os.Args[1:].
+		Must be called after all flags are defined and before flags are accessed by the program. */
 
-	if *logFormatJSON {
-		jsonFactory := jlogs.Factory{}
-		logger, _ := jsonFactory.Create(logsapi.LoggingConfiguration{Format: "json"})
+	if *logFormatJSON { // will execute as when set to default, the flag value is true
+		jsonFactory := jlogs.Factory{}                                                //Factory produces JSON logger instances. Struct variable
+		logger, _ := jsonFactory.Create(logsapi.LoggingConfiguration{Format: "json"}) // all logs are created in json format
 		klog.SetLogger(logger)
 	}
 
+	/*
+		Context is essentially the configuration that you use to access a particular cluster & namespace with a user account.
+		context.Background returns a non-nil empty context having no variables, no deadlines and cannot be cancelled.
+		NotifyContext returns a copy of the parent context that is marked done (its Done channel is closed) when one of the listed signals arrives, when the returned stop function is called, or when the parent context's Done channel is closed, whichever happens first.
+		For more details see: https://pkg.go.dev/os/signal#NotifyContext
+		SIGINT: Ctrl+C to terminate program abruptly
+		SIGTETM: Default Kill Signal
+	*/
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
-	klog.InfoS(fmt.Sprintf("starting %s", ua))
+	klog.InfoS(fmt.Sprintf("starting %s", ua)) // Stmt added to log
 
 	// Kubernetes Client
-	var rc *rest.Config
+	var rc *rest.Config // crate rc variable of type Config which is a struct. See: https://pkg.go.dev/k8s.io/client-go/rest#Config
 	var err error
 	if *kubeconfig != "" {
 		klog.V(5).InfoS("using kubeconfig", "path", *kubeconfig)
 		rc, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	} else {
 		klog.V(5).InfoS("using in-cluster kubeconfig")
+		/*
+			InClusterConfig returns a config object which uses the service account kubernetes gives to pods. It's intended for clients that expect to be running inside a pod running on kubernetes.
+		*/
 		rc, err = rest.InClusterConfig()
 	}
 	if err != nil {
@@ -96,7 +155,7 @@ func main() {
 		klog.Fatal("failed to read kubeconfig")
 	}
 
-	clientset, err := kubernetes.NewForConfig(rc)
+	clientset, err := kubernetes.NewForConfig(rc) //	NewForConfig creates a new Clientset for the given config. Clientset is a struct.
 	if err != nil {
 		klog.ErrorS(err, "failed to configure k8s client")
 		klog.Fatal("failed to configure k8s client")
@@ -106,7 +165,7 @@ func main() {
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
 	// basis for each mount
-	smOpts := []option.ClientOption{
+	smOpts := []option.ClientOption{ // create a slice variable of ClientOption interface type
 		option.WithUserAgent(ua),
 		// tell the secretmanager library to not add transport-level ADC since
 		// we need to override on a per call basis
@@ -153,8 +212,8 @@ func main() {
 	}
 
 	// HTTP client
-	hc := &http.Client{
-		Transport: &http.Transport{
+	hc := &http.Client{ // struct of type Client
+		Transport: &http.Transport{ //	struct of type Transport
 			Dial: (&net.Dialer{
 				Timeout:   2 * time.Second,
 				KeepAlive: 30 * time.Second,
@@ -172,7 +231,7 @@ func main() {
 
 	// setup provider grpc server
 	s := &server.Server{
-		SecretClient: sc,
+		SecretClient: sc, // Client for interacting with SM API
 		AuthClient:   c,
 	}
 
@@ -188,14 +247,14 @@ func main() {
 	}
 	defer l.Close()
 
-	g := grpc.NewServer(
+	g := grpc.NewServer( //	NewServer creates a gRPC server which has no service registered and has not started to accept requests yet.
 		grpc.UnaryInterceptor(infra.LogInterceptor()),
 	)
 	v1alpha1.RegisterCSIDriverProviderServer(g, s)
 	go g.Serve(l)
 
 	// initialize metrics and health http server
-	mux := http.NewServeMux()
+	mux := http.NewServeMux() //	ServeMux is an HTTP request multiplexer. It matches the URL of each incoming request against a list of registered patterns and calls the handler for the pattern that most closely matches the URL.
 	ms := http.Server{
 		Addr:        *metricsAddr,
 		Handler:     mux,
@@ -203,7 +262,7 @@ func main() {
 	}
 	defer ms.Shutdown(ctx)
 
-	_, err = otelprom.New()
+	_, err = otelprom.New() // returns a new prometheus exporter. Used to collect, aggregate and send metrics to the backend platform
 	if err != nil {
 		klog.ErrorS(err, "unable to initialize prometheus registry")
 		klog.Fatalln("unable to initialize prometheus registry")
@@ -222,7 +281,7 @@ func main() {
 
 	if *enableProfile {
 		dmux := http.NewServeMux()
-		dmux.HandleFunc("/debug/pprof/", pprof.Index)
+		dmux.HandleFunc("/debug/pprof/", pprof.Index) //	Index responds to a request for "/debug/pprof" with an HTML page listing the available profiles.
 		dmux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 		dmux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 		dmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
@@ -241,7 +300,7 @@ func main() {
 		klog.InfoS("debug server listening", "addr", *debugAddr)
 	}
 
-	<-ctx.Done()
+	<-ctx.Done() //	The <- operator represents the idea of passing a value from a channel to a reference
 	klog.InfoS("terminating")
 	g.GracefulStop()
 }

@@ -143,7 +143,7 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 					ExpirationSeconds: &ttl,
 					Audiences:         []string{idPool},
 					BoundObjectRef: &authenticationv1.BoundObjectReference{
-						Kind:       "Pod",
+						Kind:       "Pod", // valid types are pod and secret
 						APIVersion: "v1",
 						Name:       cfg.PodInfo.Name,
 						UID:        cfg.PodInfo.UID,
@@ -221,7 +221,7 @@ func (c *Client) fleetWorkloadIdentity(ctx context.Context, cfg *config.MountCon
 		return "", "", fmt.Errorf("google: unexpected credentials type: %v, expected: %v", f.Type, externalAccountKey)
 	}
 
-	split := strings.SplitN(f.Audience, ":", 3)
+	split := strings.SplitN(f.Audience, ":", 3) // Format of Audience is: identitynamespace:idPool:idProvider
 	if split == nil || len(split) < 3 {
 		return "", "", fmt.Errorf("google: unexpected audience value: %v", f.Audience)
 	}
