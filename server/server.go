@@ -27,7 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 	"github.com/googleapis/gax-go/v2"
 
-	secretmanager "cloud.google.com/go/secretmanager/apiv1" //	For more details see: https://pkg.go.dev/cloud.google.com/go/secretmanager/apiv1
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
@@ -37,7 +37,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1" //	For more details see: https://sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1
+	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
 
 type Server struct {
@@ -68,7 +68,7 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	ts, err := s.AuthClient.TokenSource(ctx, cfg) // TokenSource returns a TokenSource that returns t until t expires, automatically refreshing it as necessary using the provided context.
+	ts, err := s.AuthClient.TokenSource(ctx, cfg)
 	if err != nil {
 		klog.ErrorS(err, "unable to obtain auth for mount", "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("unable to obtain auth for mount: %v", err))
