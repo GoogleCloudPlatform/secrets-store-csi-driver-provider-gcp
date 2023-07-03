@@ -31,25 +31,20 @@ import (
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
-
 	iam "cloud.google.com/go/iam/credentials/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	logsapi "k8s.io/component-base/logs/api/v1"
-
 	jlogs "k8s.io/component-base/logs/json"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
@@ -61,7 +56,7 @@ var (
 	metricsAddr           = flag.String("metrics_addr", ":8095", "configure http listener for reporting metrics")
 	enableProfile         = flag.Bool("enable-pprof", false, "enable pprof profiling")
 	debugAddr             = flag.String("debug_addr", "localhost:6060", "port for pprof profiling")
-	_                     = flag.Bool("write_secrets", false, "[unused]") // TODO: Can this be deleted?
+	_                     = flag.Bool("write_secrets", false, "[unused]")
 	smConnectionPoolSize  = flag.Int("sm_connection_pool_size", 5, "size of the connection pool for the secret manager API client")
 	iamConnectionPoolSize = flag.Int("iam_connection_pool_size", 5, "size of the connection pool for the IAM API client")
 
@@ -84,7 +79,7 @@ func main() {
 	defer stop()
 
 	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
-	klog.InfoS(fmt.Sprintf("starting %s", ua)) // Stmt added to log
+	klog.InfoS(fmt.Sprintf("starting %s", ua))
 
 	// Kubernetes Client
 	var rc *rest.Config
@@ -94,7 +89,6 @@ func main() {
 		rc, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	} else {
 		klog.V(5).InfoS("using in-cluster kubeconfig")
-
 		rc, err = rest.InClusterConfig()
 	}
 	if err != nil {
@@ -112,7 +106,7 @@ func main() {
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
 	// basis for each mount
-	smOpts := []option.ClientOption{ // create a slice variable of ClientOption interface type
+	smOpts := []option.ClientOption{
 		option.WithUserAgent(ua),
 		// tell the secretmanager library to not add transport-level ADC since
 		// we need to override on a per call basis

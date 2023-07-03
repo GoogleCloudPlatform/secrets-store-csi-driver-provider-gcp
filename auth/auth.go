@@ -125,7 +125,7 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
 
 	// Get iam.gke.io/gcp-service-account annotation to see if the
-	// identitybindingtoken token should be traded for a GCP SA (Service Account) token.
+	// identitybindingtoken token should be traded for a GCP SA token.
 	// See https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#creating_a_relationship_between_ksas_and_gsas
 	saResp, err := c.KubeClient.
 		CoreV1().
@@ -277,7 +277,7 @@ func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://securetoken.googleapis.com/v1/identitybindingtoken", bytes.NewBuffer(body)) //	A Request represents an HTTP request received by a server or to be sent by a client. In our case it is to be sent by client.
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://securetoken.googleapis.com/v1/identitybindingtoken", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +287,6 @@ func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool
 	if err != nil {
 		return nil, err
 	}
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("could not get idbindtoken token, status: %v", resp.StatusCode)
 	}
