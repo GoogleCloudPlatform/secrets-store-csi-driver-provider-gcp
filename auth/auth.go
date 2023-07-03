@@ -111,7 +111,7 @@ func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oaut
 //
 // Token sent by driver is extracted and used. However, if tokenRequests is not set
 // in driver spec, the provider does not receive any tokens drom driver and generates
-// its own token
+// its own token. Token craetion can be removed once driver implements the requiresRepublish.
 func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.Token, error) {
 
 	idPool, idProvider, err := c.gkeWorkloadIdentity(ctx, cfg)
