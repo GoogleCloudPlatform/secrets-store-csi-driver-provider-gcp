@@ -184,7 +184,7 @@ func (c *Client) ExtractSAToken(cfg *config.MountConfig, idPool string) (*authen
 			return &v, nil
 		}
 	}
-	return nil, fmt.Errorf("Unable to obtain token from driver")
+	return nil, fmt.Errorf("unable to obtain token from driver")
 }
 
 func (c *Client) GeneratePodSAToken(ctx context.Context, cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {
