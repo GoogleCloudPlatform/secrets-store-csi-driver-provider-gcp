@@ -159,43 +159,43 @@ func setupTestSuite(isTokenPassed bool) {
 		check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
 			"--data-file", secretFile, "--project", f.testProjectID)))
 	} else {
-		type MetadataStruct struct {
-			Name string `yaml:"name"`
+		type metadataStruct struct {
+			name string `yaml:"name"`
 		}
 
-		type AudienceStruct struct {
-			Audience string `yaml:"audience"`
+		type audienceStruct struct {
+			audience string `yaml:"audience"`
 		}
 
-		type SpecStruct struct {
-			PodInfoOnMount       bool             `yaml:"podInfoOnMount"`
-			AttachRequired       bool             `yaml:"attachRequired"`
-			VolumeLifecycleModes []string         `yaml:"volumeLifecycleModes"`
-			TokenRequests        []AudienceStruct `yaml:"tokenRequests"`
+		type specStruct struct {
+			podInfoOnMount       bool             `yaml:"podInfoOnMount"`
+			attachRequired       bool             `yaml:"attachRequired"`
+			volumeLifecycleModes []string         `yaml:"volumeLifecycleModes"`
+			tokenRequests        []audienceStruct `yaml:"tokenRequests"`
 		}
 
-		type Driver struct {
-			APIVersion string         `yaml:"apiVersion"`
-			Kind       string         `yaml:"kind"`
-			Metadata   MetadataStruct `yaml:"metadata"`
-			Spec       SpecStruct     `yaml:"spec"`
+		type driver struct {
+			apiVersion string         `yaml:"apiVersion"`
+			kind       string         `yaml:"kind"`
+			metadata   metadataStruct `yaml:"metadata"`
+			spec       specStruct     `yaml:"spec"`
 		}
 
-		aud := AudienceStruct{
-			Audience: "secretmanager-csi-build.svc.id.goog",
+		aud := audienceStruct{
+			audience: "secretmanager-csi-build.svc.id.goog",
 		}
 
-		csiDriver := Driver{
-			APIVersion: "storage.k8s.io/v1",
-			Kind:       "CSIDriver",
-			Metadata: MetadataStruct{
-				Name: "secrets-store.csi.k8s.io",
+		csiDriver := driver{
+			apiVersion: "storage.k8s.io/v1",
+			kind:       "CSIDriver",
+			metadata: metadataStruct{
+				name: "secrets-store.csi.k8s.io",
 			},
-			Spec: SpecStruct{
-				PodInfoOnMount:       true,
-				AttachRequired:       false,
-				VolumeLifecycleModes: []string{"Ephemeral"},
-				TokenRequests:        []AudienceStruct{aud},
+			spec: specStruct{
+				podInfoOnMount:       true,
+				attachRequired:       false,
+				volumeLifecycleModes: []string{"Ephemeral"},
+				tokenRequests:        []audienceStruct{aud},
 			},
 		}
 
