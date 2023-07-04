@@ -138,23 +138,23 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	klog.V(5).InfoS("matched service account", "service_account", gcpSA)
 
 	// Obtain a serviceaccount token for the pod
-	var SATokenVal string
+	var saTokenVal string
 	if cfg.PodInfo.ServiceAccountTokens != "" {
-		SAToken, err := c.extractSAToken(cfg, idPool) // calling function to extract token received from driver
+		saToken, err := c.extractSAToken(cfg, idPool) // calling function to extract token received from driver
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch SA token from driver: %w", err)
 		}
-		SATokenVal = SAToken.Token
+		saTokenVal = saToken.Token
 	} else {
-		SAToken, err := c.generatePodSAToken(ctx, cfg, idPool) // if no token received, provider generates its own token
+		saToken, err := c.generatePodSAToken(ctx, cfg, idPool) // if no token received, provider generates its own token
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch pod token: %w", err)
 		}
-		SATokenVal = SAToken.Token
+		saTokenVal = saToken.Token
 	}
 
 	// Trade the kubernetes token for an identitybindingtoken token.
-	idBindToken, err := tradeIDBindToken(ctx, c.HTTPClient, SATokenVal, idPool, idProvider)
+	idBindToken, err := tradeIDBindToken(ctx, c.HTTPClient, saTokenVal, idPool, idProvider)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch identitybindingtoken: %w", err)
 	}
@@ -177,11 +177,11 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 }
 
 func (c *Client) extractSAToken(cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {
-	AudienceTokens := map[string]authenticationv1.TokenRequestStatus{}
-	if err := json.Unmarshal([]byte(cfg.PodInfo.ServiceAccountTokens), &AudienceTokens); err != nil {
+	audienceTokens := map[string]authenticationv1.TokenRequestStatus{}
+	if err := json.Unmarshal([]byte(cfg.PodInfo.ServiceAccountTokens), &audienceTokens); err != nil {
 		return nil, err
 	}
-	for k, v := range AudienceTokens {
+	for k, v := range audienceTokens {
 		if k == idPool { // Only returns the token if the audience is the workload identity. Other tokens cannot be used.
 			return &v, nil
 		}
