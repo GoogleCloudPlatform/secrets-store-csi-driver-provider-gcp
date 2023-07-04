@@ -28,10 +28,11 @@ import (
 )
 
 const (
-	attributePodName            = "csi.storage.k8s.io/pod.name"
-	attributePodNamespace       = "csi.storage.k8s.io/pod.namespace"
-	attributePodUID             = "csi.storage.k8s.io/pod.uid"
-	attributeServiceAccountName = "csi.storage.k8s.io/serviceAccount.name"
+	attributePodName              = "csi.storage.k8s.io/pod.name"
+	attributePodNamespace         = "csi.storage.k8s.io/pod.namespace"
+	attributePodUID               = "csi.storage.k8s.io/pod.uid"
+	attributeServiceAccountName   = "csi.storage.k8s.io/serviceAccount.name"
+	attributeServiceAccountTokens = "csi.storage.k8s.io/serviceAccount.tokens"
 )
 
 // Secret holds the parameters of the SecretProviderClass CRD. Links the GCP
@@ -54,10 +55,11 @@ type Secret struct {
 
 // PodInfo includes details about the pod that is receiving the mount event.
 type PodInfo struct {
-	Namespace      string
-	Name           string
-	UID            types.UID
-	ServiceAccount string
+	Namespace            string
+	Name                 string
+	UID                  types.UID
+	ServiceAccount       string
+	ServiceAccountTokens string
 }
 
 // MountConfig holds the parsed information from a mount event.
@@ -114,10 +116,11 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 
 	out.PodInfo = &PodInfo{
-		Namespace:      attrib[attributePodNamespace],
-		Name:           attrib[attributePodName],
-		UID:            types.UID(attrib[attributePodUID]),
-		ServiceAccount: attrib[attributeServiceAccountName],
+		Namespace:            attrib[attributePodNamespace],
+		Name:                 attrib[attributePodName],
+		UID:                  types.UID(attrib[attributePodUID]),
+		ServiceAccount:       attrib[attributeServiceAccountName],
+		ServiceAccountTokens: attrib[attributeServiceAccountTokens],
 	}
 
 	podInfo := klog.ObjectRef{Namespace: out.PodInfo.Namespace, Name: out.PodInfo.Name}
