@@ -155,6 +155,7 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 
 	// Trade the kubernetes token for an identitybindingtoken token.
 	idBindToken, err := tradeIDBindToken(ctx, c.HTTPClient, saTokenVal, idPool, idProvider)
+
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch identitybindingtoken: %w", err)
 	}
@@ -175,6 +176,7 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	}
 	return &oauth2.Token{AccessToken: gcpSAResp.GetAccessToken()}, nil
 }
+
 
 func (c *Client) extractSAToken(cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {
 	audienceTokens := map[string]authenticationv1.TokenRequestStatus{}
