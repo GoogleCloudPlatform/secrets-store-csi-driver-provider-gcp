@@ -176,7 +176,6 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	return &oauth2.Token{AccessToken: gcpSAResp.GetAccessToken()}, nil
 }
 
-
 func (c *Client) extractSAToken(cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {
 	audienceTokens := map[string]authenticationv1.TokenRequestStatus{}
 	if err := json.Unmarshal([]byte(cfg.PodInfo.ServiceAccountTokens), &audienceTokens); err != nil {
