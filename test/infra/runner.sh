@@ -27,7 +27,7 @@ export GCP_PROVIDER_SHA=${GITHUB_SHA:-main}
 export USE_GKE_GCLOUD_AUTH_PLUGIN=True
 
 # Build the driver image
-gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID
+gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID --timeout 2400
 
 # Build test images for E2E testing
 gcloud builds submit --config test/e2e/cloudbuild.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID test/e2e

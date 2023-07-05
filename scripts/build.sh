@@ -21,4 +21,4 @@ set -x          # Print each command as it is run
 
 TAG=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
-gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=$TAG
+gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=$TAG --timeout=2400
