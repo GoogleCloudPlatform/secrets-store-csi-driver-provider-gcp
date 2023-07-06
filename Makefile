@@ -58,7 +58,7 @@ licensessave:
 gosec:
 	@command -v gosec > /dev/null 2>&1 || (cd tools && go install github.com/securego/gosec/v2/cmd/gosec && cd ..)
 	# Disable "G307: Deferring a method which returns an error" for noisy alerts on common patterns.
-	@gosec -exclude=G307 -exclude=G101 ./...
+	@gosec -exclude=G307,G101 ./...
 .PHONY: gosec
 
 test:
