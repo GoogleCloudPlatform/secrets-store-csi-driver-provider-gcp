@@ -86,7 +86,7 @@ spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
       containers:
         - name: provider
-          image: gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$GCP_PROVIDER_SHA
+          image: asia-east1-dev.pkg/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/provider-image:$GCP_PROVIDER_SHA
           args:
           - "-v=5"
           imagePullPolicy: Always
