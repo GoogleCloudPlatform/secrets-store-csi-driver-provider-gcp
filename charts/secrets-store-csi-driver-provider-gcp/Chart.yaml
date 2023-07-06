@@ -4,3 +4,7 @@ description: A Helm chart to install Google Secret Manager Provider for Secret S
 type: application
 version: 0.1.0
 appVersion: "1.2.0"
+dependencies:
+- name: secrets-store-csi-driver
+  version: "1.3.4"
+  repository: "https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts" 
