@@ -12,16 +12,18 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 * Create a new GKE cluster with Workload Identity or enable
   [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#enable_on_existing_cluster)
   on an existing cluster.
-* Install the
-  [Secret Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation.html)
-  v1.0.1 or higher to the cluster.
-* Install the Google plugin DaemonSet & additional RoleBindings:
+* Install Google plugin DaemonSet & additional RoleBindings:
 
 ```shell
-kubectl apply -f deploy/provider-gcp-plugin.yaml
-# if you want to use helm
-# helm upgrade --install secrets-store-csi-driver-provider-gcp charts/secrets-store-csi-driver-provider-gcp
+$ export PROJECT_ID=<your gcp project>
+$ helm repo add secrets-store-csi-driver-provider-gcp <repo>
+$ helm install provider-chart secrets-store-csi-driver-provider-gcp/secrets-store-csi-driver-provider-gcp --set secrets-store-csi-driver.tokenRequests[0].audience=$PROJECT_ID.svc.id.goog --namespace kube-system
 ```
+
+* The provider has a dependency on the driver and hence will automatically install the [CSI Secret Store Driver](https://github.com/kubernetes-sigs/secrets-store-csi-driver). 
+
+During installation, it will set the tokenRequests audience value to PROJECT_ID.svc.id.goog i.e. [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity#enable_on_existing_cluster)
+which will enable the provider to utlize the same k8s token as the driver.
 
 NOTE: The driver's rotation and secret syncing functionality is still in Alpha and requires [additional installation
 steps](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation.html#optional-values).
