@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"regexp"
 )
 
 // zone to set up test cluster in
