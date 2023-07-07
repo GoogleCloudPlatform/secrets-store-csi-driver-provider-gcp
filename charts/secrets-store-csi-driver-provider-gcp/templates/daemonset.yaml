@@ -23,7 +23,7 @@ spec:
       serviceAccountName: {{ include "secrets-store-csi-driver-provider-gcp.serviceAccountName" . }}
       containers:
         - name: provider
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
