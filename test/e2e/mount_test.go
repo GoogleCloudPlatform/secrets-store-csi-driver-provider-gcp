@@ -154,13 +154,20 @@ func setupTestSuite() {
 
 	// Run the helm command
 	check(execCmd(helmCmd))
+	//get the hash value of the repository
+	describe_command := exec.Command("gcloud", "artifacts", "docker", "images", "describe", fmt.Sprintf("asia-east1-docker.pkg.dev/%s/secrets-store-csi-driver-provider-gcp/provider-image:%s", f.testProjectID, f.gcpProviderBranch))
+	full_describe, err := describe_command.CombinedOutput()
+	fmt.Println(string(full_describe))
+	regex := regexp.MustCompile(`sha256:[a-fA-F0-9]+`)
+	digest := regex.FindStringSubmatch(string(full_describe))[0]
+	fmt.Println(digest)
 
-	// Install GCP Plugin and Workload Identity bindings 
+	// Install GCP Plugin and Workload Identity bindings
 	// set: drive image to oci://asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/provider-image with tag GCP_PROVIDER_SHA
 	// set: audience token to PROJECT_ID.svc.id.goog
 	check(execCmd(exec.Command("helm", "install", "provider-chart", fmt.Sprintf("oci://asia-east1-docker.pkg.dev/%s/secrets-store-csi-driver-provider-gcp/secrets-store-csi-driver-provider-gcp", f.testProjectID),
-	 "--version", fmt.Sprintf("0.1.0-%s",  f.gcpProviderBranch), "--set", fmt.Sprintf("image.repository=asia-east1-docker.pkg.dev/%s/secrets-store-csi-driver-provider-gcp/provider-image", f.testProjectID),
-	 "--set", fmt.Sprintf("image.tag=%s", f.gcpProviderBranch), "--set", fmt.Sprintf("secrets-store-csi-driver.tokenRequests[0].audience=%s.svc.id.goog", f.testProjectID), "--namespace", "kube-system" )))
+		"--version", fmt.Sprintf("0.1.0-%s", f.gcpProviderBranch), "--set", fmt.Sprintf("image.repository=asia-east1-docker.pkg.dev/%s/secrets-store-csi-driver-provider-gcp/provider-image", f.testProjectID),
+		"--set", fmt.Sprintf("image.hash=%s", digest), "--set", fmt.Sprintf("secrets-store-csi-driver.tokenRequests[0].audience=%s.svc.id.goog", f.testProjectID), "--namespace", "kube-system")))
 
 	// Create test secret
 	secretFile := filepath.Join(f.tempDir, "secretValue")
