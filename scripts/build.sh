@@ -19,6 +19,11 @@ set -o pipefail # Check the exit code of *all* commands in a pipeline
 set -o nounset  # Error if accessing an unbound variable
 set -x          # Print each command as it is run
 
+set +e
+# Creating a new repository secrets-store-csi-driver-provider-gcp
+gcloud artifacts repositories create  secrets-store-csi-driver-provider-gcp --repository-format=docker    --location=asia-east1 
+set -e
+
 TAG=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
 gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=$TAG
