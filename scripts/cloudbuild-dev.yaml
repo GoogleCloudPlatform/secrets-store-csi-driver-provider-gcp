@@ -32,11 +32,11 @@ steps:
   env:
     - SKIP_CLUSTER_CONFIG=true
 - name: 'asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/helm-image:$TAG_NAME'
-  args: ['package', './charts/secrets-store-csi-driver-provider-gcp', '--version', '0.1.0-$TAG_NAME']
+  args: ['package', './charts/secrets-store-csi-driver-provider-gcp', '--version', '1.2.0-$TAG_NAME']
   env:
     - SKIP_CLUSTER_CONFIG=true
 - name: 'asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/helm-image:$TAG_NAME'
-  args: ['push', 'secrets-store-csi-driver-provider-gcp-0.1.0-$TAG_NAME.tgz', 'oci://asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp' ]
+  args: ['push', 'secrets-store-csi-driver-provider-gcp-1.2.0-$TAG_NAME.tgz', 'oci://asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp' ]
   env:
     - SKIP_CLUSTER_CONFIG=true
 - name: 'gcr.io/cloud-builders/docker'
