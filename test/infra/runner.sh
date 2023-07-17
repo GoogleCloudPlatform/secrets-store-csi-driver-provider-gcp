@@ -26,9 +26,10 @@ export GKE_VERSION=${GKE_VERSION:-STABLE}
 export GCP_PROVIDER_SHA=${GITHUB_SHA:-main}
 export USE_GKE_GCLOUD_AUTH_PLUGIN=True
 
+set +e
 # Creating a new repository secrets-store-csi-driver-provider-gcp
-gcloud artifacts repositories create  secrets-store-csi-driver-provider-gcp --repository-format=docker    --location=asia-east1 
-
+gcloud artifacts repositories create secrets-store-csi-driver-provider-gcp --repository-format=docker --location=asia-east1 
+set -e
 # Build the driver image
 gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID
 
