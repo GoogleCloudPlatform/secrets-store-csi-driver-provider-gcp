@@ -21,7 +21,7 @@ set -x          # Print each command as it is run
 
 set +e
 # Creating a new repository secrets-store-csi-driver-provider-gcp
-gcloud artifacts repositories create  secrets-store-csi-driver-provider-gcp --repository-format=docker --location=asia-east1 
+gcloud artifacts repositories create secrets-store-csi-driver-provider-gcp --repository-format=docker --location=asia-east1 
 set -e
 
 TAG=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
