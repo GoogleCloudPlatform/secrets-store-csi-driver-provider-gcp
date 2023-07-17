@@ -27,3 +27,8 @@ nodeSelector:
 tolerations: []
 
 affinity: {}
+
+secrets-store-csi-driver: 
+  fullnameOverride: secrets-store-csi-driver
+  tokenRequests:
+  - audience: $PROJECT_ID.svc.id.goog

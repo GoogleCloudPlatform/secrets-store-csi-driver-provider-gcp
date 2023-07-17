@@ -15,10 +15,37 @@
 # Usage: from the root directory run:
 #
 # $ gcloud builds submit --config scripts/cloudbuild-dev.yaml
-timeout: 1200s
+timeout: 3600s
 options:
   machineType: N1_HIGHCPU_8
 steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['buildx', 'build',
+         '--build-arg',
+         'VERSION=$TAG_NAME',
+         '-t',
+         'asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/helm-image:$TAG_NAME',
+         '--push',
+         './helm']
+- name: 'asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/helm-image:$TAG_NAME'
+  args: ['dependency', 
+         'update', 
+         './charts/secrets-store-csi-driver-provider-gcp']
+  env:
+    - SKIP_CLUSTER_CONFIG=true
+- name: 'asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/helm-image:$TAG_NAME'
+  args: ['package', 
+         './charts/secrets-store-csi-driver-provider-gcp', 
+         '--version', 
+         '1.2.0-$TAG_NAME']
+  env:
+    - SKIP_CLUSTER_CONFIG=true
+- name: 'asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/helm-image:$TAG_NAME'
+  args: ['push', 
+         'secrets-store-csi-driver-provider-gcp-1.2.0-$TAG_NAME.tgz', 
+         'oci://asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp' ]
+  env:
+    - SKIP_CLUSTER_CONFIG=true
 - name: 'gcr.io/cloud-builders/docker'
   args: ['buildx', 'create', '--use']
 - name: 'gcr.io/cloud-builders/docker'
@@ -27,6 +54,7 @@ steps:
          '--build-arg',
          'VERSION=$TAG_NAME',
          '-t',
-         'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$TAG_NAME',
+         'asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/provider-image:$TAG_NAME',
          '--push',
          '.']
+

@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"regexp"
 )
 
 // zone to set up test cluster in
@@ -136,19 +137,38 @@ func setupTestSuite() {
 	gcloudCmd.Env = append(os.Environ(), "KUBECONFIG="+f.kubeconfigFile)
 	check(execCmd(gcloudCmd))
 
-	// Install Secret Store
-	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretproviderclass.yaml", f.secretStoreVersion),
-		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretprovidersyncing.yaml", f.secretStoreVersion),
-		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/csidriver.yaml", f.secretStoreVersion),
-		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml", f.secretStoreVersion),
-		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml", f.secretStoreVersion),
-		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store-csi-driver.yaml", f.secretStoreVersion),
-	)))
+	// Helm authentication
+	gcloudCmd := exec.Command("gcloud", "auth", "application-default", "print-access-token")
+
+	// Capture the output of the gcloud command
+	gcloudOutput, err := gcloudCmd.Output()
+	
+	if err != nil {
+		fmt.Printf("Error running gcloud command: %s\n", err.Error())
+		os.Exit(1)
+	}
+	// Create the helm registry login command
+	helmCmd := exec.Command("helm", "registry", "login", "-u", "oauth2accesstoken", "--password-stdin", "https://asia-east1-docker.pkg.dev")
+
+	// Set the access token as the input for the helm command
+	helmCmd.Stdin = strings.NewReader(string(gcloudOutput))
+
+	// Run the helm command
+	check(execCmd(helmCmd))
+	//get the hash value of the repository
+	describe_command := exec.Command("gcloud", "artifacts", "docker", "images", "describe", fmt.Sprintf("asia-east1-docker.pkg.dev/%s/secrets-store-csi-driver-provider-gcp/provider-image:%s", f.testProjectID, f.gcpProviderBranch))
+	full_describe, err := describe_command.CombinedOutput()
+	fmt.Println(string(full_describe))
+	regex := regexp.MustCompile(`sha256:[a-fA-F0-9]+`)
+	digest := regex.FindStringSubmatch(string(full_describe))[0]
+	fmt.Println(digest)
 
 	// Install GCP Plugin and Workload Identity bindings
-	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"-f", pluginFile)))
+	// set: drive image to oci://asia-east1-docker.pkg.dev/$PROJECT_ID/secrets-store-csi-driver-provider-gcp/provider-image with tag GCP_PROVIDER_SHA
+	// set: audience token to PROJECT_ID.svc.id.goog
+	check(execCmd(exec.Command("helm", "install", "provider-chart", fmt.Sprintf("oci://asia-east1-docker.pkg.dev/%s/secrets-store-csi-driver-provider-gcp/secrets-store-csi-driver-provider-gcp", f.testProjectID),
+		"--version", fmt.Sprintf("1.2.0-%s", f.gcpProviderBranch), "--set", fmt.Sprintf("image.repository=asia-east1-docker.pkg.dev/%s/secrets-store-csi-driver-provider-gcp/provider-image", f.testProjectID),
+		"--set", fmt.Sprintf("image.hash=%s", digest), "--set", fmt.Sprintf("secrets-store-csi-driver.tokenRequests[0].audience=%s.svc.id.goog", f.testProjectID), "--namespace", "kube-system")))
 
 	// Create test secret
 	secretFile := filepath.Join(f.tempDir, "secretValue")
@@ -494,3 +514,4 @@ func TestMountRotateSecret(t *testing.T) {
 		t.Fatalf("Secret value is %v, want: %v", got, secretB)
 	}
 }
+
