@@ -33,7 +33,7 @@ gcloud secrets add-iam-policy-binding $TEST_SECRET_ID \
 Usage:
 
 ```shell
-./script/load-test.sh single
+./scripts/load-test.sh single
 kubectl scale --replicas=100 deployment/test-load-one-secret
 kubectl scale --replicas=0 deployment/test-load-one-secret
 ```

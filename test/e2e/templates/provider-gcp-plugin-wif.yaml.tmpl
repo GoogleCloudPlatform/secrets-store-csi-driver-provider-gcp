@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -27,27 +26,44 @@ roleRef:
   kind: ClusterRole
   name: secrets-store-csi-driver-provider-gcp-role
 subjects:
-  - kind: ServiceAccount
-    name: secrets-store-csi-driver-provider-gcp
-    namespace: kube-system
+- kind: ServiceAccount
+  name: secrets-store-csi-driver-provider-gcp
+  namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: secrets-store-csi-driver-provider-gcp-role
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - serviceaccounts/token
-    verbs:
-      - create
-  - apiGroups:
-      - ""
-    resources:
-      - serviceaccounts
-    verbs:
-      - get
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: kube-system
+  name: default-creds-config
+data:
+  config: |
+    {
+      "type": "external_account",
+      "audience": "identitynamespace:$PROJECT_ID.svc.id.goog:https://gkehub.googleapis.com/projects/$PROJECT_ID/locations/global/memberships/cluster1",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+      "token_url": "https://sts.googleapis.com/v1/token",
+      "credential_source": {
+        "file": "/var/run/secrets/tokens/gcp-ksa/token"
+      }
+    }
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -70,8 +86,10 @@ spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
       containers:
         - name: provider
-          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:b7dde5ed536b2c6500c9237e14f6851cf8a2ff6d7a72656c3741be38e2cddf4d
-          imagePullPolicy: IfNotPresent
+          image: gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$GCP_PROVIDER_SHA
+          args:
+          - "-v=5"
+          imagePullPolicy: Always
           resources:
             requests:
               cpu: 50m
@@ -82,9 +100,14 @@ spec:
           env:
             - name: TARGET_DIR
               value: "/etc/kubernetes/secrets-store-csi-providers"
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/run/secrets/tokens/gcp-ksa/google-application-credentials.json
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
+            - mountPath: /var/run/secrets/tokens/gcp-ksa
+              name: gcp-ksa
+              readOnly: true
           livenessProbe:
             failureThreshold: 3
             httpGet:
@@ -96,11 +119,20 @@ spec:
       volumes:
         - name: providervol
           hostPath:
-            path: /etc/kubernetes/secrets-store-csi-providers
-      tolerations:
-        - key: kubernetes.io/arch
-          operator: Equal
-          value: arm64
-          effect: NoSchedule
+              path: /etc/kubernetes/secrets-store-csi-providers
+        - name: gcp-ksa
+          projected:
+            defaultMode: 420
+            sources:
+            - serviceAccountToken:
+                audience: $PROJECT_ID.svc.id.goog
+                expirationSeconds: 172800
+                path: token
+            - configMap:
+                items:
+                - key: config
+                  path: google-application-credentials.json
+                name: default-creds-config
+                optional: false
       nodeSelector:
         kubernetes.io/os: linux

@@ -88,6 +88,7 @@ spec:
       role: roles/editor
     # Human Admins
     - members:
-        - user:colinman@google.com
         - user:tommymurphy@google.com
+        - user:amitmodak@google.com
+        - user:anujsg@google.com
       role: roles/owner

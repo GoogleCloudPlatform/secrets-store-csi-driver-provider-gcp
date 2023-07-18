@@ -1,0 +1,29 @@
+nameOverride: ""
+
+serviceAccount:
+  annotations: {}
+  name: secrets-store-csi-driver-provider-gcp
+
+image:
+  repository: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin
+  pullPolicy: IfNotPresent
+  hash: sha256:b7dde5ed536b2c6500c9237e14f6851cf8a2ff6d7a72656c3741be38e2cddf4d
+
+app: csi-secrets-store-provider-gcp
+
+podAnnotations: {}
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 100Mi
+  limits:
+    cpu: 50m
+    memory: 100Mi
+
+nodeSelector:
+  kubernetes.io/os: linux
+
+tolerations: []
+
+affinity: {}

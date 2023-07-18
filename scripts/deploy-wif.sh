@@ -21,4 +21,4 @@ set -x          # Print each command as it is run
 
 TAG=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
-gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=$TAG --timeout=2400
+sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$GCP_PROVIDER_SHA/${TAG}/g" test/e2e/templates/provider-gcp-plugin-wif.yaml.tmpl | kubectl apply -f -

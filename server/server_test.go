@@ -32,15 +32,22 @@ import (
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
+	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
 
 func TestHandleMountEvent(t *testing.T) {
+	secretFileMode := int32(0600) // decimal 384
+
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
 				ResourceName: "projects/project/secrets/test/versions/latest",
 				FileName:     "good1.txt",
+			},
+			{
+				ResourceName: "projects/project/secrets/test/versions/latest",
+				FileName:     "good2.txt",
+				Mode:         &secretFileMode,
 			},
 		},
 		Permissions: 777,
@@ -56,11 +63,20 @@ func TestHandleMountEvent(t *testing.T) {
 				Id:      "projects/project/secrets/test/versions/latest",
 				Version: "projects/project/secrets/test/versions/2",
 			},
+			{
+				Id:      "projects/project/secrets/test/versions/latest",
+				Version: "projects/project/secrets/test/versions/2",
+			},
 		},
 		Files: []*v1alpha1.File{
 			{
 				Path:     "good1.txt",
 				Mode:     777,
+				Contents: []byte("My Secret"),
+			},
+			{
+				Path:     "good2.txt",
+				Mode:     384, // octal 0600
 				Contents: []byte("My Secret"),
 			},
 		},

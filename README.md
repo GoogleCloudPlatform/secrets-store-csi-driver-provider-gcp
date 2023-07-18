@@ -19,6 +19,8 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 
 ```shell
 kubectl apply -f deploy/provider-gcp-plugin.yaml
+# if you want to use helm
+# helm upgrade --install secrets-store-csi-driver-provider-gcp charts/secrets-store-csi-driver-provider-gcp
 ```
 
 NOTE: The driver's rotation and secret syncing functionality is still in Alpha and requires [additional installation

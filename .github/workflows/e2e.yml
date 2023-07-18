@@ -32,14 +32,17 @@ jobs:
       name: e2e-test
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       # TODO: replace with https://github.com/google-github-actions/auth and
       # workload identity instead of an exported SA credential.
-      - uses: google-github-actions/setup-gcloud@v0
+      - name: "Auth to GCP exist env"
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+      - uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: "secretmanager-csi-build"
-          service_account_key: ${{ secrets.GCP_CREDENTIALS }}
-          export_default_credentials: true
+          install_components: 'gke-gcloud-auth-plugin'
       - name: Test
         run: |
           test/infra/runner.sh

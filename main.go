@@ -36,19 +36,18 @@ import (
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
-	"go.opentelemetry.io/contrib/instrumentation/runtime"
-	"go.opentelemetry.io/otel/exporters/metric/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/component-base/config"
+	logsapi "k8s.io/component-base/logs/api/v1"
 	jlogs "k8s.io/component-base/logs/json"
-	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
-
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
 
 var (
@@ -72,7 +71,7 @@ func main() {
 
 	if *logFormatJSON {
 		jsonFactory := jlogs.Factory{}
-		logger, _ := jsonFactory.Create(config.FormatOptions{})
+		logger, _ := jsonFactory.Create(logsapi.LoggingConfiguration{Format: "json"}, logsapi.LoggingOptions{ErrorStream: os.Stderr, InfoStream: os.Stdout})
 		klog.SetLogger(logger)
 	}
 
@@ -198,20 +197,19 @@ func main() {
 	// initialize metrics and health http server
 	mux := http.NewServeMux()
 	ms := http.Server{
-		Addr:    *metricsAddr,
-		Handler: mux,
+		Addr:        *metricsAddr,
+		Handler:     mux,
+		ReadTimeout: 10 * time.Second,
 	}
 	defer ms.Shutdown(ctx)
 
-	ex, err := prometheus.InstallNewPipeline(prometheus.Config{})
+	_, err = otelprom.New()
 	if err != nil {
-		klog.ErrorS(err, "unable to initialize prometheus exporter")
-		klog.Fatalln("unable to initialize prometheus exporter")
+		klog.ErrorS(err, "unable to initialize prometheus registry")
+		klog.Fatalln("unable to initialize prometheus registry")
 	}
-	if err := runtime.Start(runtime.WithMeterProvider(ex.MeterProvider())); err != nil {
-		klog.ErrorS(err, "unable to start runtime metrics monitoring")
-	}
-	mux.HandleFunc("/metrics", ex.ServeHTTP)
+
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/live", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -230,8 +228,9 @@ func main() {
 		dmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 		dmux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 		ds := http.Server{
-			Addr:    *debugAddr,
-			Handler: dmux,
+			Addr:        *debugAddr,
+			Handler:     dmux,
+			ReadTimeout: 10 * time.Second,
 		}
 		defer ds.Shutdown(ctx)
 		go func() {

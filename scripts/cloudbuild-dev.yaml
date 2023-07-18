@@ -15,16 +15,18 @@
 # Usage: from the root directory run:
 #
 # $ gcloud builds submit --config scripts/cloudbuild-dev.yaml
-timeout: 600s
+timeout: 1200s
 options:
   machineType: N1_HIGHCPU_8
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', 
+  args: ['buildx', 'create', '--use']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['buildx', 'build',
+         '--platform=linux/amd64,linux/arm64',
          '--build-arg',
          'VERSION=$TAG_NAME',
          '-t',
          'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$TAG_NAME',
+         '--push',
          '.']
-images:
-- 'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp'
