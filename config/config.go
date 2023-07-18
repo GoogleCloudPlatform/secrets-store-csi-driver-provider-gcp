@@ -116,8 +116,8 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	}
 
 	out.PodInfo = &PodInfo{
-		Namespace:            attrib[attributePodNamespace],
 		Name:                 attrib[attributePodName],
+		Namespace:            attrib[attributePodNamespace],
 		UID:                  types.UID(attrib[attributePodUID]),
 		ServiceAccount:       attrib[attributeServiceAccountName],
 		ServiceAccountTokens: attrib[attributeServiceAccountTokens],
