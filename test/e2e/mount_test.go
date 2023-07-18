@@ -182,7 +182,7 @@ func setupTestSuite(isTokenPassed bool) {
 		}
 
 		aud := audienceStruct{
-			audience: "secretmanager-csi-build.svc.id.goog",
+			audience: "secretmanager-csi-build.svc.id.goog", //	audience value is set as idPool for GCP project secretmanager-csi-build
 		}
 
 		csiDriver := driver{

@@ -32,7 +32,7 @@ const (
 	attributePodNamespace         = "csi.storage.k8s.io/pod.namespace"
 	attributePodUID               = "csi.storage.k8s.io/pod.uid"
 	attributeServiceAccountName   = "csi.storage.k8s.io/serviceAccount.name"
-	attributeServiceAccountTokens = "csi.storage.k8s.io/serviceAccount.tokens"
+	attributeServiceAccountTokens = "csi.storage.k8s.io/serviceAccount.tokens" //#nosec G101 -- This is a false positive. Token value is not being revealed. This is just the key name.
 )
 
 // Secret holds the parameters of the SecretProviderClass CRD. Links the GCP

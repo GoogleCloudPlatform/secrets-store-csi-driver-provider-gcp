@@ -36,3 +36,4 @@ steps:
           '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
           '--push',
           'secrets-store-csi-driver-provider-gcp' ]
+          

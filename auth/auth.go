@@ -137,16 +137,16 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	gcpSA := saResp.Annotations["iam.gke.io/gcp-service-account"]
 	klog.V(5).InfoS("matched service account", "service_account", gcpSA)
 
-	// Obtain a serviceaccount token for the pod
+	// Obtain a serviceaccount token for the pod.
 	var saTokenVal string
 	if cfg.PodInfo.ServiceAccountTokens != "" {
-		saToken, err := c.extractSAToken(cfg, idPool) // calling function to extract token received from driver
+		saToken, err := c.extractSAToken(cfg, idPool) // calling function to extract token received from driver.
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch SA token from driver: %w", err)
 		}
 		saTokenVal = saToken.Token
 	} else {
-		saToken, err := c.generatePodSAToken(ctx, cfg, idPool) // if no token received, provider generates its own token
+		saToken, err := c.generatePodSAToken(ctx, cfg, idPool) // if no token received, provider generates its own token.
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch pod token: %w", err)
 		}
@@ -186,7 +186,7 @@ func (c *Client) extractSAToken(cfg *config.MountConfig, idPool string) (*authen
 			return &v, nil
 		}
 	}
-	return nil, fmt.Errorf("unable to obtain token from driver")
+	return nil, fmt.Errorf("no token has audience value of idPool")
 }
 
 func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {

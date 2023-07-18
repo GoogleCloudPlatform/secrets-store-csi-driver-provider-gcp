@@ -30,3 +30,4 @@ steps:
          'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$TAG_NAME',
          '--push',
          '.']
+         
