@@ -15,7 +15,7 @@
 # Usage: from the root directory run:
 #
 # $ gcloud builds submit --config scripts/cloudbuild-dev.yaml
-timeout: 1200s
+timeout: 2400s
 options:
   machineType: N1_HIGHCPU_8
 steps:
@@ -30,3 +30,4 @@ steps:
          'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$TAG_NAME',
          '--push',
          '.']
+         

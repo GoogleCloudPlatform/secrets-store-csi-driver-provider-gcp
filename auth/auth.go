@@ -108,6 +108,10 @@ func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oaut
 // daemonset, including serviceaccounts/token create and serviceaccounts get.
 // These permissions could break node isolation and a long term solution is
 // tracked by Issue #13.
+//
+// Token sent by driver is extracted and used. However, if tokenRequests is not set
+// in driver spec, the provider does not receive any tokens from driver and generates
+// its own token. Token creation can be removed once driver implements the requiresRepublish.
 func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.Token, error) {
 
 	idPool, idProvider, err := c.gkeWorkloadIdentity(ctx, cfg)
@@ -133,31 +137,24 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	gcpSA := saResp.Annotations["iam.gke.io/gcp-service-account"]
 	klog.V(5).InfoS("matched service account", "service_account", gcpSA)
 
-	// Request a serviceaccount token for the pod
-	ttl := int64((15 * time.Minute).Seconds())
-	resp, err := c.KubeClient.CoreV1().
-		ServiceAccounts(cfg.PodInfo.Namespace).
-		CreateToken(ctx, cfg.PodInfo.ServiceAccount,
-			&authenticationv1.TokenRequest{
-				Spec: authenticationv1.TokenRequestSpec{
-					ExpirationSeconds: &ttl,
-					Audiences:         []string{idPool},
-					BoundObjectRef: &authenticationv1.BoundObjectReference{
-						Kind:       "Pod",
-						APIVersion: "v1",
-						Name:       cfg.PodInfo.Name,
-						UID:        cfg.PodInfo.UID,
-					},
-				},
-			},
-			v1.CreateOptions{},
-		)
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch pod token: %w", err)
+	// Obtain a serviceaccount token for the pod.
+	var saTokenVal string
+	if cfg.PodInfo.ServiceAccountTokens != "" {
+		saToken, err := c.extractSAToken(cfg, idPool) // calling function to extract token received from driver.
+		if err != nil {
+			return nil, fmt.Errorf("unable to fetch SA token from driver: %w", err)
+		}
+		saTokenVal = saToken.Token
+	} else {
+		saToken, err := c.generatePodSAToken(ctx, cfg, idPool) // if no token received, provider generates its own token.
+		if err != nil {
+			return nil, fmt.Errorf("unable to fetch pod token: %w", err)
+		}
+		saTokenVal = saToken.Token
 	}
 
 	// Trade the kubernetes token for an identitybindingtoken token.
-	idBindToken, err := tradeIDBindToken(ctx, c.HTTPClient, resp.Status.Token, idPool, idProvider)
+	idBindToken, err := tradeIDBindToken(ctx, c.HTTPClient, saTokenVal, idPool, idProvider)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch identitybindingtoken: %w", err)
 	}
@@ -177,6 +174,44 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 		return nil, fmt.Errorf("unable to fetch gcp service account token: %w", err)
 	}
 	return &oauth2.Token{AccessToken: gcpSAResp.GetAccessToken()}, nil
+}
+
+func (c *Client) extractSAToken(cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {
+	audienceTokens := map[string]authenticationv1.TokenRequestStatus{}
+	if err := json.Unmarshal([]byte(cfg.PodInfo.ServiceAccountTokens), &audienceTokens); err != nil {
+		return nil, err
+	}
+	for k, v := range audienceTokens {
+		if k == idPool { // Only returns the token if the audience is the workload identity. Other tokens cannot be used.
+			return &v, nil
+		}
+	}
+	return nil, fmt.Errorf("no token has audience value of idPool")
+}
+
+func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {
+	ttl := int64((15 * time.Minute).Seconds())
+	resp, err := c.KubeClient.CoreV1().
+		ServiceAccounts(cfg.PodInfo.Namespace).
+		CreateToken(ctx, cfg.PodInfo.ServiceAccount,
+			&authenticationv1.TokenRequest{
+				Spec: authenticationv1.TokenRequestSpec{
+					ExpirationSeconds: &ttl,
+					Audiences:         []string{idPool},
+					BoundObjectRef: &authenticationv1.BoundObjectReference{
+						Kind:       "Pod", // Pod and secret are the only valid types
+						APIVersion: "v1",
+						Name:       cfg.PodInfo.Name,
+						UID:        cfg.PodInfo.UID,
+					},
+				},
+			},
+			v1.CreateOptions{},
+		)
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch pod token: %w", err)
+	}
+	return &resp.Status, nil
 }
 
 func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, error) {
