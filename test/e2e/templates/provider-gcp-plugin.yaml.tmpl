@@ -73,6 +73,9 @@ spec:
           args:
           - "-v=5"
           imagePullPolicy: Always
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           resources:
             requests:
               cpu: 50m
@@ -86,8 +89,10 @@ spec:
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
+              mountPropagation: None
             - name: profiles
               mountPath: "/profiles"
+              mountPropagation: None
           livenessProbe:
             failureThreshold: 3
             httpGet:
