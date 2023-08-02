@@ -21,6 +21,4 @@ set -x          # Print each command as it is run
 
 TAG=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
-kubectl apply -f test/e2e/templates/apparmor-profile.yaml.tmpl
-
 sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$GCP_PROVIDER_SHA/${TAG}/g" test/e2e/templates/provider-gcp-plugin.yaml.tmpl | kubectl apply -f -
