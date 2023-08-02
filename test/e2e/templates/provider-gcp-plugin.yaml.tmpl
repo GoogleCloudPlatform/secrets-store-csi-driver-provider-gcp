@@ -67,6 +67,9 @@ spec:
         app: csi-secrets-store-provider-gcp
     spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
       containers:
         - name: provider
           image: gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$GCP_PROVIDER_SHA
