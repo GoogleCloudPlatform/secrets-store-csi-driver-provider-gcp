@@ -72,6 +72,8 @@ spec:
         - name: provider
           image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:b7dde5ed536b2c6500c9237e14f6851cf8a2ff6d7a72656c3741be38e2cddf4d
           imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: true
           resources:
             requests:
               cpu: 50m
@@ -85,6 +87,7 @@ spec:
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
+              readOnly: false
           livenessProbe:
             failureThreshold: 3
             httpGet:

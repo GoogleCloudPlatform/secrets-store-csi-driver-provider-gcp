@@ -90,6 +90,8 @@ spec:
           args:
           - "-v=5"
           imagePullPolicy: Always
+          securityContext:
+            readOnlyRootFilesystem: true
           resources:
             requests:
               cpu: 50m
@@ -105,6 +107,7 @@ spec:
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
+              readOnly: false
             - mountPath: /var/run/secrets/tokens/gcp-ksa
               name: gcp-ksa
               readOnly: true
