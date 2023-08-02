@@ -87,6 +87,8 @@ spec:
               name: providervol
             - name: profiles
               mountPath: "/profiles"
+              readOnly: true
+              mountPropagation: None
           livenessProbe:
             failureThreshold: 3
             httpGet:
