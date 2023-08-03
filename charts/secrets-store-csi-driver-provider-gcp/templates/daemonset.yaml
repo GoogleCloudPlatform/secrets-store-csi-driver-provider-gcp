@@ -21,6 +21,9 @@ spec:
         {{- include "secrets-store-csi-driver-provider-gcp.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "secrets-store-csi-driver-provider-gcp.serviceAccountName" . }}
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
       containers:
         - name: provider
           image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
