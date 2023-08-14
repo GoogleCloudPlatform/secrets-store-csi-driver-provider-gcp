@@ -18,7 +18,7 @@ go 1.18
 
 require (
 	cloud.google.com/go/compute/metadata v0.2.3
-	cloud.google.com/go/iam v1.1.1
+	cloud.google.com/go/iam v1.1.2
 	cloud.google.com/go/secretmanager v1.11.1
 	github.com/google/go-cmp v0.5.9
 	github.com/googleapis/gax-go/v2 v2.12.0
