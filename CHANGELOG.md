@@ -17,6 +17,8 @@ Digest: `sha256:af3dde5fca31b17599d71cd5ec63b52289a1efcee26d0fa4205e9da39a5f53f4
 
 ### Changes & Security Fixes
 
+* Have DaemonSet tolerate arm64 nodes [#250](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/250)
+* Develop a Sustainable Solution for using Workload Identity [#274](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/274)
 * Prevent the sharing of any host namespaces [#289](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/289)
 * Modify Helm DaemonSet to prevent the sharing of host namespaces [#290](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/290)
 * Make filesystem read only [#292](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/292)
