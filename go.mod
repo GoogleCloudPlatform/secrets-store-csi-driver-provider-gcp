@@ -25,7 +25,7 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.39.0
 	golang.org/x/oauth2 v0.11.0
-	google.golang.org/api v0.135.0
+	google.golang.org/api v0.138.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230807174057-1744710a1577
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
@@ -56,7 +56,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/s2a-go v0.1.4 // indirect
+	github.com/google/s2a-go v0.1.5 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.5 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
