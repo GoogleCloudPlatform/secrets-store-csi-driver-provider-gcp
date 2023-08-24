@@ -21,6 +21,8 @@ resources:
     cpu: 50m
     memory: 100Mi
 
+priorityClassName: ""
+
 nodeSelector:
   kubernetes.io/os: linux
 
