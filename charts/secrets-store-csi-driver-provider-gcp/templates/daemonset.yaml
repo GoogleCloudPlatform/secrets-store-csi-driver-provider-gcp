@@ -24,6 +24,9 @@ spec:
       hostNetwork: false
       hostPID: false
       hostIPC: false
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       containers:
         - name: provider
           image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
