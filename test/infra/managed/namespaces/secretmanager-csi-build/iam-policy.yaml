@@ -91,5 +91,4 @@ spec:
         - user:tommymurphy@google.com
         - user:amitmodak@google.com
         - user:anujsg@google.com
-        - user:namandave@google.com
       role: roles/owner
