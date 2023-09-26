@@ -89,6 +89,7 @@ spec:
               value: "/etc/kubernetes/secrets-store-csi-providers"
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
+              mountPropagation: None
               name: providervol
               readOnly: false
           livenessProbe:
