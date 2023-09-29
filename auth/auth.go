@@ -234,7 +234,7 @@ func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfi
 
 	gkeWorkloadIdentityProviderEndpoint, err := vars.GkeWorkloadIdentityEndPoint.GetValue()
 	if err != nil {
-		return "", "", fmt.Errorf("Unable to read GKE Workload Identity Provider Endpoint: %w", err)
+		return "", "", fmt.Errorf("unable to read GKE workload identity provider endpoint: %w", err)
 	}
 	idProvider := fmt.Sprintf("%s/projects/%s/locations/%s/clusters/%s", gkeWorkloadIdentityProviderEndpoint, projectID, clusterLocation, clusterName)
 
@@ -288,7 +288,7 @@ func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool
 	identityBindingTokenEndPoint, err := vars.IdentityBindingTokenEndPoint.GetValue()
 
 	if err != nil {
-		return nil, fmt.Errorf("Unable to read Identity Binding Token Endpoint: %w", err)
+		return nil, fmt.Errorf("unable to read identity binding token endpoint: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", identityBindingTokenEndPoint, bytes.NewBuffer(body))
