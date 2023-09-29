@@ -26,9 +26,6 @@ func (ev EnvVar) GetValue() (string, error) {
 	}
 
 	// Return default endpoint
-	fmt.Println(os_env, "OS Environment is not present! Using Default Prod endpoint")
-	fmt.Println(os.Environ())
-	fmt.Println("\n\n")
 	klog.V(5).InfoS(os_env, "OS Environment is not present! Using Default Prod endpoint", ev.default_value)
 	return ev.default_value, nil
 }
