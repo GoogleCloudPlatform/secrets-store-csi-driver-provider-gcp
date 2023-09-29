@@ -33,6 +33,7 @@ import (
 	"cloud.google.com/go/iam/credentials/apiv1/credentialspb"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"github.com/googleapis/gax-go/v2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -230,7 +231,12 @@ func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfi
 	if err != nil {
 		return "", "", fmt.Errorf("unable to determine cluster name: %w", err)
 	}
-	idProvider := fmt.Sprintf("https://container.googleapis.com/v1/projects/%s/locations/%s/clusters/%s", projectID, clusterLocation, clusterName)
+
+	gkeWorkloadIdentityProviderEndpoint, err := vars.GkeWorkloadIdentityEndPoint.GetValue()
+	if err != nil {
+		return "", "", fmt.Errorf("Unable to read GKE Workload Identity Provider Endpoint: %w", err)
+	}
+	idProvider := fmt.Sprintf("%s/projects/%s/locations/%s/clusters/%s", gkeWorkloadIdentityProviderEndpoint, projectID, clusterLocation, clusterName)
 
 	return idPool, idProvider, nil
 }
@@ -279,7 +285,13 @@ func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://securetoken.googleapis.com/v1/identitybindingtoken", bytes.NewBuffer(body))
+	identityBindingTokenEndPoint, err := vars.IdentityBindingTokenEndPoint.GetValue()
+
+	if err != nil {
+		return nil, fmt.Errorf("Unable to read Identity Binding Token Endpoint: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", identityBindingTokenEndPoint, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
