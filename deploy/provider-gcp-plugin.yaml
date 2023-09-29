@@ -87,6 +87,10 @@ spec:
           env:
             - name: TARGET_DIR
               value: "/etc/kubernetes/secrets-store-csi-providers"
+            - name: SM_PROVIDER_ID_BINDING_TOKEN_ENDPOINT
+              value: "https://securetoken.googleapis.com/v1/identitybindingtoken"
+            - name: SM_PROVIDER_GKE_WORKLOAD_IDENTITY_ENDPOINT
+              value: "https://container.googleapis.com/v1"
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               mountPropagation: None
