@@ -74,6 +74,16 @@ spec:
       containers:
         - name: provider
           image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:af3dde5fca31b17599d71cd5ec63b52289a1efcee26d0fa4205e9da39a5f53f4
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+              - ALL
           imagePullPolicy: IfNotPresent
           securityContext:
             readOnlyRootFilesystem: true
