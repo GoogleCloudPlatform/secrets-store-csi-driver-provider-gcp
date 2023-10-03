@@ -87,10 +87,6 @@ spec:
           env:
             - name: TARGET_DIR
               value: "/etc/kubernetes/secrets-store-csi-providers"
-            - name: GAIA_TOKEN_EXCHANGE_ENDPOINT
-              value: "https://securetoken.googleapis.com/v1/identitybindingtoken"
-            - name: GKE_WORKLOAD_IDENTITY_ENDPOINT
-              value: "https://container.googleapis.com/v1"
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               mountPropagation: None

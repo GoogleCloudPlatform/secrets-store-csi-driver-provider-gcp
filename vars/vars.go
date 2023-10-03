@@ -18,8 +18,6 @@ package vars
 import (
 	"fmt"
 	"os"
-
-	"k8s.io/klog/v2"
 )
 
 type EnvVar struct {
@@ -41,7 +39,6 @@ func (ev EnvVar) GetValue() (string, error) {
 	}
 
 	// Return default endpoint
-	klog.V(5).InfoS(osEnv, "OS environment is not present! using default value", ev.defaultValue)
 	return ev.defaultValue, nil
 }
 
