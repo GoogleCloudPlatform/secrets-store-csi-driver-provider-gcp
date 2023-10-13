@@ -42,6 +42,10 @@ spec:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
               readOnly: false
+            - name: profiles
+              mountPath: "/profiles"
+              readOnly: true
+              mountPropagation: None
           livenessProbe:
             failureThreshold: 3
             httpGet:
@@ -54,6 +58,9 @@ spec:
         - name: providervol
           hostPath:
             path: /etc/kubernetes/secrets-store-csi-providers
+        - name: profiles
+          configMap:
+            name: apparmor-profiles
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
