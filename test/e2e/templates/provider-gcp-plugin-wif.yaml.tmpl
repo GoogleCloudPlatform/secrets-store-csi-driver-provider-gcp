@@ -95,6 +95,8 @@ spec:
           imagePullPolicy: Always
           securityContext:
             runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
             readOnlyRootFilesystem: true
           resources:
             requests:
@@ -111,10 +113,12 @@ spec:
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
+              mountPropagation: None
               readOnly: false
             - mountPath: /var/run/secrets/tokens/gcp-ksa
               name: gcp-ksa
               readOnly: true
+              mountPropagation: None
           livenessProbe:
             failureThreshold: 3
             httpGet:
