@@ -108,6 +108,10 @@ spec:
             - mountPath: /var/run/secrets/tokens/gcp-ksa
               name: gcp-ksa
               readOnly: true
+            - name: profiles
+              mountPath: "/profiles"
+              readOnly: true
+              mountPropagation: None
           livenessProbe:
             failureThreshold: 3
             httpGet:
@@ -120,6 +124,9 @@ spec:
         - name: providervol
           hostPath:
               path: /etc/kubernetes/secrets-store-csi-providers
+        - name: profiles
+          configMap:
+            name: apparmor-profiles
         - name: gcp-ksa
           projected:
             defaultMode: 420

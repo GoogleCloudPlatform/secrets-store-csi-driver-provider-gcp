@@ -18,6 +18,7 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 * Install the Google plugin DaemonSet & additional RoleBindings:
 
 ```shell
+kubectl apply -f deploy/apparmor-profile.yaml.tmpl
 kubectl apply -f deploy/provider-gcp-plugin.yaml
 # if you want to use helm
 # helm upgrade --install secrets-store-csi-driver-provider-gcp charts/secrets-store-csi-driver-provider-gcp
