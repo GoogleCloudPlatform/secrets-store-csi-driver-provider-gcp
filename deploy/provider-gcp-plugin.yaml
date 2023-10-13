@@ -86,6 +86,8 @@ spec:
               - ALL
           imagePullPolicy: IfNotPresent
           securityContext:
+            seccompProfile:
+              type: RuntimeDefault
             readOnlyRootFilesystem: true
           resources:
             requests:
@@ -101,6 +103,7 @@ spec:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               mountPropagation: None
               name: providervol
+              mountPropagation: None
               readOnly: false
           livenessProbe:
             failureThreshold: 3
