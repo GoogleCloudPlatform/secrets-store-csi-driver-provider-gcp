@@ -32,6 +32,8 @@ spec:
           image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
+            seccompProfile:
+              type: RuntimeDefault
             readOnlyRootFilesystem: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
@@ -41,6 +43,7 @@ spec:
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
+              mountPropagation: None
               readOnly: false
           livenessProbe:
             failureThreshold: 3
