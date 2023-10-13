@@ -21,10 +21,18 @@ spec:
         {{- include "secrets-store-csi-driver-provider-gcp.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "secrets-store-csi-driver-provider-gcp.serviceAccountName" . }}
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       containers:
         - name: provider
           image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            readOnlyRootFilesystem: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
@@ -33,6 +41,7 @@ spec:
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
+              readOnly: false
             - name: profiles
               mountPath: "/profiles"
               readOnly: true
