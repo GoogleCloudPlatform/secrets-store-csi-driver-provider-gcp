@@ -94,6 +94,7 @@ spec:
           - "-v=5"
           imagePullPolicy: Always
           securityContext:
+            runAsNonRoot: true
             readOnlyRootFilesystem: true
           resources:
             requests:

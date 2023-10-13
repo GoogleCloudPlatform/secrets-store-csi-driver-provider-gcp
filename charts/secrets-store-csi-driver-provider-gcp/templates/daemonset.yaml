@@ -32,6 +32,7 @@ spec:
           image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
+            runAsNonRoot: true
             readOnlyRootFilesystem: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
