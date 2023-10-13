@@ -7,7 +7,7 @@ serviceAccount:
 image:
   repository: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin
   pullPolicy: IfNotPresent
-  hash: sha256:b7dde5ed536b2c6500c9237e14f6851cf8a2ff6d7a72656c3741be38e2cddf4d
+  hash: sha256:af3dde5fca31b17599d71cd5ec63b52289a1efcee26d0fa4205e9da39a5f53f4
 
 app: csi-secrets-store-provider-gcp
 
@@ -20,6 +20,8 @@ resources:
   limits:
     cpu: 50m
     memory: 100Mi
+
+priorityClassName: ""
 
 nodeSelector:
   kubernetes.io/os: linux

@@ -84,6 +84,9 @@ spec:
         app: csi-secrets-store-provider-gcp
     spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
       containers:
         - name: provider
           image: gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$GCP_PROVIDER_SHA
@@ -93,6 +96,7 @@ spec:
           securityContext:
             seccompProfile:
               type: RuntimeDefault
+            readOnlyRootFilesystem: true
           resources:
             requests:
               cpu: 50m
@@ -109,6 +113,7 @@ spec:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol
               mountPropagation: None
+              readOnly: false
             - mountPath: /var/run/secrets/tokens/gcp-ksa
               name: gcp-ksa
               readOnly: true
