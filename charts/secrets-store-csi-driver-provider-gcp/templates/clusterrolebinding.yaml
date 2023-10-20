@@ -11,4 +11,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: {{ include "secrets-store-csi-driver-provider-gcp.serviceAccountName" . }}
-    namespace: kube-system
+    namespace: {{ .Release.Namespace }}
+
