@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: {{ include "secrets-store-csi-driver-provider-gcp.daemonSetName" . }}
-  namespace: kube-system
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "secrets-store-csi-driver-provider-gcp.labels" . | nindent 4 }}
 spec:
