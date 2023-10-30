@@ -16,7 +16,6 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 	"os"
