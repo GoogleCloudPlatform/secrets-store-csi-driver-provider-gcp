@@ -116,7 +116,7 @@ func setupTestSuite(isTokenPassed bool) {
 			f.gkeVersion = "STABLE"
 		}
 
-		tempDir, err := io.TempDir("", "csi-tests")
+		tempDir, err := os.MkdirTemp("", "csi-tests")
 		check(err)
 		f.tempDir = tempDir
 		f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
