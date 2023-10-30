@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -306,7 +305,7 @@ func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool
 	}
 
 	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := os.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
