@@ -16,7 +16,7 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"os"
@@ -68,7 +68,7 @@ func replaceTemplate(templateFile string, destFile string) error {
 	if err != nil {
 		return err
 	}
-	templateBytes, err := ioutil.ReadFile(filepath.Join(pwd, templateFile))
+	templateBytes, err := os.ReadFile(filepath.Join(pwd, templateFile))
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func replaceTemplate(templateFile string, destFile string) error {
 	template = strings.ReplaceAll(template, "$GCP_PROVIDER_SHA", f.gcpProviderBranch)
 	template = strings.ReplaceAll(template, "$ZONE", zone)
 	template = strings.ReplaceAll(template, "$GKE_VERSION", f.gkeVersion)
-	return ioutil.WriteFile(destFile, []byte(template), 0644)
+	return os..WriteFile(destFile, []byte(template), 0644)
 }
 
 // Executed before any tests are run. Setup is only run once for all tests in the suite.
@@ -114,7 +114,7 @@ func setupTestSuite(isTokenPassed bool) {
 			f.gkeVersion = "STABLE"
 		}
 
-		tempDir, err := ioutil.TempDir("", "csi-tests")
+		tempDir, err := io.TempDir("", "csi-tests")
 		check(err)
 		f.tempDir = tempDir
 		f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
@@ -155,7 +155,7 @@ func setupTestSuite(isTokenPassed bool) {
 
 		// Create test secret
 		secretFile := filepath.Join(f.tempDir, "secretValue")
-		check(ioutil.WriteFile(secretFile, []byte(f.testSecretID), 0644))
+		check(os.WriteFile(secretFile, []byte(f.testSecretID), 0644))
 		check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
 			"--data-file", secretFile, "--project", f.testProjectID)))
 	} else {
@@ -206,7 +206,7 @@ func setupTestSuite(isTokenPassed bool) {
 		}
 
 		fileName := "csidriver.yaml"
-		err = ioutil.WriteFile(fileName, yamlData, 0644)
+		err = os.WriteFile(fileName, yamlData, 0644)
 		if err != nil {
 			panic("Unable to create YAML file")
 		}
@@ -475,7 +475,7 @@ func TestMountRotateSecret(t *testing.T) {
 
 	// Create test secret.
 	secretFileA := filepath.Join(f.tempDir, "secretValue-A")
-	check(ioutil.WriteFile(secretFileA, secretA, 0644))
+	check(os.WriteFile(secretFileA, secretA, 0644))
 	check(execCmd(exec.Command(
 		"gcloud", "secrets", "create", f.testRotateSecretID,
 		"--replication-policy", "automatic",
@@ -527,7 +527,7 @@ func TestMountRotateSecret(t *testing.T) {
 
 	// Rotate the secret.
 	secretFileB := filepath.Join(f.tempDir, "secretValue-B")
-	check(ioutil.WriteFile(secretFileB, secretB, 0644))
+	check(os.WriteFile(secretFileB, secretB, 0644))
 	check(execCmd(exec.Command(
 		"gcloud", "secrets", "versions", "add", f.testRotateSecretID,
 		"--data-file", secretFileB,
