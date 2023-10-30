@@ -79,7 +79,9 @@ func replaceTemplate(templateFile string, destFile string) error {
 	template = strings.ReplaceAll(template, "$GCP_PROVIDER_SHA", f.gcpProviderBranch)
 	template = strings.ReplaceAll(template, "$ZONE", zone)
 	template = strings.ReplaceAll(template, "$GKE_VERSION", f.gkeVersion)
-	return os..WriteFile(destFile, []byte(template), 0644)
+
+	return os.WriteFile(destFile, []byte(template), 0644)
+
 }
 
 // Executed before any tests are run. Setup is only run once for all tests in the suite.
