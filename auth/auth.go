@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -246,7 +245,7 @@ func (c *Client) fleetWorkloadIdentity(ctx context.Context, cfg *config.MountCon
 	var jsonData []byte
 	var err error
 	if filename := os.Getenv(envVar); filename != "" {
-		jsonData, err = io.ReadFile(filepath.Clean(filename))
+		jsonData, err = os.ReadFile(filepath.Clean(filename))
 		if err != nil {
 			return "", "", fmt.Errorf("google: error getting credentials using %v environment variable: %v", envVar, err)
 		}
@@ -306,7 +305,7 @@ func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool
 	}
 
 	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := os.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
