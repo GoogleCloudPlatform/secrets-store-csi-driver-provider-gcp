@@ -4,6 +4,29 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
+None
+
+## v1.4.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.4.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.4.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.4.0`
+
+Digest: `sha256:bf97decbbd5b5894662c438b6720bc3e42815301a507f5a52bd75771c0488cb6`
+
+
+### Changes & Security Fixes
+
+* Update Go version to 1.21 and dependencies [#344](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/344) [#342](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/342) [#306](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/306)
+* Adding Seccomp security and preventing mount propagation [#284](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcppull/284)
+* Use secure container config [#321](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/321)
+* Set mount propagation mode to None [#318](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/318)
+* Expose priorityClassName variable to the helm chart [#303](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull303)
+
+
+
 ## v1.3.0
 
 Images:
