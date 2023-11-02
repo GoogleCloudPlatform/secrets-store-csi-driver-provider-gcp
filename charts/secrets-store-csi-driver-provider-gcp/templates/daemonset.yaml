@@ -32,7 +32,6 @@ spec:
           image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
-            runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
             readOnlyRootFilesystem: true

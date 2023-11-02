@@ -94,7 +94,6 @@ spec:
           - "-v=5"
           imagePullPolicy: Always
           securityContext:
-            runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
             readOnlyRootFilesystem: true
