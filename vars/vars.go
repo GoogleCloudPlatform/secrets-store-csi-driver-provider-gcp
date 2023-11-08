@@ -53,3 +53,15 @@ var GkeWorkloadIdentityEndPoint = EnvVar{
 	defaultValue: "https://container.googleapis.com/v1",
 	isRequired:   false,
 }
+
+var ProviderName = EnvVar{
+	envVarName:   "PROVIDER_NAME",
+	defaultValue: "gcp",
+	isRequired:   false,
+}
+
+var UserAgentIdentifier = EnvVar{
+	envVarName:   "USER_AGENT",
+	defaultValue: "secrets-store-csi-driver-provider-gcp",
+	isRequired:   false,
+}
