@@ -36,6 +36,7 @@ import (
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"google.golang.org/api/option"
@@ -77,13 +78,18 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	var err error
+	uai, err := vars.UserAgentIdentifier.GetValue()
+	if err != nil {
+		klog.ErrorS(err, "failed to get user agent identifier")
+		klog.Fatal("failed to get user agent identifier")
+	}
 
-	ua := fmt.Sprintf("secrets-store-csi-driver-provider-gcp/%s", version)
+	ua := fmt.Sprintf("%s/%s", uai, version)
 	klog.InfoS(fmt.Sprintf("starting %s", ua))
 
 	// Kubernetes Client
 	var rc *rest.Config
-	var err error
 	if *kubeconfig != "" {
 		klog.V(5).InfoS("using kubeconfig", "path", *kubeconfig)
 		rc, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -176,7 +182,12 @@ func main() {
 		AuthClient:   c,
 	}
 
-	socketPath := filepath.Join(os.Getenv("TARGET_DIR"), "gcp.sock")
+	p, err := vars.ProviderName.GetValue()
+	if err != nil {
+		klog.ErrorS(err, "failed to get provider name")
+		klog.Fatal("failed to get provider name")
+	}
+	socketPath := filepath.Join(os.Getenv("TARGET_DIR"), fmt.Sprintf("%s.sock", p))
 	// Attempt to remove the UDS to handle cases where a previous execution was
 	// killed before fully closing the socket listener and unlinking.
 	_ = os.Remove(socketPath)

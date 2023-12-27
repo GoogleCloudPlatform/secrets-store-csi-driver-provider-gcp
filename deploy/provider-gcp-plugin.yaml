@@ -67,10 +67,10 @@ spec:
       hostIPC: false
       containers:
         - name: provider
-          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:af3dde5fca31b17599d71cd5ec63b52289a1efcee26d0fa4205e9da39a5f53f4
+          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:bf97decbbd5b5894662c438b6720bc3e42815301a507f5a52bd75771c0488cb6
           securityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
+            runAsUser: 0
+            runAsGroup: 0
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             seccompProfile:
@@ -79,10 +79,6 @@ spec:
               drop:
               - ALL
           imagePullPolicy: IfNotPresent
-          securityContext:
-            seccompProfile:
-              type: RuntimeDefault
-            readOnlyRootFilesystem: true
           resources:
             requests:
               cpu: 50m
@@ -95,7 +91,6 @@ spec:
               value: "/etc/kubernetes/secrets-store-csi-providers"
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
-              mountPropagation: None
               name: providervol
               mountPropagation: None
               readOnly: false
