@@ -68,6 +68,16 @@ spec:
         app: csi-secrets-store-provider-gcp
     spec:
       serviceAccountName: secrets-store-csi-driver-provider-gcp
+      initContainers:
+      - name: chown-provider-mount
+        image: busybox
+        command:
+        - chown
+        - "1000:1000"
+        - /etc/kubernetes/secrets-store-csi-providers
+        volumeMounts:
+        - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
+          name: providervol
       hostNetwork: false
       hostPID: false
       hostIPC: false
@@ -75,8 +85,8 @@ spec:
         - name: provider
           image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:bf97decbbd5b5894662c438b6720bc3e42815301a507f5a52bd75771c0488cb6
           securityContext:
-            runAsUser: 0
-            runAsGroup: 0
+            runAsUser: 1000
+            runAsGroup: 1000
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             seccompProfile:
