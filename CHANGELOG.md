@@ -6,6 +6,24 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.5.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.5.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.5.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.5.0`
+
+Digest: `sha256:a493a78bbb4ebce5f5de15acdccc6f4d19486eae9aa4fa529bb60ac112dd6650`
+
+
+### Changes & Security Fixes
+
+* Dependencies upgrade
+* Change the owner of the mount volume to the user other than root. [#370](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/370)
+* Removing and syncing duplicate configs [#349](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/349)
+
+
 ## v1.4.0
 
 Images:

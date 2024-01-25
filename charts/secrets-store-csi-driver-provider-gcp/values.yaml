@@ -7,7 +7,7 @@ serviceAccount:
 image:
   repository: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin
   pullPolicy: IfNotPresent
-  hash: sha256:bf97decbbd5b5894662c438b6720bc3e42815301a507f5a52bd75771c0488cb6
+  hash: sha256:a493a78bbb4ebce5f5de15acdccc6f4d19486eae9aa4fa529bb60ac112dd6650
 
 app: csi-secrets-store-provider-gcp
 
