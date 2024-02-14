@@ -18,6 +18,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
 	"os"
 	"strconv"
 	"strings"
@@ -47,6 +48,7 @@ type Server struct {
 }
 
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
+var crc32c *crc32.Table = crc32.MakeTable(crc32.Castagnoli)
 
 // Mount implements provider csi-provider method
 func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alpha1.MountResponse, error) {
@@ -114,9 +116,12 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 			req := &secretmanagerpb.AccessSecretVersionRequest{
 				Name: secret.ResourceName,
 			}
-			resp, err := client.AccessSecretVersion(ctx, req, callAuth)
-			results[i] = resp
-			errs[i] = err
+			results[i], errs[i] = client.AccessSecretVersion(ctx, req, callAuth)
+			if resp := results[i]; resp != nil && resp.GetPayload().DataCrc32C != nil {
+				if int64(crc32.Checksum(resp.GetPayload().Data, crc32c)) != *resp.GetPayload().DataCrc32C {
+					errs[i] = status.Error(codes.DataLoss, "detected crc32c missmatch")
+				}
+			}
 		}()
 	}
 	wg.Wait()
