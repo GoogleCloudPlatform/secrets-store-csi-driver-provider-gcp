@@ -21,6 +21,16 @@ spec:
         {{- include "secrets-store-csi-driver-provider-gcp.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "secrets-store-csi-driver-provider-gcp.serviceAccountName" . }}
+      initContainers:
+      - name: chown-provider-mount
+        image: busybox
+        command:
+        - chown
+        - "1000:1000"
+        - /etc/kubernetes/secrets-store-csi-providers
+        volumeMounts:
+        - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
+          name: providervol
       hostNetwork: false
       hostPID: false
       hostIPC: false
@@ -32,8 +42,8 @@ spec:
           image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
-            runAsUser: 0
-            runAsGroup: 0
+            runAsUser: 1000
+            runAsGroup: 1000
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             seccompProfile:
