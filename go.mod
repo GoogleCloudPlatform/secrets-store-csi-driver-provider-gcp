@@ -19,7 +19,7 @@ go 1.21
 require (
 	cloud.google.com/go/compute/metadata v0.2.3
 	cloud.google.com/go/iam v1.1.6
-	cloud.google.com/go/secretmanager v1.11.5
+	cloud.google.com/go/secretmanager v1.11.6
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.12.2
 	github.com/prometheus/client_golang v1.19.0
