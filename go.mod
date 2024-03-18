@@ -25,7 +25,7 @@ require (
 	github.com/prometheus/client_golang v1.19.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.46.0
 	golang.org/x/oauth2 v0.18.0
-	google.golang.org/api v0.169.0
+	google.golang.org/api v0.170.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311132316-a219d84964c2
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
