@@ -21,12 +21,12 @@ require (
 	cloud.google.com/go/iam v1.1.6
 	cloud.google.com/go/secretmanager v1.11.5
 	github.com/google/go-cmp v0.6.0
-	github.com/googleapis/gax-go/v2 v2.12.2
+	github.com/googleapis/gax-go/v2 v2.12.3
 	github.com/prometheus/client_golang v1.19.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.46.0
 	golang.org/x/oauth2 v0.18.0
-	google.golang.org/api v0.169.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311132316-a219d84964c2
+	google.golang.org/api v0.172.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v3 v3.0.1
