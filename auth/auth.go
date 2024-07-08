@@ -299,12 +299,12 @@ func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	gcp_iam_metric_recorder := csrmetrics.OutboundRPCStartRecorder("gcp_iam_get_id_bind_token_requests")
+	gcpIamMetricRecorder := csrmetrics.OutboundRPCStartRecorder("gcp_iam_get_id_bind_token_requests")
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	gcp_iam_metric_recorder(csrmetrics.OutboundRPCStatus(strconv.Itoa(resp.StatusCode)))
+	gcpIamMetricRecorder(csrmetrics.OutboundRPCStatus(strconv.Itoa(resp.StatusCode)))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("could not get idbindtoken token, status: %v", resp.StatusCode)
 	}

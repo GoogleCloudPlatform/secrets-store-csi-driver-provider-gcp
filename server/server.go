@@ -115,14 +115,14 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 			req := &secretmanagerpb.AccessSecretVersionRequest{
 				Name: secret.ResourceName,
 			}
-			sm_metric_recorder := csrmetrics.OutboundRPCStartRecorder("secretmanager_access_secret_version_requests")
+			smMetricRecorder := csrmetrics.OutboundRPCStartRecorder("secretmanager_access_secret_version_requests")
 			resp, err := client.AccessSecretVersion(ctx, req, callAuth)
 			if err != nil {
 				if e, ok := status.FromError(err); ok {
-					sm_metric_recorder(csrmetrics.OutboundRPCStatus(e.Code().String()))
+					smMetricRecorder(csrmetrics.OutboundRPCStatus(e.Code().String()))
 				}
 			} else {
-				sm_metric_recorder(csrmetrics.OutboundRPCStatusOK)
+				smMetricRecorder(csrmetrics.OutboundRPCStatusOK)
 			}
 			results[i] = resp
 			errs[i] = err
