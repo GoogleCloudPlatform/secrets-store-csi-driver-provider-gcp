@@ -25,6 +25,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/csrmetrics"
 	"github.com/googleapis/gax-go/v2"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
@@ -114,7 +115,15 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 			req := &secretmanagerpb.AccessSecretVersionRequest{
 				Name: secret.ResourceName,
 			}
+			sm_metric_recorder := csrmetrics.OutboundRPCStartRecorder("secretmanager_access_secret_version_requests")
 			resp, err := client.AccessSecretVersion(ctx, req, callAuth)
+			if err != nil {
+				if e, ok := status.FromError(err); ok {
+					sm_metric_recorder(csrmetrics.OutboundRPCStatus(e.Code().String()))
+				}
+			} else {
+				sm_metric_recorder(csrmetrics.OutboundRPCStatusOK)
+			}
 			results[i] = resp
 			errs[i] = err
 		}()
