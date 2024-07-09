@@ -26,9 +26,9 @@ func TestOutboundRPCStartRecorder(t *testing.T) {
 	monkey.Patch(time.Now, func() time.Time { return time.Date(2024, time.May, 1, 0, 0, 2, 0, time.UTC) })
 	recorder(OutboundRPCStatus("test_status_1"))
 
-	total_count := testutil.CollectAndCount(outboundRPCCount)
+	totalCount := testutil.CollectAndCount(outboundRPCCount)
 
-	assert.Equal(t, 1, total_count)
+	assert.Equal(t, 1, totalCount)
 	// check the expected values using the ToFloat64 function
 	assertFloat(t, 1, testutil.ToFloat64(outboundRPCCount.WithLabelValues("test_status_1", "test_kind_1")), CountFloatTol)
 
