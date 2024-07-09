@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"bou.ke/monkey"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,12 +17,17 @@ func assertFloat(t *testing.T, left float64, right float64, tol float64) {
 
 const CountFloatTol float64 = 1e-6
 
+func updateLatency(latencySeconds float64) {
+	timeSinceSeconds = func(_ time.Time) float64 {
+		return latencySeconds
+	}
+}
+
 func TestOutboundRPCStartRecorder(t *testing.T) {
 
-	monkey.Patch(time.Now, func() time.Time { return time.Date(2024, time.May, 1, 0, 0, 0, 0, time.UTC) })
 	recorder := OutboundRPCStartRecorder("test_kind_1")
+	updateLatency(2)
 
-	monkey.Patch(time.Now, func() time.Time { return time.Date(2024, time.May, 1, 0, 0, 2, 0, time.UTC) })
 	recorder(OutboundRPCStatus("test_status_1"))
 
 	totalCount := testutil.CollectAndCount(outboundRPCCount)
@@ -99,13 +103,27 @@ func TestOutboundRPCStartRecorder(t *testing.T) {
 		time.Date(2024, time.May, 1, 0, 0, 9, 0, time.UTC),
 		time.Date(2024, time.May, 1, 0, 0, 19, 0, time.UTC),
 	}
+
+	latencyArrayDTObjectsSeconds := []float64{
+		0.0049,
+		0.009,
+		0.024,
+		0.04,
+		0.09,
+		0.24,
+		0.4,
+		0.9,
+		2.4,
+		4,
+		9,
+		19,
+	}
+
 	for i := range latencyArrayDTObjects {
 		metricsLable := metricsLabels[i]
-
-		monkey.Patch(time.Now, func() time.Time { return time.Date(2024, time.May, 1, 0, 0, 0, 0, time.UTC) })
 		recorder := OutboundRPCStartRecorder(metricsLable.kind)
+		updateLatency(latencyArrayDTObjectsSeconds[i])
 
-		monkey.Patch(time.Now, func() time.Time { return latencyArrayDTObjects[i] })
 		recorder(OutboundRPCStatus(metricsLable.status))
 	}
 
@@ -137,7 +155,7 @@ func TestOutboundRPCStartRecorder(t *testing.T) {
     outbound_rpc_latency_bucket{kind="test_kind_1",status="test_status_1",le="5"} 3
     outbound_rpc_latency_bucket{kind="test_kind_1",status="test_status_1",le="10"} 3
     outbound_rpc_latency_bucket{kind="test_kind_1",status="test_status_1",le="+Inf"} 3
-    outbound_rpc_latency_sum{kind="test_kind_1",status="test_status_1"} 2.010001
+    outbound_rpc_latency_sum{kind="test_kind_1",status="test_status_1"} 2.0139
     outbound_rpc_latency_count{kind="test_kind_1",status="test_status_1"} 3
     outbound_rpc_latency_bucket{kind="test_kind_1",status="test_status_2",le="0.005"} 0
     outbound_rpc_latency_bucket{kind="test_kind_1",status="test_status_2",le="0.01"} 0
@@ -151,7 +169,7 @@ func TestOutboundRPCStartRecorder(t *testing.T) {
     outbound_rpc_latency_bucket{kind="test_kind_1",status="test_status_2",le="5"} 4
     outbound_rpc_latency_bucket{kind="test_kind_1",status="test_status_2",le="10"} 4
     outbound_rpc_latency_bucket{kind="test_kind_1",status="test_status_2",le="+Inf"} 4
-    outbound_rpc_latency_sum{kind="test_kind_1",status="test_status_2"} 1.4700000000000002
+    outbound_rpc_latency_sum{kind="test_kind_1",status="test_status_2"} 1.364
     outbound_rpc_latency_count{kind="test_kind_1",status="test_status_2"} 4
     outbound_rpc_latency_bucket{kind="test_kind_2",status="test_status_1",le="0.005"} 0
     outbound_rpc_latency_bucket{kind="test_kind_2",status="test_status_1",le="0.01"} 0
@@ -179,7 +197,7 @@ func TestOutboundRPCStartRecorder(t *testing.T) {
     outbound_rpc_latency_bucket{kind="test_kind_2",status="test_status_2",le="5"} 4
     outbound_rpc_latency_bucket{kind="test_kind_2",status="test_status_2",le="10"} 4
     outbound_rpc_latency_bucket{kind="test_kind_2",status="test_status_2",le="+Inf"} 5
-    outbound_rpc_latency_sum{kind="test_kind_2",status="test_status_2"} 25.29
+    outbound_rpc_latency_sum{kind="test_kind_2",status="test_status_2"} 25.73
     outbound_rpc_latency_count{kind="test_kind_2",status="test_status_2"} 5
 	`
 

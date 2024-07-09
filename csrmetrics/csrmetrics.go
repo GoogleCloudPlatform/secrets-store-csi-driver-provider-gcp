@@ -32,6 +32,11 @@ const (
 )
 
 var (
+	// Observation function to observe delay
+	// Update this method for unit tests
+	timeSinceSeconds = func(start time.Time) float64 {
+		return time.Since(start).Seconds()
+	}
 	outboundRPCCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "outbound_rpc_count",
 		Help: "Count of outbound RPCs to GCP",
@@ -58,6 +63,6 @@ func OutboundRPCStartRecorder(kind string) func(status OutboundRPCStatus) {
 
 	return func(status OutboundRPCStatus) {
 		outboundRPCCount.WithLabelValues(string(status), kind).Inc()
-		outboundRPCLatency.WithLabelValues(string(status), kind).Observe(time.Since(start).Seconds())
+		outboundRPCLatency.WithLabelValues(string(status), kind).Observe(timeSinceSeconds(start))
 	}
 }
