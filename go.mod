@@ -17,12 +17,14 @@ module github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 go 1.21
 
 require (
+	bou.ke/monkey v1.0.2
 	cloud.google.com/go/compute/metadata v0.2.3
 	cloud.google.com/go/iam v1.1.6
 	cloud.google.com/go/secretmanager v1.11.5
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.12.2
 	github.com/prometheus/client_golang v1.19.0
+	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.46.0
 	golang.org/x/oauth2 v0.18.0
 	google.golang.org/api v0.169.0
@@ -68,6 +70,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.50.0 // indirect
 	github.com/prometheus/procfs v0.13.0 // indirect
