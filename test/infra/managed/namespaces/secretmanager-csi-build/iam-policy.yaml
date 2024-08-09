@@ -35,6 +35,9 @@ spec:
     - members:
         - serviceAccount:gh-e2e-runner@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/viewer
+    - members:
+        - serviceAccount:service-735463103342@gcp-sa-artifactregistry.iam.gserviceaccount.com
+      role: roles/storage.objectViewer
     # cnrm controller permissions (manage all test/infra/managed resources)
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
@@ -93,3 +96,6 @@ spec:
         - user:anujsg@google.com
         - user:namandave@google.com
       role: roles/owner
+    - members:
+        - user:dargudear@google.com
+      role: roles/storage.objectViewer
