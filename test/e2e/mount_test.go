@@ -261,9 +261,9 @@ func teardownTestSuite() {
 func TestMain(m *testing.M) {
 	withoutTokenStatus := runTest(m, false)
 	withTokenStatus := runTest(m, true)
-	fmt.Printf("Exit Code when token is not passed from driver to provder is: %v", withoutTokenStatus)
-	fmt.Printf("Exit Code when token is passed from driver to provder is: %v", withTokenStatus)
-	os.Exit(withoutTokenStatus & withTokenStatus)
+	fmt.Printf("Exit Code when token is not passed from driver to provder is: %v\n", withoutTokenStatus)
+	fmt.Printf("Exit Code when token is passed from driver to provder is: %v\n", withTokenStatus)
+	os.Exit(withoutTokenStatus | withTokenStatus)
 }
 
 // Handles setup/teardown test suite and runs test. Returns exit code.
