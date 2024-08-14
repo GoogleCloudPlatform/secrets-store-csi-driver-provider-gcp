@@ -18,3 +18,32 @@ metadata:
   namespace: e2e-test
   annotations:
     iam.gke.io/gcp-service-account: e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: csidrivers-role
+rules:
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - csidrivers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csidrivers-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: csidrivers-role
+subjects:
+- kind: ServiceAccount
+  name: e2e-test-sa
+  namespace: e2e-test
+

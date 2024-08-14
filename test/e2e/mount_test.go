@@ -259,13 +259,6 @@ func teardownTestSuite() {
 func TestMain(m *testing.M) {
 	withoutTokenStatus := runTest(m, false)
 	withTokenStatus := runTest(m, true)
-	fmt.Printf("Exit Code when token is not passed from driver to provder is: %v", withoutTokenStatus)
-	fmt.Printf("Exit Code when token is passed from driver to provder is: %v", withTokenStatus)
-	os.Exit(withoutTokenStatus & withTokenStatus)
-}
-
-// Handles setup/teardown test suite and runs test. Returns exit code.
-func runTest(m *testing.M, isTokenPassed bool) (code int) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("Test execution panic:", r)
@@ -273,7 +266,13 @@ func runTest(m *testing.M, isTokenPassed bool) (code int) {
 		}
 		teardownTestSuite()
 	}()
+	fmt.Printf("Exit Code when token is not passed from driver to provder is: %v", withoutTokenStatus)
+	fmt.Printf("Exit Code when token is passed from driver to provder is: %v", withTokenStatus)
+	os.Exit(withoutTokenStatus & withTokenStatus)
+}
 
+// Handles setup/teardown test suite and runs test. Returns exit code.
+func runTest(m *testing.M, isTokenPassed bool) (code int) {
 	setupTestSuite(isTokenPassed)
 	return m.Run()
 }
