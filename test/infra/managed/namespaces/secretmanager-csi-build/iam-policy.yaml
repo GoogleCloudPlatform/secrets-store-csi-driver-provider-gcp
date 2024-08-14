@@ -35,6 +35,12 @@ spec:
     - members:
         - serviceAccount:gh-e2e-runner@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/viewer
+    - members:
+        - serviceAccount:service-735463103342@gcp-sa-artifactregistry.iam.gserviceaccount.com
+      role: roles/storage.objectViewer
+    - members:
+        - serviceAccount:service-735463103342@gcp-sa-artifactregistry.iam.gserviceaccount.com
+      role: roles/storage.objectViewer
     # cnrm controller permissions (manage all test/infra/managed resources)
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
@@ -60,6 +66,12 @@ spec:
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/monitoring.metricWriter
+    - members:
+        - serviceAccount:735463103342-compute@developer.gserviceaccount.com
+      role: roles/artifactregistry.reader
+    - members:
+        - serviceAccount:service-735463103342@compute-system.iam.gserviceaccount.com
+      role: roles/artifactregistry.writer
     # for e2e tests to manage test clusters and administer secrets
     - members:
         - serviceAccount:e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
