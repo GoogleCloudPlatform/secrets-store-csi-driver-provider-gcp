@@ -85,81 +85,81 @@ func replaceTemplate(templateFile string, destFile string) error {
 
 // Executed before any tests are run. Setup is only run once for all tests in the suite.
 func setupTestSuite(isTokenPassed bool) {
-	if !isTokenPassed {
-		rand.Seed(time.Now().UTC().UnixNano())
 
-		f.gcpProviderBranch = os.Getenv("GCP_PROVIDER_SHA")
-		if len(f.gcpProviderBranch) == 0 {
-			log.Fatal("GCP_PROVIDER_SHA is empty")
-		}
-		f.testProjectID = os.Getenv("PROJECT_ID")
-		if len(f.testProjectID) == 0 {
-			log.Fatal("PROJECT_ID is empty")
-		}
-		f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
-		if len(f.secretStoreVersion) == 0 {
-			log.Println("SECRET_STORE_VERSION is empty, defaulting to 'main'")
-			f.secretStoreVersion = "main"
-		}
-		// Version of the GKE cluster to run the tests on
-		// spec.releaseChannel.channel from:
-		// https://cloud.google.com/config-connector/docs/reference/resource-docs/container/containercluster
-		f.gkeVersion = os.Getenv("GKE_VERSION")
-		switch f.gkeVersion {
-		case "STABLE":
-		case "REGULAR":
-		case "RAPID":
-			break
-		default:
-			log.Printf("GKE_VERSION is invalid (%q), defaulting to 'STABLE'", f.gkeVersion)
-			f.gkeVersion = "STABLE"
-		}
+	rand.Seed(time.Now().UTC().UnixNano())
 
-		tempDir, err := os.MkdirTemp("", "csi-tests")
-		check(err)
-		f.tempDir = tempDir
-		f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
-		f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
-		f.testRotateSecretID = f.testSecretID + "-rotate"
+	f.gcpProviderBranch = os.Getenv("GCP_PROVIDER_SHA")
+	if len(f.gcpProviderBranch) == 0 {
+		log.Fatal("GCP_PROVIDER_SHA is empty")
+	}
+	f.testProjectID = os.Getenv("PROJECT_ID")
+	if len(f.testProjectID) == 0 {
+		log.Fatal("PROJECT_ID is empty")
+	}
+	f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
+	if len(f.secretStoreVersion) == 0 {
+		log.Println("SECRET_STORE_VERSION is empty, defaulting to 'main'")
+		f.secretStoreVersion = "main"
+	}
+	// Version of the GKE cluster to run the tests on
+	// spec.releaseChannel.channel from:
+	// https://cloud.google.com/config-connector/docs/reference/resource-docs/container/containercluster
+	f.gkeVersion = os.Getenv("GKE_VERSION")
+	switch f.gkeVersion {
+	case "STABLE":
+	case "REGULAR":
+	case "RAPID":
+		break
+	default:
+		log.Printf("GKE_VERSION is invalid (%q), defaulting to 'STABLE'", f.gkeVersion)
+		f.gkeVersion = "STABLE"
+	}
 
-		// Build the plugin deploy yaml
-		pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
-		check(replaceTemplate("templates/provider-gcp-plugin.yaml.tmpl", pluginFile))
+	tempDir, err := os.MkdirTemp("", "csi-tests")
+	check(err)
+	f.tempDir = tempDir
+	f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
+	f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
+	f.testRotateSecretID = f.testSecretID + "-rotate"
 
-		// Create test cluster
-		clusterFile := filepath.Join(tempDir, "test-cluster.yaml")
-		check(replaceTemplate("templates/test-cluster.yaml.tmpl", clusterFile))
-		check(execCmd(exec.Command("kubectl", "apply", "-f", clusterFile)))
-		check(execCmd(exec.Command("kubectl", "wait", "containercluster/"+f.testClusterName,
-			"--for=condition=Ready", "--timeout", "15m")))
+	// Build the plugin deploy yaml
+	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
+	check(replaceTemplate("templates/provider-gcp-plugin.yaml.tmpl", pluginFile))
 
-		// Get kubeconfig to use to authenticate to test cluster
-		f.kubeconfigFile = filepath.Join(f.tempDir, "test-cluster-kubeconfig")
-		gcloudCmd := exec.Command("gcloud", "container", "clusters", "get-credentials", f.testClusterName,
-			"--zone", zone, "--project", f.testProjectID)
-		gcloudCmd.Env = append(os.Environ(), "KUBECONFIG="+f.kubeconfigFile)
-		check(execCmd(gcloudCmd))
+	// Create test cluster
+	clusterFile := filepath.Join(tempDir, "test-cluster.yaml")
+	check(replaceTemplate("templates/test-cluster.yaml.tmpl", clusterFile))
+	check(execCmd(exec.Command("kubectl", "apply", "-f", clusterFile)))
+	check(execCmd(exec.Command("kubectl", "wait", "containercluster/"+f.testClusterName,
+		"--for=condition=Ready", "--timeout", "15m")))
 
-		// Install Secret Store
-		check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretproviderclass.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretprovidersyncing.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/csidriver.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store-csi-driver.yaml", f.secretStoreVersion),
-		)))
+	// Get kubeconfig to use to authenticate to test cluster
+	f.kubeconfigFile = filepath.Join(f.tempDir, "test-cluster-kubeconfig")
+	gcloudCmd := exec.Command("gcloud", "container", "clusters", "get-credentials", f.testClusterName,
+		"--zone", zone, "--project", f.testProjectID)
+	gcloudCmd.Env = append(os.Environ(), "KUBECONFIG="+f.kubeconfigFile)
+	check(execCmd(gcloudCmd))
 
-		// Install GCP Plugin and Workload Identity bindings
-		check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-			"-f", pluginFile)))
+	// Install Secret Store
+	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretproviderclass.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretprovidersyncing.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/csidriver.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store-csi-driver.yaml", f.secretStoreVersion),
+	)))
 
-		// Create test secret
-		secretFile := filepath.Join(f.tempDir, "secretValue")
-		check(os.WriteFile(secretFile, []byte(f.testSecretID), 0644))
-		check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
-			"--data-file", secretFile, "--project", f.testProjectID)))
-	} else {
+	// Install GCP Plugin and Workload Identity bindings
+	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"-f", pluginFile)))
+
+	// Create test secret
+	secretFile := filepath.Join(f.tempDir, "secretValue")
+	check(os.WriteFile(secretFile, []byte(f.testSecretID), 0644))
+	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
+		"--data-file", secretFile, "--project", f.testProjectID)))
+	if isTokenPassed {
 		type metadataStruct struct {
 			Name string `yaml:"name"`
 		}
@@ -173,6 +173,7 @@ func setupTestSuite(isTokenPassed bool) {
 			AttachRequired       bool             `yaml:"attachRequired"`
 			VolumeLifecycleModes []string         `yaml:"volumeLifecycleModes"`
 			TokenRequests        []audienceStruct `yaml:"tokenRequests"`
+			RequiredRepublish    bool             `yaml:"requiresRepublish"`
 		}
 
 		type driver struct {
@@ -197,6 +198,7 @@ func setupTestSuite(isTokenPassed bool) {
 				AttachRequired:       false,
 				VolumeLifecycleModes: []string{"Ephemeral"},
 				TokenRequests:        []audienceStruct{aud},
+				RequiredRepublish:    true,
 			},
 		}
 
@@ -259,13 +261,6 @@ func teardownTestSuite() {
 func TestMain(m *testing.M) {
 	withoutTokenStatus := runTest(m, false)
 	withTokenStatus := runTest(m, true)
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Test execution panic:", r)
-			code = 1
-		}
-		teardownTestSuite()
-	}()
 	fmt.Printf("Exit Code when token is not passed from driver to provder is: %v", withoutTokenStatus)
 	fmt.Printf("Exit Code when token is passed from driver to provder is: %v", withTokenStatus)
 	os.Exit(withoutTokenStatus & withTokenStatus)
@@ -273,6 +268,14 @@ func TestMain(m *testing.M) {
 
 // Handles setup/teardown test suite and runs test. Returns exit code.
 func runTest(m *testing.M, isTokenPassed bool) (code int) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Test execution panic:", r)
+			code = 1
+		}
+		teardownTestSuite()
+	}()
+
 	setupTestSuite(isTokenPassed)
 	return m.Run()
 }
