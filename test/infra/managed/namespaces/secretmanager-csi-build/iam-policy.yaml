@@ -38,6 +38,9 @@ spec:
     - members:
         - serviceAccount:service-735463103342@gcp-sa-artifactregistry.iam.gserviceaccount.com
       role: roles/storage.objectViewer
+    - members:
+        - serviceAccount:service-735463103342@gcp-sa-artifactregistry.iam.gserviceaccount.com
+      role: roles/storage.objectViewer
     # cnrm controller permissions (manage all test/infra/managed resources)
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
