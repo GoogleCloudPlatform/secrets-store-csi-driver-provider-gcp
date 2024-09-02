@@ -26,6 +26,8 @@ spec:
     secrets: |
       - resourceName: "projects/$PROJECT_ID/secrets/$TEST_SECRET_ID-rotate/versions/latest"
         path: "rotate"
+      - resourceName: "projects/$PROJECT_ID/locations/$LOCATION_ID/secrets/$TEST_SECRET_ID-rotate/versions/latest"
+        path: regional-rotate
 ---
 apiVersion: v1
 kind: Pod

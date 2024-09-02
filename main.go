@@ -133,6 +133,9 @@ func main() {
 		klog.Fatal("failed to create secretmanager client")
 	}
 
+	// To cache the clients for regional endpoints.
+	m := make(map[string]*secretmanager.Client)
+
 	// IAM client
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
@@ -178,8 +181,10 @@ func main() {
 
 	// setup provider grpc server
 	s := &server.Server{
-		SecretClient: sc,
-		AuthClient:   c,
+		SecretClient:          sc,
+		AuthClient:            c,
+		RegionalSecretClients: m,
+		SmOpts:                smOpts,
 	}
 
 	p, err := vars.ProviderName.GetValue()
