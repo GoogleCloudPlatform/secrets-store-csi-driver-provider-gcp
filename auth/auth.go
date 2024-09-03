@@ -219,17 +219,17 @@ func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig
 
 func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, error) {
 	// Determine Workload ID parameters from the GCE instance metadata.
-	projectID, err := c.MetadataClient.ProjectID()
+	projectID, err := c.MetadataClient.ProjectIDWithContext(ctx)
 	if err != nil {
 		return "", "", fmt.Errorf("unable to get project id: %w", err)
 	}
 	idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
 
-	clusterLocation, err := c.MetadataClient.InstanceAttributeValue("cluster-location")
+	clusterLocation, err := c.MetadataClient.InstanceAttributeValueWithContext(ctx, "cluster-location")
 	if err != nil {
 		return "", "", fmt.Errorf("unable to determine cluster location: %w", err)
 	}
-	clusterName, err := c.MetadataClient.InstanceAttributeValue("cluster-name")
+	clusterName, err := c.MetadataClient.InstanceAttributeValueWithContext(ctx, "cluster-name")
 	if err != nil {
 		return "", "", fmt.Errorf("unable to determine cluster name: %w", err)
 	}

@@ -195,7 +195,7 @@ func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {
 		}
 	}()
 
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithContextDialer(
+	conn, err := grpc.NewClient("passthrough:whatever", grpc.WithContextDialer(
 		func(context.Context, string) (net.Conn, error) {
 			return l.Dial()
 		}),
