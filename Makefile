@@ -41,12 +41,12 @@ staticcheck:
 .PHONY: staticcheck
 
 licensescsv:
-	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
+	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses@latest && cd ..)
 	@go-licenses csv . | sort > licenses.csv
 .PHONY: licensescsv
 
 licensescheck:
-	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
+	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses@latest && cd ..)
 	@go-licenses check . 
 .PHONY: licensescheck
 
