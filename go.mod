@@ -22,7 +22,7 @@ require (
 	cloud.google.com/go/secretmanager v1.14.0
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.13.0
-	github.com/prometheus/client_golang v1.20.2
+	github.com/prometheus/client_golang v1.20.3
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.51.0
 	golang.org/x/oauth2 v0.22.0
