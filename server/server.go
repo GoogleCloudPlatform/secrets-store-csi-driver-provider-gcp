@@ -125,6 +125,11 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 				errs[i] = err
 				return
 			}
+
+			if len(loc) > locationLengthLimit {
+				errs[i] = fmt.Errorf("invalid location string, please check the location")
+				return
+			}
 			var secretClient *secretmanager.Client
 			if loc == "" {
 				secretClient = client
@@ -226,11 +231,11 @@ func buildErr(errs []error) error {
 // locationFromSecretResource returns location from the secret resource if the resource is in format "projects/<project_id>/locations/<location_id>/..."
 // returns "" for global secret resource.
 func locationFromSecretResource(resource string) (string, error) {
-	globalSecretRegexp := regexp.MustCompile("projects/([^/]+)/secrets/([^/]+)/versions/([^/]+)$")
+	globalSecretRegexp := regexp.MustCompile(globalSecretRegex)
 	if m := globalSecretRegexp.FindStringSubmatch(resource); m != nil {
 		return "", nil
 	}
-	regionalSecretRegexp := regexp.MustCompile("projects/([^/]+)/locations/([^/]+)/secrets/([^/]+)/versions/([^/]+)$")
+	regionalSecretRegexp := regexp.MustCompile(regionalSecretRegex)
 	if m := regionalSecretRegexp.FindStringSubmatch(resource); m != nil {
 		return m[2], nil
 	}

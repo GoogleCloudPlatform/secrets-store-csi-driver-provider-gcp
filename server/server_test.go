@@ -132,6 +132,37 @@ func TestHandleMountEventSMError(t *testing.T) {
 	}
 }
 
+func TestHandleMountEventsInvalidLocations(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/locations/very_very_very_very_very_very_very_very_long_location/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+			{
+				ResourceName: "projects/project/locations/split/location/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
+	if !strings.Contains(got.Error(), "invalid location") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+	if !strings.Contains(got.Error(), "Invalid secret resource name") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+}
+
 func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
@@ -188,15 +219,17 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 
 func TestHandleMountEventForRegionalSecret(t *testing.T) {
 	secretFileMode := int32(0600) // decimal 384
+	const secretVersionByAlias = "projects/project/locations/us-central1/secrets/test/versions/latest"
+	const secretVersionByID = "projects/project/locations/us-central1/secrets/test/versions/2"
 
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
-				ResourceName: "projects/project/locations/us-central1/secrets/test/versions/latest",
+				ResourceName: secretVersionByAlias,
 				FileName:     "good1.txt",
 			},
 			{
-				ResourceName: "projects/project/locations/us-central1/secrets/test/versions/latest",
+				ResourceName: secretVersionByAlias,
 				FileName:     "good2.txt",
 				Mode:         &secretFileMode,
 			},
@@ -211,12 +244,12 @@ func TestHandleMountEventForRegionalSecret(t *testing.T) {
 	want := &v1alpha1.MountResponse{
 		ObjectVersion: []*v1alpha1.ObjectVersion{
 			{
-				Id:      "projects/project/locations/us-central1/secrets/test/versions/latest",
-				Version: "projects/project/locations/us-central1/secrets/test/versions/2",
+				Id:      secretVersionByAlias,
+				Version: secretVersionByID,
 			},
 			{
-				Id:      "projects/project/locations/us-central1/secrets/test/versions/latest",
-				Version: "projects/project/locations/us-central1/secrets/test/versions/2",
+				Id:      secretVersionByAlias,
+				Version: secretVersionByID,
 			},
 		},
 		Files: []*v1alpha1.File{
@@ -236,9 +269,9 @@ func TestHandleMountEventForRegionalSecret(t *testing.T) {
 	client := mock(t, &mockSecretServer{
 		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
 			return &secretmanagerpb.AccessSecretVersionResponse{
-				Name: "projects/project/locations/us-central1/secrets/test/versions/2",
+				Name: secretVersionByID,
 				Payload: &secretmanagerpb.SecretPayload{
-					Data: []byte("My Secret"),
+					Data: []byte("Global Secret"),
 				},
 			}, nil
 		},
@@ -247,7 +280,7 @@ func TestHandleMountEventForRegionalSecret(t *testing.T) {
 	regionalClient := mock(t, &mockSecretServer{
 		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
 			return &secretmanagerpb.AccessSecretVersionResponse{
-				Name: "projects/project/locations/us-central1/secrets/test/versions/2",
+				Name: secretVersionByID,
 				Payload: &secretmanagerpb.SecretPayload{
 					Data: []byte("My Secret"),
 				},
