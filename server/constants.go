@@ -16,7 +16,7 @@
 package server
 
 const (
-	locationLengthLimit = 30 // Maximun length of location is string is 30
+	locationLengthLimit = 30 // Maximum length of location is string is 30
 	// #nosec G101 - Not actually hardcoded credentials
 	regionalSecretRegex = "projects/([^/]+)/locations/([^/]+)/secrets/([^/]+)/versions/([^/]+)$"
 	// #nosec G101 - Not actually hardcoded credentials

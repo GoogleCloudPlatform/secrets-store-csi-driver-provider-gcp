@@ -111,8 +111,32 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 	// In parallel fetch all secrets needed for the mount
 	wg := sync.WaitGroup{}
 	for i, secret := range cfg.Secrets {
-		wg.Add(1)
+		loc, err := locationFromSecretResource(secret.ResourceName)
+		if err != nil {
+			errs[i] = err
+			continue
+		}
 
+		if len(loc) > locationLengthLimit {
+			errs[i] = fmt.Errorf("invalid location string, please check the location")
+			continue
+		}
+		var secretClient *secretmanager.Client
+		if loc == "" {
+			secretClient = client
+		} else {
+			if _, ok := regionalClients[loc]; !ok {
+				ep := option.WithEndpoint(fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", loc))
+				regionalClient, err := secretmanager.NewClient(ctx, append(smOpts, ep)...)
+				if err != nil {
+					errs[i] = err
+					continue
+				}
+				regionalClients[loc] = regionalClient
+			}
+			secretClient = regionalClients[loc]
+		}
+		wg.Add(1)
 		i, secret := i, secret
 		go func() {
 			defer wg.Done()
@@ -120,31 +144,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 				Name: secret.ResourceName,
 			}
 			smMetricRecorder := csrmetrics.OutboundRPCStartRecorder("secretmanager_access_secret_version_requests")
-			loc, err := locationFromSecretResource(secret.ResourceName)
-			if err != nil {
-				errs[i] = err
-				return
-			}
 
-			if len(loc) > locationLengthLimit {
-				errs[i] = fmt.Errorf("invalid location string, please check the location")
-				return
-			}
-			var secretClient *secretmanager.Client
-			if loc == "" {
-				secretClient = client
-			} else {
-				if _, ok := regionalClients[loc]; !ok {
-					ep := option.WithEndpoint(fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", loc))
-					regionalClient, err := secretmanager.NewClient(ctx, append(smOpts, ep)...)
-					if err != nil {
-						errs[i] = err
-						return
-					}
-					regionalClients[loc] = regionalClient
-				}
-				secretClient = regionalClients[loc]
-			}
 			resp, err := secretClient.AccessSecretVersion(ctx, req, callAuth)
 			if err != nil {
 				if e, ok := status.FromError(err); ok {
