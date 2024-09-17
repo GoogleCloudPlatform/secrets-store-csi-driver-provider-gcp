@@ -41,6 +41,7 @@ type testFixture struct {
 	testProjectID      string
 	secretStoreVersion string
 	gkeVersion         string
+	location           string
 }
 
 var f testFixture
@@ -58,6 +59,46 @@ func execCmd(command *exec.Cmd) error {
 	stdoutStderr, err := command.CombinedOutput()
 	fmt.Println(string(stdoutStderr))
 	return err
+}
+
+// Checks mounted secret content
+func checkMountedSecret(secretId string) error {
+	var stdout, stderr bytes.Buffer
+	command := exec.Command("kubectl", "exec", "test-secret-mounter",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+		"--",
+		"cat", fmt.Sprintf("/var/gcp-test-secrets/%s", secretId))
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		return fmt.Errorf("Could not read secret from container: %v", err)
+	}
+	if !bytes.Equal(stdout.Bytes(), []byte(secretId)) {
+		return fmt.Errorf("Secret value is %v, want: %v", stdout.String(), secretId)
+	}
+	return nil
+}
+
+// Checks file mode of secrets
+func checkFileMode(secretId string) error {
+	var stdout, stderr bytes.Buffer
+	command := exec.Command("kubectl", "exec", "test-secret-mode",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+		"--",
+		"stat", "--printf", "%a", fmt.Sprintf("/var/gcp-test-secrets/..data/%s", secretId))
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		return fmt.Errorf("Could not read secret from container: %v", err)
+	}
+	if !bytes.Equal(stdout.Bytes(), []byte("400")) {
+		return fmt.Errorf("Secret file mode is %v, want: %v", stdout.String(), "400")
+	}
+	return nil
 }
 
 // Replaces variables in an input template file and writes the result to an
@@ -78,6 +119,7 @@ func replaceTemplate(templateFile string, destFile string) error {
 	template = strings.ReplaceAll(template, "$GCP_PROVIDER_SHA", f.gcpProviderBranch)
 	template = strings.ReplaceAll(template, "$ZONE", zone)
 	template = strings.ReplaceAll(template, "$GKE_VERSION", f.gkeVersion)
+	template = strings.ReplaceAll(template, "$LOCATION_ID", f.location)
 
 	return os.WriteFile(destFile, []byte(template), 0644)
 
@@ -95,6 +137,10 @@ func setupTestSuite(isTokenPassed bool) {
 	f.testProjectID = os.Getenv("PROJECT_ID")
 	if len(f.testProjectID) == 0 {
 		log.Fatal("PROJECT_ID is empty")
+	}
+	f.location = os.Getenv("LOCATION_ID")
+	if len(f.testProjectID) == 0 {
+		log.Fatal("LOCATION_ID is empty")
 	}
 	f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
 	if len(f.secretStoreVersion) == 0 {
@@ -159,6 +205,15 @@ func setupTestSuite(isTokenPassed bool) {
 	check(os.WriteFile(secretFile, []byte(f.testSecretID), 0644))
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
 		"--data-file", secretFile, "--project", f.testProjectID)))
+
+	// Create regional secret
+	secretFile = filepath.Join(f.tempDir, "regionalSecretValue")
+	check(os.WriteFile(secretFile, []byte(f.testSecretID+"-regional"), 0644))
+	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
+		"https://secretmanager."+f.location+".rep.googleapis.com/")))
+	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--location", f.location,
+		"--data-file", secretFile, "--project", f.testProjectID)))
+	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 	if isTokenPassed {
 		type metadataStruct struct {
 			Name string `yaml:"name"`
@@ -255,6 +310,15 @@ func teardownTestSuite() {
 		"--project", f.testProjectID,
 		"--quiet",
 	))
+
+	// Create regional secret
+	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
+		"https://secretmanager."+f.location+".rep.googleapis.com/")))
+	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--location", f.location,
+		"--project", f.testProjectID, "--quiet")))
+	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testRotateSecretID, "--location", f.location,
+		"--project", f.testProjectID, "--quiet")))
+	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 }
 
 // Entry point for go test.
@@ -300,20 +364,11 @@ func TestMountSecret(t *testing.T) {
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-mounter",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"cat", fmt.Sprintf("/var/gcp-test-secrets/%s", f.testSecretID))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
+	if err := checkMountedSecret(f.testSecretID); err != nil {
+		t.Fatalf("Error while testing global secret: %v", err)
 	}
-	if !bytes.Equal(stdout.Bytes(), []byte(f.testSecretID)) {
-		t.Fatalf("Secret value is %v, want: %v", stdout.String(), f.testSecretID)
+	if err := checkMountedSecret(f.testSecretID + "-regional"); err != nil {
+		t.Fatalf("Error while testing regional secret: %v", err)
 	}
 }
 
@@ -337,20 +392,11 @@ func TestMountSecretFileMode(t *testing.T) {
 	}
 
 	// stat the file in the symlinked '..data' directory, symlink will always return 777 otherwise
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-mode",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"stat", "--printf", "%a", fmt.Sprintf("/var/gcp-test-secrets/..data/%s", f.testSecretID))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
+	if err := checkFileMode(f.testSecretID); err != nil {
+		t.Fatalf("Error while testing global secret: %v", err)
 	}
-	if !bytes.Equal(stdout.Bytes(), []byte("400")) {
-		t.Fatalf("Secret file mode is %v, want: %v", stdout.String(), "400")
+	if err := checkFileMode(f.testSecretID + "-regional"); err != nil {
+		t.Fatalf("Error while testing regional secret: %v", err)
 	}
 }
 
@@ -464,6 +510,8 @@ func TestMountSyncSecret(t *testing.T) {
 	if got := stdout.Bytes(); !bytes.Contains(got, []byte(f.testSecretID)) {
 		t.Fatalf("pod env value is %s, does not contain: %s", string(got), f.testSecretID)
 	}
+
+	// TODO: Add checks for regional secret
 }
 
 func TestMountRotateSecret(t *testing.T) {
@@ -485,6 +533,18 @@ func TestMountRotateSecret(t *testing.T) {
 		"--data-file", secretFileA,
 		"--project", f.testProjectID,
 	)))
+
+	// create a regional test secret
+	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
+		"https://secretmanager."+f.location+".rep.googleapis.com/")))
+
+	check(execCmd(exec.Command(
+		"gcloud", "secrets", "create", f.testRotateSecretID,
+		"--location", f.location,
+		"--data-file", secretFileA,
+		"--project", f.testProjectID,
+	)))
+	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 
 	// Deploy the test pod.
 	podFile := filepath.Join(f.tempDir, "test-rotate.yaml")
@@ -542,6 +602,18 @@ func TestMountRotateSecret(t *testing.T) {
 		"--project", f.testProjectID,
 	)))
 
+	// Rotate regional secret
+	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
+		"https://secretmanager."+f.location+".rep.googleapis.com/")))
+	check(execCmd(exec.Command(
+		"gcloud", "secrets", "versions", "add", f.testRotateSecretID,
+		"--data-file", secretFileB,
+		"--project", f.testProjectID,
+		"--location", f.location,
+	)))
+
+	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
+
 	// Wait for update. Keep in sync with driver's --rotation-poll-interval to
 	// ensure enough time.
 	time.Sleep(30 * time.Second)
@@ -566,4 +638,6 @@ func TestMountRotateSecret(t *testing.T) {
 	if got := stdout.Bytes(); !bytes.Equal(got, secretB) {
 		t.Fatalf("Secret value is %v, want: %v", got, secretB)
 	}
+
+	// TODO: Add checks for regional secret
 }

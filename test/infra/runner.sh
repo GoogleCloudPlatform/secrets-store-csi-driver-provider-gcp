@@ -25,6 +25,7 @@ export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v1.0.0}
 export GKE_VERSION=${GKE_VERSION:-STABLE}
 export GCP_PROVIDER_SHA=${GITHUB_SHA:-main}
 export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+export LOCATION_ID=us-central1
 
 # Build the driver image
 gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID --timeout 2400
@@ -36,7 +37,7 @@ export JOB_NAME="e2e-test-job-$(head /dev/urandom | base64 | tr -dc 'a-z' | head
 
 # Start up E2E tests
 gcloud container clusters get-credentials $CLUSTER_NAME --zone us-central1-c --project $PROJECT_ID
-sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$JOB_NAME/${JOB_NAME}/g;s/\$SECRET_STORE_VERSION/${SECRET_STORE_VERSION}/g;s/\$GKE_VERSION/${GKE_VERSION}/g" \
+sed "s/\$GCP_PROVIDER_SHA/${GCP_PROVIDER_SHA}/g;s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$LOCATION_ID/${LOCATION_ID}/g;s/\$JOB_NAME/${JOB_NAME}/g;s/\$SECRET_STORE_VERSION/${SECRET_STORE_VERSION}/g;s/\$GKE_VERSION/${GKE_VERSION}/g" \
     test/e2e/e2e-test-job.yaml.tmpl | kubectl apply -f -
 
 # Wait until job start, then subscribe to job logs
