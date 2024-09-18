@@ -18,6 +18,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -177,6 +178,10 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 	// Add secrets to response.
 	ovs := make([]*v1alpha1.ObjectVersion, len(cfg.Secrets))
 	for i, secret := range cfg.Secrets {
+		if cfg.Permissions > math.MaxInt32 {
+			return nil, fmt.Errorf("invalid file permission %d", cfg.Permissions)
+		}
+		// #nosec G115 Checking limit
 		mode := int32(cfg.Permissions)
 		if secret.Mode != nil {
 			mode = *secret.Mode
