@@ -6,6 +6,23 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.6.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
+
+Digest: `sha256:cb0cb5e7abf9487619f2a55acf4c608c8c17599d1b889cc88cb73356740f846b`
+
+### Changes & Security Fixes
+
+* Support for regional secrets [447](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/447)
+* Dependencies upgrade - golang version to 1.23 [458](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/458)
+* Protobuf encoding for core K8s APIs [455](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/455) 
+
+
 ## v1.5.0
 
 Images:
