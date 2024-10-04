@@ -117,15 +117,20 @@ func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oaut
 // its own token. Token creation can be removed once driver implements the requiresRepublish.
 func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.Token, error) {
 
+	var audience string
 	idPool, idProvider, err := c.gkeWorkloadIdentity(ctx, cfg)
 	if err != nil {
-		idPool, idProvider, err = c.fleetWorkloadIdentity(ctx, cfg)
+		idPool, idProvider, audience, err = c.fleetWorkloadIdentity(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
+	if audience == "" {
+		audience = fmt.Sprintf("identitynamespace:%s:%s", idPool, idProvider)
+		klog.V(5).InfoS("workload id configured", "pool", idPool, "provider", idProvider)
+	} else {
+		klog.V(5).InfoS("workload federation pool audience", audience)
+	}
 
 	// Get iam.gke.io/gcp-service-account annotation to see if the
 	// identitybindingtoken token should be traded for a GCP SA token.
@@ -143,13 +148,13 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	// Obtain a serviceaccount token for the pod.
 	var saTokenVal string
 	if cfg.PodInfo.ServiceAccountTokens != "" {
-		saToken, err := c.extractSAToken(cfg, idPool) // calling function to extract token received from driver.
+		saToken, err := c.extractSAToken(cfg, idPool, audience) // calling function to extract token received from driver.
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch SA token from driver: %w", err)
 		}
 		saTokenVal = saToken.Token
 	} else {
-		saToken, err := c.generatePodSAToken(ctx, cfg, idPool) // if no token received, provider generates its own token.
+		saToken, err := c.generatePodSAToken(ctx, cfg, idPool, audience) // if no token received, provider generates its own token.
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch pod token: %w", err)
 		}
@@ -157,7 +162,7 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	}
 
 	// Trade the kubernetes token for an identitybindingtoken token.
-	idBindToken, err := tradeIDBindToken(ctx, c.HTTPClient, saTokenVal, idPool, idProvider)
+	idBindToken, err := tradeIDBindToken(ctx, c.HTTPClient, saTokenVal, audience)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch identitybindingtoken: %w", err)
 	}
@@ -179,28 +184,32 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	return &oauth2.Token{AccessToken: gcpSAResp.GetAccessToken()}, nil
 }
 
-func (c *Client) extractSAToken(cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {
+func (c *Client) extractSAToken(cfg *config.MountConfig, idPool, audience string) (*authenticationv1.TokenRequestStatus, error) {
 	audienceTokens := map[string]authenticationv1.TokenRequestStatus{}
 	if err := json.Unmarshal([]byte(cfg.PodInfo.ServiceAccountTokens), &audienceTokens); err != nil {
 		return nil, err
 	}
 	for k, v := range audienceTokens {
-		if k == idPool { // Only returns the token if the audience is the workload identity. Other tokens cannot be used.
+		if k == idPool || k == audience { // Only returns the token if the audience is the workload identity. Other tokens cannot be used.
 			return &v, nil
 		}
 	}
 	return nil, fmt.Errorf("no token has audience value of idPool")
 }
 
-func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig, idPool string) (*authenticationv1.TokenRequestStatus, error) {
+func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig, idPool, audience string) (*authenticationv1.TokenRequestStatus, error) {
 	ttl := int64((15 * time.Minute).Seconds())
+	_audience := idPool
+	if _audience == "" {
+		_audience = audience
+	}
 	resp, err := c.KubeClient.CoreV1().
 		ServiceAccounts(cfg.PodInfo.Namespace).
 		CreateToken(ctx, cfg.PodInfo.ServiceAccount,
 			&authenticationv1.TokenRequest{
 				Spec: authenticationv1.TokenRequestSpec{
 					ExpirationSeconds: &ttl,
-					Audiences:         []string{idPool},
+					Audiences:         []string{_audience},
 					BoundObjectRef: &authenticationv1.BoundObjectReference{
 						Kind:       "Pod", // Pod and secret are the only valid types
 						APIVersion: "v1",
@@ -243,44 +252,45 @@ func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfi
 	return idPool, idProvider, nil
 }
 
-func (c *Client) fleetWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, error) {
+func (c *Client) fleetWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, string, error) {
 	const envVar = "GOOGLE_APPLICATION_CREDENTIALS"
 	var jsonData []byte
 	var err error
 	if filename := os.Getenv(envVar); filename != "" {
 		jsonData, err = os.ReadFile(filepath.Clean(filename))
 		if err != nil {
-			return "", "", fmt.Errorf("google: error getting credentials using %v environment variable: %v", envVar, err)
+			return "", "", "", fmt.Errorf("google: error getting credentials using %v environment variable: %v", envVar, err)
 		}
 	}
 
 	// Parse jsonData as one of the other supported credentials files.
 	var f credentialsFile
 	if err := json.Unmarshal(jsonData, &f); err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	if f.Type != externalAccountKey {
-		return "", "", fmt.Errorf("google: unexpected credentials type: %v, expected: %v", f.Type, externalAccountKey)
+		return "", "", "", fmt.Errorf("google: unexpected credentials type: %v, expected: %v", f.Type, externalAccountKey)
 	}
 
 	split := strings.SplitN(f.Audience, ":", 3)
 	if split == nil || len(split) < 3 {
-		return "", "", fmt.Errorf("google: unexpected audience value: %v", f.Audience)
+		// If the audience is not in the expected format, return the audience as the audience since this is likely a federated pool.
+		return "", "", f.Audience, nil
 	}
 	idPool := split[1]
 	idProvider := split[2]
 
-	return idPool, idProvider, nil
+	return idPool, idProvider, "", nil
 }
 
-func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, idPool, idProvider string) (*oauth2.Token, error) {
+func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, audience string) (*oauth2.Token, error) {
 	body, err := json.Marshal(map[string]string{
 		"grant_type":           "urn:ietf:params:oauth:grant-type:token-exchange",
 		"subject_token_type":   "urn:ietf:params:oauth:token-type:jwt",
 		"requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
 		"subject_token":        k8sToken,
-		"audience":             fmt.Sprintf("identitynamespace:%s:%s", idPool, idProvider),
+		"audience":             audience,
 		"scope":                "https://www.googleapis.com/auth/cloud-platform",
 	})
 	if err != nil {
