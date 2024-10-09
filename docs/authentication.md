@@ -42,7 +42,7 @@ as it will allow you to use your local `gcloud` identity to fetch secrets.
 namespace isolation. All requests to the Secret Manager API will originate from
 the same identity.
 
-## `nodePublishSecretRef`
+## `nodePublishSecretRef` [Available till release v1.6.0]
 
 The Kubernetes implementation of CSI allows referencing a Kubernetes Secret for
 volume mounts:

@@ -38,7 +38,6 @@ func TestParse(t *testing.T) {
 					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
-				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -72,7 +71,6 @@ func TestParse(t *testing.T) {
 					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
-				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -107,7 +105,6 @@ func TestParse(t *testing.T) {
 					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
-				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -145,7 +142,6 @@ func TestParse(t *testing.T) {
 					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
-				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -174,7 +170,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name: "nodePublishSecretRef",
+			name: "default to AuthPodADC",
 			in: &MountParams{
 				Attributes: `
 				{
@@ -185,7 +181,6 @@ func TestParse(t *testing.T) {
 					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
-				KubeSecrets: `{"key.json":"{\"private_key_id\": \"123\",\"private_key\": \"a-secret\",\"token_uri\": \"https://example.com/token\",\"type\": \"service_account\"}"}`,
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -202,10 +197,9 @@ func TestParse(t *testing.T) {
 					UID:            "123",
 					ServiceAccount: "mysa",
 				},
-				TargetPath:            "/tmp/foo",
-				Permissions:           777,
-				AuthNodePublishSecret: true,
-				AuthKubeSecret:        []byte(`{"private_key_id": "123","private_key": "a-secret","token_uri": "https://example.com/token","type": "service_account"}`),
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+				AuthPodADC:  true,
 			},
 		},
 		{
@@ -221,7 +215,6 @@ func TestParse(t *testing.T) {
 					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
-				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -256,7 +249,6 @@ func TestParse(t *testing.T) {
 					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
-				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -302,7 +294,6 @@ func TestParseErrors(t *testing.T) {
 			name: "unparsable attributes",
 			in: &MountParams{
 				Attributes:  "",
-				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -311,7 +302,6 @@ func TestParseErrors(t *testing.T) {
 			name: "missing secrets attribute",
 			in: &MountParams{
 				Attributes:  "{}",
-				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -324,59 +314,6 @@ func TestParseErrors(t *testing.T) {
 					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  mode: \"-rw-------\"",
 				}
 				`,
-				KubeSecrets: "",
-				TargetPath:  "/tmp/foo",
-				Permissions: 777,
-			},
-		},
-		{
-			name: "unparsable kubernetes secrets",
-			in: &MountParams{
-				Attributes: `
-				{
-					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
-					"csi.storage.k8s.io/pod.namespace": "default",
-					"csi.storage.k8s.io/pod.name": "mypod",
-					"csi.storage.k8s.io/pod.uid": "123"
-				}
-				`,
-				KubeSecrets: "",
-				TargetPath:  "/tmp/foo",
-				Permissions: 777,
-			},
-		},
-		{
-			name: "both nodePublishSecretRef and provider-adc",
-			in: &MountParams{
-				Attributes: `
-				{
-					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
-					"auth": "provider-adc",
-					"csi.storage.k8s.io/pod.namespace": "default",
-					"csi.storage.k8s.io/pod.name": "mypod",
-					"csi.storage.k8s.io/pod.uid": "123",
-					"csi.storage.k8s.io/serviceAccount.name": "mysa"
-				}
-				`,
-				KubeSecrets: `{"key.json":"{\"private_key_id\": \"123\",\"private_key\": \"a-secret\",\"token_uri\": \"https://example.com/token\",\"type\": \"service_account\"}"}`,
-				TargetPath:  "/tmp/foo",
-				Permissions: 777,
-			},
-		},
-		{
-			name: "both nodePublishSecretRef and pod-adc",
-			in: &MountParams{
-				Attributes: `
-				{
-					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
-					"auth": "pod-adc",
-					"csi.storage.k8s.io/pod.namespace": "default",
-					"csi.storage.k8s.io/pod.name": "mypod",
-					"csi.storage.k8s.io/pod.uid": "123",
-					"csi.storage.k8s.io/serviceAccount.name": "mysa"
-				}
-				`,
-				KubeSecrets: `{"key.json":"{\"private_key_id\": \"123\",\"private_key\": \"a-secret\",\"token_uri\": \"https://example.com/token\",\"type\": \"service_account\"}"}`,
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
@@ -394,7 +331,6 @@ func TestParseErrors(t *testing.T) {
 					"csi.storage.k8s.io/serviceAccount.name": "mysa"
 				}
 				`,
-				KubeSecrets: `{"key.json":"{\"private_key_id\": \"123\",\"private_key\": \"a-secret\",\"token_uri\": \"https://example.com/token\",\"type\": \"service_account\"}"}`,
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},

@@ -64,9 +64,12 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 
 	params := &config.MountParams{
 		Attributes:  req.GetAttributes(),
-		KubeSecrets: req.GetSecrets(),
 		TargetPath:  req.GetTargetPath(),
 		Permissions: os.FileMode(p),
+	}
+
+	if req.GetSecrets() != "null" {
+		klog.Errorln("Authentication using NodePublishSecretRef is not supported.")
 	}
 
 	cfg, err := config.Parse(params)

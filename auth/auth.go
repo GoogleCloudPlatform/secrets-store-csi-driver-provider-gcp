@@ -71,14 +71,6 @@ type credentialsFile struct {
 // TokenSource returns the correct oauth2.TokenSource depending on the auth
 // configuration of the MountConfig.
 func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oauth2.TokenSource, error) {
-	if cfg.AuthNodePublishSecret {
-		creds, err := google.CredentialsFromJSON(ctx, cfg.AuthKubeSecret, cloudScope)
-		if err != nil {
-			return nil, fmt.Errorf("unable to generate credentials from key.json: %w", err)
-		}
-		return creds.TokenSource, nil
-	}
-
 	if cfg.AuthProviderADC {
 		return google.DefaultTokenSource(ctx, cloudScope)
 	}
