@@ -208,13 +208,13 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 			if !ok {
 				return nil, fmt.Errorf("key %v does not exist at the secret path", extractKey)
 			} else {
-				data_content, ok := value.(string)
+				dataContent, ok := value.(string)
 
 				// If there is a type conversion error
 				if !ok {
 					return nil, fmt.Errorf("wrong type for content (%v), expected string", value.(string))
 				}
-				content = []byte(data_content)
+				content = []byte(dataContent)
 			}
 		}
 
