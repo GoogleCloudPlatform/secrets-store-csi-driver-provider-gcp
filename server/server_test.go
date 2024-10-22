@@ -497,8 +497,8 @@ func TestHandleMountEventForMultipleSecretsExtractKey(t *testing.T) {
 						Data: []byte(`{"user":"admin2", "password":"password@12345"}`),
 					},
 				}, nil
-				default:
-					return nil, nil
+			default:
+				return nil, nil
 			}
 		},
 	})
