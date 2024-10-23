@@ -19,8 +19,47 @@ to access secrets stored in Secret Manager as files mounted in Kubernetes pods.
 
 ```shell
 kubectl apply -f deploy/provider-gcp-plugin.yaml
-# if you want to use helm
-# helm upgrade --install secrets-store-csi-driver-provider-gcp charts/secrets-store-csi-driver-provider-gcp
+```
+
+### Installation via Helm
+
+* Use the following Helm commands to install the `secrets-store-csi-driver-provider-gcp`.
+
+* First, it is necessary to build the dependencies for the `secrets-store-csi-driver` Helm chart.
+
+```shell
+helm dependency build charts/secrets-store-csi-driver-provider-gcp
+```
+
+*  Use the following Helm command to deploy the `secrets-store-csi-driver-provider-gcp`.
+
+```shell
+helm upgrade --install secrets-store-csi-driver-provider-gcp charts/secrets-store-csi-driver-provider-gcp --namespace kube-system
+```
+
+* If a user wants to deploy both the `secrets-store-csi-driver` and `secrets-store-csi-driver-provider-gcp` using a single Helm command, they need to explicitly enable the `secrets-store-csi-driver` chart dependency or modify the corresponding field in the `values.yaml` file. This method simplifies the installation process by eliminating the need to install the `secrets-store-csi-driver` through a separate Helm chart.
+
+1. Explicitly set the `enabled` field for that chart.
+```shell
+helm upgrade --install secrets-store-csi-driver-provider-gcp charts/secrets-store-csi-driver-provider-gcp --namespace kube-system --set secrets-store-csi-driver.enabled=true
+```
+2. Modify the value of the `enabled` parameter in the `values.yaml` configuration file. After modifying the value, execute the Helm install command given above.
+
+```shell
+secrets-store-csi-driver:
+  enabled: true
+```
+
+* To activate the Secret Sync feature for the CSI Secret Store driver, it must be explicitly enabled during installation. Use the following Helm command to install the driver with the Sync feature enabled. (If the `enabled` field of the `secrets-store-csi-driver` is set to true in values.yaml file, execute the command as provided. Otherwise, you must include the flag `--set secrets-store-csi-driver.enabled=true`)
+
+```shell
+helm upgrade --install secrets-store-csi-driver-provider-gcp charts/secrets-store-csi-driver-provider-gcp --namespace kube-system --set secrets-store-csi-driver.syncSecret.enabled=true 
+```
+
+* To enable automatic rotation for secrets, use the following Helm command to install the driver with the auto rotation feature enabled. (If the `enabled` field of the `secrets-store-csi-driver` is set to true in values.yaml file, execute the command as provided. Otherwise, you must include the flag `--set secrets-store-csi-driver.enabled=true`)
+
+```shell
+helm upgrade --install secrets-store-csi-driver-provider-gcp charts/secrets-store-csi-driver-provider-gcp --namespace kube-system --set secrets-store-csi-driver.enableSecretRotation=true
 ```
 
 NOTE: The driver's rotation and secret syncing functionality is still in Alpha and requires [additional installation
