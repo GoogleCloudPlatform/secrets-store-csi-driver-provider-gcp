@@ -51,6 +51,15 @@ type Secret struct {
 	// Mode is the optional file mode for the file containing the secret. Must be
 	// an octal value between 0000 and 0777 or a decimal value between 0 and 511
 	Mode *int32 `json:"mode,omitempty" yaml:"mode,omitempty"`
+
+	// ProjectID is the ID of the Google Cloud project where the secrets are stored.
+	ProjectID string `json:"projectID" yaml:"projectID"`
+
+	// Versions is the version of the secrets to fetch. If set to "latest", fetches the latest version.
+	Versions string `json:"versions" yaml:"versions"`
+
+	// Labels is the labels of the secrets to fetch.
+	Labels map[string]string `json:"labels" yaml:"labels"`
 }
 
 // PodInfo includes details about the pod that is receiving the mount event.

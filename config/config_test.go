@@ -61,6 +61,41 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "single secret with project ID, version, and labels",
+			in: &MountParams{
+				Attributes: `
+                {
+                    "secrets": "- projectID: \"my-project\"\n  versions: \"v1\"\n  labels: {\"key\": \"value\"}\n",
+                    "csi.storage.k8s.io/pod.namespace": "default",
+                    "csi.storage.k8s.io/pod.name": "mypod",
+                    "csi.storage.k8s.io/pod.uid": "123",
+                    "csi.storage.k8s.io/serviceAccount.name": "mysa"
+                }
+                `,
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+			want: &MountConfig{
+				Secrets: []*Secret{
+					{
+						ProjectID: "my-project",
+						Versions:  "v1",
+						Labels:    map[string]string{"key": "value"},
+					},
+				},
+				PodInfo: &PodInfo{
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
+				},
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+				AuthPodADC:  true,
+			},
+		},
+		{
 			name: "single secret with mode",
 			in: &MountParams{
 				Attributes: `
