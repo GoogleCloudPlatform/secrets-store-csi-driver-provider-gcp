@@ -46,7 +46,7 @@ import (
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
 
-func fetchSecrets(ctx context.Context, projectId string, version string, labels map[string]string, regionalClients map[string]*secretmanager.Client, callAuth gax.CallOption, smOpts []option.ClientOption) ([]*secretmanagerpb.AccessSecretVersionResponse, error) {
+func fetchSecrets(ctx context.Context, projectID string, version string, labels map[string]string, regionalClients map[string]*secretmanager.Client, callAuth gax.CallOption, smOpts []option.ClientOption) ([]*secretmanagerpb.AccessSecretVersionResponse, error) {
 	var parent string
 	var filter string
 	location, ok := labels["location"]
@@ -55,7 +55,7 @@ func fetchSecrets(ctx context.Context, projectId string, version string, labels 
 	if ok {
 		// Remove location from labels
 		delete(labels, "location")
-		parent = fmt.Sprintf("projects/%s/locations/%s", projectId, location)
+		parent = fmt.Sprintf("projects/%s/locations/%s", projectID, location)
 		filter = buildFilter(labels)
 
 		if _, ok := regionalClients[location]; !ok {
@@ -68,7 +68,7 @@ func fetchSecrets(ctx context.Context, projectId string, version string, labels 
 		}
 		secretClient = regionalClients[location]
 	} else {
-		parent = fmt.Sprintf("projects/%s", projectId)
+		parent = fmt.Sprintf("projects/%s", projectID)
 		filter = buildFilter(labels)
 		client, err := secretmanager.NewClient(ctx, smOpts...)
 		if err != nil {
