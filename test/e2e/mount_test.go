@@ -667,7 +667,7 @@ func TestMountExtractSecret(t *testing.T) {
 		"--project", f.testProjectID,
 	)))
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
-	
+
 	podFile := filepath.Join(f.tempDir, "test-extract-key.yaml")
 	if err := replaceTemplate("templates/test-extract-key.yaml.tmpl", podFile); err != nil {
 		t.Fatalf("Error replacing pod template: %v", err)
