@@ -641,3 +641,55 @@ func TestMountRotateSecret(t *testing.T) {
 
 	// TODO: Add checks for regional secret
 }
+
+// Execute a test job that mounts a extract secret and checks that the value is correct.
+func TestMountExtractSecret(t *testing.T) {
+	secretData := []byte(`{"user":"admin", "password":"password@1234"}`)
+
+	// Create test secret
+	secretFile := filepath.Join(f.tempDir, "secretExtractValue")
+	check(os.WriteFile(secretFile, secretData, 0644))
+	check(execCmd(exec.Command(
+		"gcloud", "secrets", "create", f.testSecretID,
+		"--replication-policy", "automatic",
+		"--data-file", secretFile,
+		"--project", f.testProjectID,
+	)))
+
+	// Create a regional test secret
+	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
+		"https://secretmanager."+f.location+".rep.googleapis.com/")))
+
+	check(execCmd(exec.Command(
+		"gcloud", "secrets", "create", f.testSecretID,
+		"--location", f.location,
+		"--data-file", secretFile,
+		"--project", f.testProjectID,
+	)))
+	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
+	
+	podFile := filepath.Join(f.tempDir, "test-extract-key.yaml")
+	if err := replaceTemplate("templates/test-extract-key.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for job: %v", err)
+	}
+	testExtractSecret := "admin"
+	if err := checkMountedSecret(testExtractSecret); err != nil {
+		t.Fatalf("Error while testing global secret: %v", err)
+	}
+	if err := checkMountedSecret(testExtractSecret); err != nil {
+		t.Fatalf("Error while testing regional secret: %v", err)
+	}
+}
