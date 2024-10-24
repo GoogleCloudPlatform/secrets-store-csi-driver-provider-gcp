@@ -222,11 +222,19 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 				errs[i] = err
 				continue
 			}
+			if cfg.Permissions > math.MaxInt32 {
+				return nil, fmt.Errorf("invalid file permission %d", cfg.Permissions)
+			}
+			// #nosec G115 Checking limit
+			mode := int32(cfg.Permissions)
+			if secret.Mode != nil {
+				mode = *secret.Mode
+			}
 
 			for _, s := range secrets {
 				file := &v1alpha1.File{
 					Path:     strings.ReplaceAll(s.Name[:strings.Index(s.Name, "/versions/")], "/", "_"), // Use the secret name as the file name
-					Mode:     int32(cfg.Permissions),
+					Mode:     mode,
 					Contents: s.Payload.Data,
 				}
 				out.Files = append(out.Files, file)
