@@ -32,16 +32,17 @@ import (
 const zone = "us-central1-c"
 
 type testFixture struct {
-	tempDir            string
-	gcpProviderBranch  string
-	testClusterName    string
-	testSecretID       string
-	testRotateSecretID string
-	kubeconfigFile     string
-	testProjectID      string
-	secretStoreVersion string
-	gkeVersion         string
-	location           string
+	tempDir             string
+	gcpProviderBranch   string
+	testClusterName     string
+	testSecretID        string
+	testRotateSecretID  string
+	testExtractSecretID string
+	kubeconfigFile      string
+	testProjectID       string
+	secretStoreVersion  string
+	gkeVersion          string
+	location            string
 }
 
 var f testFixture
@@ -167,6 +168,7 @@ func setupTestSuite(isTokenPassed bool) {
 	f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
 	f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
 	f.testRotateSecretID = f.testSecretID + "-rotate"
+	f.testExtractSecretID = f.testSecretID + "-extract"
 
 	// Build the plugin deploy yaml
 	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
@@ -297,7 +299,7 @@ func teardownTestSuite() {
 		"--kubeconfig", f.kubeconfigFile,
 	))
 
-	// cleanup
+	// Cleanup
 	os.RemoveAll(f.tempDir)
 	execCmd(exec.Command("kubectl", "delete", "containercluster", f.testClusterName))
 	execCmd(exec.Command(
@@ -310,13 +312,20 @@ func teardownTestSuite() {
 		"--project", f.testProjectID,
 		"--quiet",
 	))
+	execCmd(exec.Command(
+		"gcloud", "secrets", "delete", f.testExtractSecretID,
+		"--project", f.testProjectID,
+		"--quiet",
+	))
 
-	// Create regional secret
+	// Cleanup regional secret
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
 		"https://secretmanager."+f.location+".rep.googleapis.com/")))
 	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--location", f.location,
 		"--project", f.testProjectID, "--quiet")))
 	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testRotateSecretID, "--location", f.location,
+		"--project", f.testProjectID, "--quiet")))
+	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testExtractSecretID, "--location", f.location,
 		"--project", f.testProjectID, "--quiet")))
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 }
@@ -650,7 +659,7 @@ func TestMountExtractSecret(t *testing.T) {
 	secretFile := filepath.Join(f.tempDir, "secretExtractValue")
 	check(os.WriteFile(secretFile, secretData, 0644))
 	check(execCmd(exec.Command(
-		"gcloud", "secrets", "create", f.testSecretID,
+		"gcloud", "secrets", "create", f.testExtractSecretID,
 		"--replication-policy", "automatic",
 		"--data-file", secretFile,
 		"--project", f.testProjectID,
@@ -661,7 +670,7 @@ func TestMountExtractSecret(t *testing.T) {
 		"https://secretmanager."+f.location+".rep.googleapis.com/")))
 
 	check(execCmd(exec.Command(
-		"gcloud", "secrets", "create", f.testSecretID,
+		"gcloud", "secrets", "create", f.testExtractSecretID,
 		"--location", f.location,
 		"--data-file", secretFile,
 		"--project", f.testProjectID,
@@ -686,10 +695,41 @@ func TestMountExtractSecret(t *testing.T) {
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 	testExtractSecret := "admin"
-	if err := checkMountedSecret(testExtractSecret); err != nil {
-		t.Fatalf("Error while testing global secret: %v", err)
+
+	// Check Mounted Secrets
+	var stdout, stderr bytes.Buffer
+	command := exec.Command(
+		"kubectl", "exec", "test-secret-mounter-extract",
+		"--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default",
+		"--",
+		"cat", "/var/gcp-test-secrets/extract")
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
 	}
-	if err := checkMountedSecret(testExtractSecret); err != nil {
-		t.Fatalf("Error while testing regional secret: %v", err)
+	if got := stdout.Bytes(); !bytes.Equal(got, []byte(testExtractSecret)) {
+		t.Fatalf("Secret value is %v, want: %v", got, testExtractSecret)
+	}
+
+	// Check Mounted Secret Regional
+	command = exec.Command(
+		"kubectl", "exec", "test-secret-mounter-extract",
+		"--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default",
+		"--",
+		"cat", "/var/gcp-test-secrets/extract-regional")
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read regional secret from container: %v", err)
+	}
+	if got := stdout.Bytes(); !bytes.Equal(got, []byte(testExtractSecret)) {
+		t.Fatalf("Regional Secret value is %v, want: %v", got, testExtractSecret)
 	}
 }
