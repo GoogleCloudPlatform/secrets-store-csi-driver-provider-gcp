@@ -694,7 +694,7 @@ func TestMountExtractSecret(t *testing.T) {
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
 		t.Fatalf("Error waiting for job: %v", err)
 	}
-	testExtractSecret := "admin"
+	testExtractSecret := []byte("admin")
 
 	// Check Mounted Secrets
 	var stdout, stderr bytes.Buffer
@@ -711,11 +711,13 @@ func TestMountExtractSecret(t *testing.T) {
 		fmt.Println("Stderr:", stderr.String())
 		t.Fatalf("Could not read secret from container: %v", err)
 	}
-	if got := stdout.Bytes(); !bytes.Equal(got, []byte(testExtractSecret)) {
+	if got := stdout.Bytes(); !bytes.Equal(got, testExtractSecret) {
 		t.Fatalf("Secret value is %v, want: %v", got, testExtractSecret)
 	}
 
 	// Check Mounted Secret Regional
+	stdout.Reset()
+	stderr.Reset()
 	command = exec.Command(
 		"kubectl", "exec", "test-secret-mounter-extract",
 		"--kubeconfig", f.kubeconfigFile,
@@ -729,7 +731,7 @@ func TestMountExtractSecret(t *testing.T) {
 		fmt.Println("Stderr:", stderr.String())
 		t.Fatalf("Could not read regional secret from container: %v", err)
 	}
-	if got := stdout.Bytes(); !bytes.Equal(got, []byte(testExtractSecret)) {
+	if got := stdout.Bytes(); !bytes.Equal(got, testExtractSecret) {
 		t.Fatalf("Regional Secret value is %v, want: %v", got, testExtractSecret)
 	}
 }
