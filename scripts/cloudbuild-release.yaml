@@ -37,4 +37,8 @@ steps:
           '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
           '--push',
           'secrets-store-csi-driver-provider-gcp' ]
+images:
+- 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION'
+- 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION'
+- 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION'
           
