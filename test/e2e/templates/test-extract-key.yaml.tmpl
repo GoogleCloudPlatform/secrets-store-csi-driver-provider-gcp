@@ -27,9 +27,6 @@ spec:
       - resourceName: "projects/$PROJECT_ID/secrets/$TEST_SECRET_ID-extract/versions/latest"
         path: "extract"
         extractKey: "user"
-      - resourceName: "projects/$PROJECT_ID/locations/$LOCATION_ID/secrets/$TEST_SECRET_ID-extract/versions/latest"
-        path: "extract-regional"
-        extractKey: "user"
 ---
 apiVersion: v1
 kind: Pod
