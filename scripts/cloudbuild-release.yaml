@@ -21,6 +21,7 @@
 timeout: 2400s
 options:
   machineType: N1_HIGHCPU_8
+  requestedVerifyOption: VERIFIED
 steps:
 - name: 'gcr.io/cloud-builders/git'
   args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
