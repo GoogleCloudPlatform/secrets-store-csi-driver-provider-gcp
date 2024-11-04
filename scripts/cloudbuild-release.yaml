@@ -20,13 +20,11 @@
 # Registry repos.
 timeout: 2400s
 options:
-  machineType: N1_HIGHCPU_8
+  machineType: E2_HIGHCPU_32
   requestedVerifyOption: VERIFIED
 steps:
 - name: 'gcr.io/cloud-builders/git'
   args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
-# - name: 'gcr.io/cloud-builders/docker'
-#   args: ['buildx', 'create', '--use']
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Amd64 images'
   args: ['build',
