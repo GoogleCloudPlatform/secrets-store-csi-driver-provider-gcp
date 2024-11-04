@@ -26,14 +26,15 @@ steps:
 - name: 'gcr.io/cloud-builders/git'
   args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
 - name: 'gcr.io/cloud-builders/docker'
-  id: 'Amd64 images'
-  args: ['build',
-          '--platform=linux/amd64',
+  args: ['buildx', 'create', '--use']
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'buildx', 'build',
+          '--platform=linux/amd64,linux/arm64',
           '--build-arg',
           'VERSION=$_VERSION',
-          '-t', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-          '-t', 'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-          '-t', 'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}',
+          '-t', 'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}',
+          '-t', 'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}',
           # '--load',
           'secrets-store-csi-driver-provider-gcp' ]
 # - name: 'gcr.io/cloud-builders/docker'
@@ -80,5 +81,5 @@ steps:
 #     docker manifest push asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}
 #     docker manifest push eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}
 
-images: ['us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64']
+images: ['us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}']
           
