@@ -18,7 +18,7 @@
 #
 # Requires permission for Cloud Build and the secretmanager-csi Artifact
 # Registry repos.
-timeout: 2400s
+timeout: 3000s
 options:
   machineType: E2_HIGHCPU_32
   requestedVerifyOption: VERIFIED
