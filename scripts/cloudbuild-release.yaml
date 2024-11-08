@@ -46,6 +46,7 @@ steps:
           '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
           '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
           '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+          '--load',
           'secrets-store-csi-driver-provider-gcp' ]
 images: ['us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
         'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
