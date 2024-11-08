@@ -20,20 +20,35 @@
 # Registry repos.
 timeout: 2400s
 options:
-  machineType: N1_HIGHCPU_8
+  machineType: E2_HIGHCPU_32
+  requestedVerifyOption: VERIFIED
 steps:
 - name: 'gcr.io/cloud-builders/git'
   args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['buildx', 'create', '--use']
-- name: 'gcr.io/cloud-builders/docker'
-  args: [ 'buildx', 'build',
-          '--platform=linux/amd64,linux/arm64',
+  id: 'Amd64 images'
+  args: ['build',
+          '--platform=linux/amd64',
           '--build-arg',
           'VERSION=$_VERSION',
-          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
-          '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
-          '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:$_VERSION',
-          '--push',
+          '-t', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
           'secrets-store-csi-driver-provider-gcp' ]
-          
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Arm64 images'
+  args: [ 'buildx', 'build',
+          '--platform=linux/arm64',
+          '--build-arg',
+          'VERSION=$_VERSION',
+          '-t', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+          '-t', 'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+          '-t', 'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+          'secrets-store-csi-driver-provider-gcp' ]
+images: ['us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+        'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+        'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+        'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+        'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+        'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64'
+]
