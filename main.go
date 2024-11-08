@@ -61,8 +61,9 @@ var (
 	_                     = flag.Bool("write_secrets", false, "[unused]")
 	smConnectionPoolSize  = flag.Int("sm_connection_pool_size", 5, "size of the connection pool for the secret manager API client")
 	iamConnectionPoolSize = flag.Int("iam_connection_pool_size", 5, "size of the connection pool for the IAM API client")
-
-	version = "dev"
+	QPS                   = float32(20.0)
+	Burst                 = 50
+	version               = "dev"
 )
 
 func main() {
@@ -103,6 +104,9 @@ func main() {
 		klog.Fatal("failed to read kubeconfig")
 	}
 	rc.ContentType = runtime.ContentTypeProtobuf
+	// Increasing QPS and burst capacity to handle a higher frequency of SA token retrieval
+	rc.QPS = QPS
+	rc.Burst = Burst
 
 	clientset, err := kubernetes.NewForConfig(rc)
 	if err != nil {
