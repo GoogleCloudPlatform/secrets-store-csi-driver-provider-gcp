@@ -31,27 +31,9 @@ steps:
           '--platform=linux/amd64',
           '--build-arg',
           'VERSION=$_VERSION',
-          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-          '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-          '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          # '--load',
           'secrets-store-csi-driver-provider-gcp' ]
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['buildx', 'create', '--use']
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Arm64 images'
-  args: ['buildx', 'build',
-          '--platform=linux/arm64',
-          '--build-arg',
-          'VERSION=$_VERSION',
-          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
-          '-t', 'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
-          '-t', 'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
-          '--load',
-          'secrets-store-csi-driver-provider-gcp' ]
-images: ['us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-        'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-        'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-        'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
-        'asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
-        'europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64'
-]
+images: ['us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64']
