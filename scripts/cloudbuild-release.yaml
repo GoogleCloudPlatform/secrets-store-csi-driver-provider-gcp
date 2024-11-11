@@ -31,9 +31,9 @@ steps:
           '--platform=linux/amd64',
           '--build-arg',
           'VERSION=$_VERSION',
-          '-t', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-          '-t', 'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-          '-t', 'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+          '-t', 'eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
           # '--load',
           'secrets-store-csi-driver-provider-gcp' ]
 # - name: 'gcr.io/cloud-builders/docker'
@@ -42,9 +42,9 @@ steps:
 #           '--platform=linux/arm64',
 #           '--build-arg',
 #           'VERSION=$_VERSION',
-#           '-t', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
-#           '-t', 'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
-#           '-t', 'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+#           '-t', 'us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+#           '-t', 'asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+#           '-t', 'eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
 #           '--load',
 #           'secrets-store-csi-driver-provider-gcp' ]
 # - name: 'gcr.io/cloud-builders/docker'
@@ -53,32 +53,32 @@ steps:
 #   args:
 #   - -exc
 #   - |
-#     docker push us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
-#     docker push us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
-#     docker push asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
-#     docker push asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
-#     docker push eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
-#     docker push eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker push us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
+#     docker push us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker push asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
+#     docker push asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker push eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
+#     docker push eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
 # - name: 'gcr.io/cloud-builders/docker'
 #   entrypoint: bash
 #   args:
 #   - -exc
 #   - |
-#     docker manifest rm us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} || true
-#     docker manifest rm asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} || true
-#     docker manifest rm eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} || true
-#     docker manifest create --amend us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64 us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
-#     docker manifest create --amend asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64 asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
-#     docker manifest create --amend eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64 eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
-#     docker manifest annotate --os=linux --arch=amd64 us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
-#     docker manifest annotate --os=linux --arch=arm64 us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
-#     docker manifest annotate --os=linux --arch=amd64 asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
-#     docker manifest annotate --os=linux --arch=arm64 asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
-#     docker manifest annotate --os=linux --arch=amd64 eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
-#     docker manifest annotate --os=linux --arch=arm64 eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
-#     docker manifest push us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}
-#     docker manifest push asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}
-#     docker manifest push eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}
+#     docker manifest rm us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} || true
+#     docker manifest rm asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} || true
+#     docker manifest rm eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} || true
+#     docker manifest create --amend us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64 us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker manifest create --amend asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64 asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker manifest create --amend eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64 eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker manifest annotate --os=linux --arch=amd64 us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
+#     docker manifest annotate --os=linux --arch=arm64 us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker manifest annotate --os=linux --arch=amd64 asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
+#     docker manifest annotate --os=linux --arch=arm64 asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker manifest annotate --os=linux --arch=amd64 eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64
+#     docker manifest annotate --os=linux --arch=arm64 eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION} eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64
+#     docker manifest push us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}
+#     docker manifest push asia.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}
+#     docker manifest push eu.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}
 
-images: ['us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64']
+images: ['us.gcr.io/sm-gke-demo/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64']
           
