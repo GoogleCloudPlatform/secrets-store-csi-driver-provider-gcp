@@ -39,7 +39,7 @@ steps:
   args: ['buildx', 'create', '--use']
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Arm64 images'
-  args: ['build',
+  args: ['buildx', 'build',
           '--platform=linux/arm64',
           '--build-arg',
           'VERSION=$_VERSION',
