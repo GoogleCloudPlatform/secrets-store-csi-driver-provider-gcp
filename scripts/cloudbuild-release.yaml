@@ -46,6 +46,7 @@ steps:
           '-t', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
           '-t', 'asia.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
           '-t', 'eu.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+          '--load',
           'secrets-store-csi-driver-provider-gcp' ]
 images: ['us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64', 'us.gcr.io/dargudear-gke-dev-2/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64']
           
