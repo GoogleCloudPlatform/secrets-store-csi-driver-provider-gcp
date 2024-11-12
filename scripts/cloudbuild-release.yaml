@@ -25,13 +25,26 @@ options:
 steps:
 - name: 'gcr.io/cloud-builders/git'
   args: ['clone', '--depth', '1', '--branch', '$_BRANCH_NAME', 'https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp']
+# - name: 'gcr.io/cloud-builders/docker'
+#   id: 'Amd64 images'
+#   args: ['build',
+#           '--platform=linux/amd64',
+#           '--build-arg',
+#           'VERSION=$_VERSION',
+#           '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
+#           'secrets-store-csi-driver-provider-gcp' ]
 - name: 'gcr.io/cloud-builders/docker'
-  id: 'Amd64 images'
-  args: ['build',
-          '--platform=linux/amd64',
+  args: ['buildx', 'create', '--use']
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Arm64 images'
+  args: ['buildx', 'build',
+          '--platform=linux/arm64',
           '--build-arg',
           'VERSION=$_VERSION',
-          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64',
-          # '--load',
+          '-t', 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64',
+          '--load',
           'secrets-store-csi-driver-provider-gcp' ]
-images: ['us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64']
+images: [
+  # 'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-amd64', 
+  'us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${_VERSION}-linux-arm64'
+  ]
