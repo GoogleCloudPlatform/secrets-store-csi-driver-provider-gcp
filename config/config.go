@@ -130,8 +130,8 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
 	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
 	if err != nil {
-		klog.ErrorS(err, "failed to get RESTRICT_NODE_PUBLISH_SECRET flag")
-		klog.Fatal("failed to get RESTRICT_NODE_PUBLISH_SECRET flag")
+		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
+		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 	}
 
 	if allowSecretRef {

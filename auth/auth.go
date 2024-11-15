@@ -73,8 +73,8 @@ type credentialsFile struct {
 func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oauth2.TokenSource, error) {
 	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
 	if err != nil {
-		klog.ErrorS(err, "failed to get RESTRICT_NODE_PUBLISH_SECRET flag")
-		klog.Fatal("failed to get RESTRICT_NODE_PUBLISH_SECRET flag")
+		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
+		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 	}
 	if cfg.AuthNodePublishSecret && allowSecretRef {
 		creds, err := google.CredentialsFromJSON(ctx, cfg.AuthKubeSecret, cloudScope)
