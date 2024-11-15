@@ -50,7 +50,7 @@ func (ev EnvVar) GetBooleanValue() (bool, error) {
 	if isPresent {
 		boolValue, err := strconv.ParseBool(oEnvValue)
 		if err != nil {
-			return false, fmt.Errorf("Error parsing environment variable: %v", err)
+			return false, fmt.Errorf("error parsing environment variable: %v", err)
 		}
 		return boolValue, nil
 	}
