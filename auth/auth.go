@@ -71,7 +71,12 @@ type credentialsFile struct {
 // TokenSource returns the correct oauth2.TokenSource depending on the auth
 // configuration of the MountConfig.
 func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oauth2.TokenSource, error) {
-	if cfg.AuthNodePublishSecret {
+	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
+	if err != nil {
+		klog.ErrorS(err, "failed to get RESTRICT_NODE_PUBLISH_SECRET flag")
+		klog.Fatal("failed to get RESTRICT_NODE_PUBLISH_SECRET flag")
+	}
+	if cfg.AuthNodePublishSecret && allowSecretRef {
 		creds, err := google.CredentialsFromJSON(ctx, cfg.AuthKubeSecret, cloudScope)
 		if err != nil {
 			return nil, fmt.Errorf("unable to generate credentials from key.json: %w", err)

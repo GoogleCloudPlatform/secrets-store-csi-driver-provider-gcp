@@ -18,6 +18,7 @@ package vars
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type EnvVar struct {
@@ -42,6 +43,24 @@ func (ev EnvVar) GetValue() (string, error) {
 	return ev.defaultValue, nil
 }
 
+func (ev EnvVar) GetBooleanValue() (bool, error) {
+	osEnv := ev.envVarName
+	oEnvValue, isPresent := os.LookupEnv(osEnv)
+
+	if isPresent {
+		boolValue, err := strconv.ParseBool(oEnvValue)
+		if err != nil {
+			return false, fmt.Errorf("Error parsing environment variable: %v", err)
+		}
+		return boolValue, nil
+	}
+
+	if ev.isRequired {
+		return false, fmt.Errorf("%s: a required OS environment is not present", osEnv)
+	}
+	return false, nil
+}
+
 var IdentityBindingTokenEndPoint = EnvVar{
 	envVarName:   "GAIA_TOKEN_EXCHANGE_ENDPOINT",
 	defaultValue: "https://securetoken.googleapis.com/v1/identitybindingtoken",
@@ -63,5 +82,11 @@ var ProviderName = EnvVar{
 var UserAgentIdentifier = EnvVar{
 	envVarName:   "USER_AGENT",
 	defaultValue: "secrets-store-csi-driver-provider-gcp",
+	isRequired:   false,
+}
+
+var AllowNodepublishSeretRef = EnvVar{
+	envVarName:   "ALLOW_NODE_PUBLISH_SECRET",
+	defaultValue: "false",
 	isRequired:   false,
 }
