@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "secrets-store-csi-driver-provider-gcp.clusterRoleBindingName" . }}
+  labels:
+    {{- include "secrets-store-csi-driver-provider-gcp.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "secrets-store-csi-driver-provider-gcp.clusterRoleName" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "secrets-store-csi-driver-provider-gcp.serviceAccountName" . }}
+    namespace: kube-system
