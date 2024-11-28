@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,21 +44,28 @@ func (ev EnvVar) GetValue() (string, error) {
 }
 
 func (ev EnvVar) GetBooleanValue() (bool, error) {
-	osEnv := ev.envVarName
-	oEnvValue, isPresent := os.LookupEnv(osEnv)
+	oEnvValue, isPresent := os.LookupEnv(ev.envVarName)
 
 	if isPresent {
 		boolValue, err := strconv.ParseBool(oEnvValue)
 		if err != nil {
-			return false, fmt.Errorf("error parsing environment variable: %v", err)
+			defaultBoolValue, err := strconv.ParseBool(ev.defaultValue)
+			if err != nil {
+				return false, fmt.Errorf("error parsing default value: %v", err)
+			}
+			return defaultBoolValue, nil
 		}
 		return boolValue, nil
 	}
 
 	if ev.isRequired {
-		return false, fmt.Errorf("%s: a required OS environment is not present", osEnv)
+		return false, fmt.Errorf("%s: a required OS environment is not present", ev.envVarName)
 	}
-	return false, nil
+	defaultBoolValue, err := strconv.ParseBool(ev.defaultValue)
+	if err != nil {
+		return false, fmt.Errorf("error parsing default value: %v", err)
+	}
+	return defaultBoolValue, nil
 }
 
 var IdentityBindingTokenEndPoint = EnvVar{
