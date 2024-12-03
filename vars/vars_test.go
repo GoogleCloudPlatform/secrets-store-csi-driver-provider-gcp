@@ -90,7 +90,7 @@ func TestGetBooleanValue(t *testing.T) {
 			name:    "default value when env value is misconigured",
 			in:      EnvVar{envVarName: "TEST_ENV_VAR", defaultValue: "false", isRequired: false},
 			want:    false,
-			wantErr: nil,
+			wantErr: fmt.Errorf("error parsing the boolean value: strconv.ParseBool: parsing \"not_a_bool\": invalid syntax"),
 			envVars: map[string]string{"TEST_ENV_VAR": "not_a_bool"},
 		},
 		{
@@ -111,12 +111,6 @@ func TestGetBooleanValue(t *testing.T) {
 			in:      EnvVar{envVarName: "TEST_ENV_VAR", defaultValue: "not_a_bool", isRequired: false},
 			wantErr: fmt.Errorf("error parsing default value: strconv.ParseBool: parsing \"not_a_bool\": invalid syntax"),
 			envVars: map[string]string{},
-		},
-		{
-			name:    "default value is misconfigured and env var is present",
-			in:      EnvVar{envVarName: "TEST_ENV_VAR", defaultValue: "not_a_bool", isRequired: false},
-			wantErr: fmt.Errorf("error parsing default value: strconv.ParseBool: parsing \"not_a_bool\": invalid syntax"),
-			envVars: map[string]string{"TEST_ENV_VAR": "again_not_a_bool"},
 		},
 	}
 	for _, tc := range tests {

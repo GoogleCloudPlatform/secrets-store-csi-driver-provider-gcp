@@ -49,11 +49,7 @@ func (ev EnvVar) GetBooleanValue() (bool, error) {
 	if isPresent {
 		boolValue, err := strconv.ParseBool(oEnvValue)
 		if err != nil {
-			defaultBoolValue, err := strconv.ParseBool(ev.defaultValue)
-			if err != nil {
-				return false, fmt.Errorf("error parsing default value: %v", err)
-			}
-			return defaultBoolValue, nil
+			return false, fmt.Errorf("error parsing the boolean value: %v", err)
 		}
 		return boolValue, nil
 	}
