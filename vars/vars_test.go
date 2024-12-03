@@ -87,7 +87,7 @@ func TestGetBooleanValue(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:    "default value when env value is misconigured",
+			name:    "error when env value is misconigured",
 			in:      EnvVar{envVarName: "TEST_ENV_VAR", defaultValue: "false", isRequired: false},
 			want:    false,
 			wantErr: fmt.Errorf("error parsing the boolean value: strconv.ParseBool: parsing \"not_a_bool\": invalid syntax"),
