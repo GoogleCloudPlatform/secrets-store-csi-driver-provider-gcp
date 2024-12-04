@@ -29,3 +29,6 @@ nodeSelector:
 tolerations: []
 
 affinity: {}
+
+secrets-store-csi-driver:
+  enabled: false
