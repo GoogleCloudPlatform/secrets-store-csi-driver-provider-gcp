@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "secrets-store-csi-driver-provider-gcp.daemonSetName" . }}
+  namespace: kube-system
+  labels:
+    {{- include "secrets-store-csi-driver-provider-gcp.labels" . | nindent 4 }}
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "secrets-store-csi-driver-provider-gcp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "secrets-store-csi-driver-provider-gcp.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "secrets-store-csi-driver-provider-gcp.serviceAccountName" . }}
+      initContainers:
+      - name: chown-provider-mount
+        image: busybox
+        command:
+        - chown
+        - "1000:1000"
+        - /etc/kubernetes/secrets-store-csi-providers
+        volumeMounts:
+        - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
+          name: providervol
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      containers:
+        - name: provider
+          image: "{{ .Values.image.repository }}@{{ .Values.image.hash }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+              - ALL
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: TARGET_DIR
+              value: "/etc/kubernetes/secrets-store-csi-providers"
+          volumeMounts:
+            - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
+              name: providervol
+              mountPropagation: None
+              readOnly: false
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /live
+              port: 8095
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 30
+      volumes:
+        - name: providervol
+          hostPath:
+            path: /etc/kubernetes/secrets-store-csi-providers
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
