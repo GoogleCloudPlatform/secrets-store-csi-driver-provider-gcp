@@ -17,7 +17,7 @@ module github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 go 1.23.0
 
 require (
-	cloud.google.com/go/compute/metadata v0.5.2
+	cloud.google.com/go/compute/metadata v0.6.0
 	cloud.google.com/go/iam v1.3.0
 	cloud.google.com/go/secretmanager v1.14.2
 	github.com/google/go-cmp v0.6.0
