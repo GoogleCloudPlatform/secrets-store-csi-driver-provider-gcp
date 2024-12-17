@@ -314,7 +314,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 	}
-
+	t.Setenv("ALLOW_NODE_PUBLISH_SECRET", "true")
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := Parse(tc.in)
@@ -435,11 +435,100 @@ func TestParseErrors(t *testing.T) {
 			},
 		},
 	}
-
+	t.Setenv("ALLOW_NODE_PUBLISH_SECRET", "true")
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := Parse(tc.in); err == nil {
 				t.Errorf("Parse() succeeded for malformed input, want error")
+			}
+		})
+	}
+}
+
+func TestParseWithRestrictedNodePublishRef(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *MountParams
+		want *MountConfig
+	}{
+		{
+			name: "single secret",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
+					"csi.storage.k8s.io/pod.namespace": "default",
+					"csi.storage.k8s.io/pod.name": "mypod",
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
+				}
+				`,
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+			want: &MountConfig{
+				Secrets: []*Secret{
+					{
+						ResourceName: "projects/project/secrets/test/versions/latest",
+						FileName:     "good1.txt",
+					},
+				},
+				PodInfo: &PodInfo{
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
+				},
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+				AuthPodADC:  true,
+			},
+		},
+		{
+			name: "nodePublishSecretRef",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n",
+					"csi.storage.k8s.io/pod.namespace": "default",
+					"csi.storage.k8s.io/pod.name": "mypod",
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
+				}
+				`,
+				KubeSecrets: `{"key.json":"{\"private_key_id\": \"123\",\"private_key\": \"a-secret\",\"token_uri\": \"https://example.com/token\",\"type\": \"service_account\"}"}`,
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+			want: &MountConfig{
+				Secrets: []*Secret{
+					{
+						ResourceName: "projects/project/secrets/test/versions/latest",
+						FileName:     "good1.txt",
+					},
+				},
+				PodInfo: &PodInfo{
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
+				},
+				AuthPodADC:  true,
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+		},
+	}
+	t.Setenv("ALLOW_NODE_PUBLISH_SECRET", "false")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Parse(tc.in)
+			if err != nil {
+				t.Errorf("Parse() failed: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("ParseAccessString() returned diff (-want +got):\n%s", diff)
 			}
 		})
 	}

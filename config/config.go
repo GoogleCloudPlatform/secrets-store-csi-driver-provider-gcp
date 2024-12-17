@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
@@ -136,12 +137,22 @@ func Parse(in *MountParams) (*MountConfig, error) {
 
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
-	if err := json.Unmarshal([]byte(in.KubeSecrets), &secret); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal secrets: %v", err)
+	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
+	if err != nil {
+		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
+		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 	}
-	if _, ok := secret["key.json"]; ok {
-		out.AuthNodePublishSecret = true
-		out.AuthKubeSecret = []byte(secret["key.json"])
+
+	if allowSecretRef {
+		if err := json.Unmarshal([]byte(in.KubeSecrets), &secret); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal secrets: %v", err)
+		}
+		if _, ok := secret["key.json"]; ok {
+			out.AuthNodePublishSecret = true
+			out.AuthKubeSecret = []byte(secret["key.json"])
+		}
+	} else {
+		klog.Infoln("Authentication using nodepublishsecret ref is disabled")
 	}
 
 	switch attrib["auth"] {
