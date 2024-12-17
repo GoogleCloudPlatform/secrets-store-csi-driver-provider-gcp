@@ -10,6 +10,22 @@ None
 
 Images:
 
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.7.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.7.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.7.0`
+
+Digest: `sha256:16206089381c7f9b70442b4ed97e65bc34daec1ee26a5c5de7453a24f0f1de13`
+
+### Changes & Security Fixes
+
+* Enable Workload Identity Federation with Kubernetes and add docs [459](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/459)
+* Add flag to allow nodepublishsecretref [486](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/486)
+* Dependencies upgrade [495](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/495)
+
+## v1.6.0
+
+Images:
+
 * `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
 * `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
 * `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
