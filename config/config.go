@@ -26,6 +26,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	"encoding/base64"
 )
 
 const (
@@ -52,6 +53,9 @@ type Secret struct {
 	// Mode is the optional file mode for the file containing the secret. Must be
 	// an octal value between 0000 and 0777 or a decimal value between 0 and 511
 	Mode *int32 `json:"mode,omitempty" yaml:"mode,omitempty"`
+
+	// Encoding specifies the encoding of the secret value. Currently supports "base64"
+	Encoding string `json:"encoding,omitempty" yaml:"encoding,omitempty"`
 }
 
 // PodInfo includes details about the pod that is receiving the mount event.
@@ -100,6 +104,24 @@ func (s *Secret) PathString() string {
 		return s.Path
 	}
 	return s.FileName
+}
+
+// DecodeContent decodes the secret content based on the specified encoding
+func (s *Secret) DecodeContent(content []byte) ([]byte, error) {
+	if s.Encoding == "" {
+		return content, nil
+	}
+
+	switch s.Encoding {
+	case "base64":
+		decoded, err := base64.StdEncoding.DecodeString(string(content))
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode base64 content: %v", err)
+		}
+		return decoded, nil
+	default:
+		return nil, fmt.Errorf("unsupported encoding type: %s", s.Encoding)
+	}
 }
 
 // Parse parses the input MountParams to the more structured MountConfig.
