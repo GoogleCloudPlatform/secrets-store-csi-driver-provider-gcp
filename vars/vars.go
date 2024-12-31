@@ -93,3 +93,21 @@ var AllowNodepublishSeretRef = EnvVar{
 	defaultValue: "false",
 	isRequired:   false,
 }
+
+var Project = EnvVar{
+	envVarName:   "PROJECT",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var ClusterName = EnvVar{
+	envVarName:   "CLUSTER_NAME",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var ClusterLocation = EnvVar{
+	envVarName:   "CLUSTER_LOCATION",
+	defaultValue: "",
+	isRequired:   false,
+}
