@@ -188,10 +188,21 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 		}
 
 		result := results[i]
+		contents := result.Payload.Data
+
+		// Only attempt decoding if encoding is specified
+		if secret.Encoding != "" {
+			decodedContent, err := secret.DecodeContent(contents)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode secret %s: %v", secret.ResourceName, err)
+			}
+			contents = decodedContent
+		}
+
 		out.Files = append(out.Files, &v1alpha1.File{
 			Path:     secret.PathString(),
 			Mode:     mode,
-			Contents: result.Payload.Data,
+			Contents: contents,
 		})
 		klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 

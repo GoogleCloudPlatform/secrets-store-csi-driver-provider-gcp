@@ -301,6 +301,112 @@ func TestHandleMountEventForRegionalSecret(t *testing.T) {
 	}
 }
 
+func TestHandleMountEventWithEncoding(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     *config.MountConfig
+		want    *v1alpha1.MountResponse
+		wantErr bool
+	}{
+		{
+			name: "base64 encoded secret",
+			cfg: &config.MountConfig{
+				Secrets: []*config.Secret{
+					{
+						ResourceName: "projects/project/secrets/test/versions/latest",
+						FileName:     "encoded.txt",
+						Encoding:     "base64",
+					},
+				},
+				Permissions: 777,
+				PodInfo: &config.PodInfo{
+					Namespace: "default",
+					Name:      "test-pod",
+				},
+			},
+			want: &v1alpha1.MountResponse{
+				ObjectVersion: []*v1alpha1.ObjectVersion{
+					{
+						Id:      "projects/project/secrets/test/versions/latest",
+						Version: "projects/project/secrets/test/versions/2",
+					},
+				},
+				Files: []*v1alpha1.File{
+					{
+						Path:     "encoded.txt",
+						Mode:     777,
+						Contents: []byte("Hello World"), // Decoded from "SGVsbG8gV29ybGQ="
+					},
+				},
+			},
+		},
+		{
+			name: "non-encoded secret (backward compatibility)",
+			cfg: &config.MountConfig{
+				Secrets: []*config.Secret{
+					{
+						ResourceName: "projects/project/secrets/test/versions/latest",
+						FileName:     "plain.txt",
+						// No encoding specified
+					},
+				},
+				Permissions: 777,
+				PodInfo: &config.PodInfo{
+					Namespace: "default",
+					Name:      "test-pod",
+				},
+			},
+			want: &v1alpha1.MountResponse{
+				ObjectVersion: []*v1alpha1.ObjectVersion{
+					{
+						Id:      "projects/project/secrets/test/versions/latest",
+						Version: "projects/project/secrets/test/versions/2",
+					},
+				},
+				Files: []*v1alpha1.File{
+					{
+						Path:     "plain.txt",
+						Mode:     777,
+						Contents: []byte("raw secret data"),
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := mock(t, &mockSecretServer{
+				accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+					var data []byte
+					if tt.cfg.Secrets[0].Encoding == "base64" {
+						data = []byte("SGVsbG8gV29ybGQ=") // base64 encoded "Hello World"
+					} else {
+						data = []byte("raw secret data")
+					}
+					return &secretmanagerpb.AccessSecretVersionResponse{
+						Name: "projects/project/secrets/test/versions/2",
+						Payload: &secretmanagerpb.SecretPayload{
+							Data: data,
+						},
+					}, nil
+				},
+			})
+
+			regionalClients := make(map[string]*secretmanager.Client)
+			got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), tt.cfg, regionalClients, []option.ClientOption{})
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("handleMountEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if diff := cmp.Diff(tt.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 // mock builds a secretmanager.Client talking to a real in-memory secretmanager
 // GRPC server of the *mockSecretServer.
 func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {
