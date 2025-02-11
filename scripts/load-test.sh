@@ -36,3 +36,16 @@ elif [ "$1" == "seed" ]; then
         sleep 1
     done
 fi
+
+if [ "$1" == "many_with_labels"  ]; then
+    sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$TEST_SECRET_ID/${TEST_SECRET_ID}/g" test/e2e/templates/load-many-secrets-with-labels.yaml.tmpl | kubectl apply -f -
+elif [ "$1" == "seed_with_labels" ]; then
+    for i in {1..1000}; do
+        printf "s3cr3t" | gcloud secrets create ${TEST_SECRET_ID}-${i} --data-file=- --labels=dev=test || true
+        gcloud secrets add-iam-policy-binding ${TEST_SECRET_ID}-${i} \
+           --member=serviceAccount:$PROJECT_ID.svc.id.goog[default/test-cluster-sa] \
+           --role=roles/secretmanager.secretAccessor
+        # give the API a rest between creates
+        sleep 1
+    done
+fi
