@@ -17,7 +17,7 @@ RUN go install \
     -ldflags "-s -w -extldflags '-static' -X 'main.version=${VERSION}'" \
     github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 
-FROM gcr.io/distroless/static-debian10
+FROM gcr.io/distroless/static-debian12
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/licenses /licenses
 COPY --from=build-env /go/bin/secrets-store-csi-driver-provider-gcp /bin/
 ENTRYPOINT ["/bin/secrets-store-csi-driver-provider-gcp"]
