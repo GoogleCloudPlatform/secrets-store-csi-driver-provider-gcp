@@ -30,6 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: e2e-test
+    env:
+      PROJECT_ID: ${{ secrets.TEST_PROJECT_ID }}
+      CLUSTER_NAME: ${{ secrets.TEST_CLUSTER_NAME }}
+      LOCATION_ID: ${{ secrets.TEST_LOCATION_ID }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v3
@@ -41,7 +45,7 @@ jobs:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
       - uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id: "secretmanager-csi-build"
+          project_id: ${{ secrets.TEST_PROJECT_ID }}
           install_components: 'gke-gcloud-auth-plugin'
       - name: Test
         run: |
