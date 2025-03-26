@@ -18,17 +18,21 @@ package server
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/csrmetrics"
 	"github.com/googleapis/gax-go/v2"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
+	"google.golang.org/api/option"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -41,9 +45,11 @@ import (
 )
 
 type Server struct {
-	RuntimeVersion string
-	AuthClient     *auth.Client
-	SecretClient   *secretmanager.Client
+	RuntimeVersion        string
+	AuthClient            *auth.Client
+	SecretClient          *secretmanager.Client
+	RegionalSecretClients map[string]*secretmanager.Client
+	SmOpts                []option.ClientOption
 }
 
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
@@ -81,7 +87,7 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 
 	// Fetch the secrets from the secretmanager API based on the
 	// SecretProviderClass configuration.
-	return handleMountEvent(ctx, s.SecretClient, gts, cfg)
+	return handleMountEvent(ctx, s.SecretClient, gts, cfg, s.RegionalSecretClients, s.SmOpts)
 }
 
 // Version implements provider csi-provider method
@@ -96,7 +102,7 @@ func (s *Server) Version(ctx context.Context, req *v1alpha1.VersionRequest) (*v1
 // handleMountEvent fetches the secrets from the secretmanager API and
 // include them in the MountResponse based on the SecretProviderClass
 // configuration.
-func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds credentials.PerRPCCredentials, cfg *config.MountConfig) (*v1alpha1.MountResponse, error) {
+func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds credentials.PerRPCCredentials, cfg *config.MountConfig, regionalClients map[string]*secretmanager.Client, smOpts []option.ClientOption) (*v1alpha1.MountResponse, error) {
 	results := make([]*secretmanagerpb.AccessSecretVersionResponse, len(cfg.Secrets))
 	errs := make([]error, len(cfg.Secrets))
 
@@ -106,15 +112,48 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 	// In parallel fetch all secrets needed for the mount
 	wg := sync.WaitGroup{}
 	for i, secret := range cfg.Secrets {
-		wg.Add(1)
+		loc, err := locationFromSecretResource(secret.ResourceName)
+		if err != nil {
+			errs[i] = err
+			continue
+		}
 
+		if len(loc) > locationLengthLimit {
+			errs[i] = fmt.Errorf("invalid location string, please check the location")
+			continue
+		}
+		var secretClient *secretmanager.Client
+		if loc == "" {
+			secretClient = client
+		} else {
+			if _, ok := regionalClients[loc]; !ok {
+				ep := option.WithEndpoint(fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", loc))
+				regionalClient, err := secretmanager.NewClient(ctx, append(smOpts, ep)...)
+				if err != nil {
+					errs[i] = err
+					continue
+				}
+				regionalClients[loc] = regionalClient
+			}
+			secretClient = regionalClients[loc]
+		}
+		wg.Add(1)
 		i, secret := i, secret
 		go func() {
 			defer wg.Done()
 			req := &secretmanagerpb.AccessSecretVersionRequest{
 				Name: secret.ResourceName,
 			}
-			resp, err := client.AccessSecretVersion(ctx, req, callAuth)
+			smMetricRecorder := csrmetrics.OutboundRPCStartRecorder("secretmanager_access_secret_version_requests")
+
+			resp, err := secretClient.AccessSecretVersion(ctx, req, callAuth)
+			if err != nil {
+				if e, ok := status.FromError(err); ok {
+					smMetricRecorder(csrmetrics.OutboundRPCStatus(e.Code().String()))
+				}
+			} else {
+				smMetricRecorder(csrmetrics.OutboundRPCStatusOK)
+			}
 			results[i] = resp
 			errs[i] = err
 		}()
@@ -139,6 +178,10 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 	// Add secrets to response.
 	ovs := make([]*v1alpha1.ObjectVersion, len(cfg.Secrets))
 	for i, secret := range cfg.Secrets {
+		if cfg.Permissions > math.MaxInt32 {
+			return nil, fmt.Errorf("invalid file permission %d", cfg.Permissions)
+		}
+		// #nosec G115 Checking limit
 		mode := int32(cfg.Permissions)
 		if secret.Mode != nil {
 			mode = *secret.Mode
@@ -188,4 +231,18 @@ func buildErr(errs []error) error {
 	}
 	s.Message = strings.Join(msgs, ",")
 	return status.FromProto(s).Err()
+}
+
+// locationFromSecretResource returns location from the secret resource if the resource is in format "projects/<project_id>/locations/<location_id>/..."
+// returns "" for global secret resource.
+func locationFromSecretResource(resource string) (string, error) {
+	globalSecretRegexp := regexp.MustCompile(globalSecretRegex)
+	if m := globalSecretRegexp.FindStringSubmatch(resource); m != nil {
+		return "", nil
+	}
+	regionalSecretRegexp := regexp.MustCompile(regionalSecretRegex)
+	if m := regionalSecretRegexp.FindStringSubmatch(resource); m != nil {
+		return m[2], nil
+	}
+	return "", status.Errorf(codes.InvalidArgument, "Invalid secret resource name: %s", resource)
 }

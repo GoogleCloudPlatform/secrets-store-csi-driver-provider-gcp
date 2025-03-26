@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package vars
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type EnvVar struct {
@@ -42,6 +43,27 @@ func (ev EnvVar) GetValue() (string, error) {
 	return ev.defaultValue, nil
 }
 
+func (ev EnvVar) GetBooleanValue() (bool, error) {
+	oEnvValue, isPresent := os.LookupEnv(ev.envVarName)
+
+	if isPresent {
+		boolValue, err := strconv.ParseBool(oEnvValue)
+		if err != nil {
+			return false, fmt.Errorf("error parsing the boolean value: %v", err)
+		}
+		return boolValue, nil
+	}
+
+	if ev.isRequired {
+		return false, fmt.Errorf("%s: a required OS environment is not present", ev.envVarName)
+	}
+	defaultBoolValue, err := strconv.ParseBool(ev.defaultValue)
+	if err != nil {
+		return false, fmt.Errorf("error parsing default value: %v", err)
+	}
+	return defaultBoolValue, nil
+}
+
 var IdentityBindingTokenEndPoint = EnvVar{
 	envVarName:   "GAIA_TOKEN_EXCHANGE_ENDPOINT",
 	defaultValue: "https://securetoken.googleapis.com/v1/identitybindingtoken",
@@ -63,5 +85,11 @@ var ProviderName = EnvVar{
 var UserAgentIdentifier = EnvVar{
 	envVarName:   "USER_AGENT",
 	defaultValue: "secrets-store-csi-driver-provider-gcp",
+	isRequired:   false,
+}
+
+var AllowNodepublishSeretRef = EnvVar{
+	envVarName:   "ALLOW_NODE_PUBLISH_SECRET",
+	defaultValue: "false",
 	isRequired:   false,
 }

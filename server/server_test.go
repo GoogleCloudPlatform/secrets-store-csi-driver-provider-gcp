@@ -93,7 +93,9 @@ func TestHandleMountEvent(t *testing.T) {
 		},
 	})
 
-	got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
+	regionalClients := make(map[string]*secretmanager.Client)
+
+	got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
 	if err != nil {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
 	}
@@ -123,8 +125,40 @@ func TestHandleMountEventSMError(t *testing.T) {
 		},
 	})
 
-	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
+	regionalClients := make(map[string]*secretmanager.Client)
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+}
+
+func TestHandleMountEventsInvalidLocations(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/locations/very_very_very_very_very_very_very_very_long_location/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+			{
+				ResourceName: "projects/project/locations/split/location/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
+	if !strings.Contains(got.Error(), "invalid location") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+	if !strings.Contains(got.Error(), "Invalid secret resource name") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 }
@@ -172,12 +206,98 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 		},
 	})
 
-	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg)
+	regionalClients := make(map[string]*secretmanager.Client)
+
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 	if !strings.Contains(got.Error(), "PermissionDenied") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+}
+
+func TestHandleMountEventForRegionalSecret(t *testing.T) {
+	secretFileMode := int32(0600) // decimal 384
+	const secretVersionByAlias = "projects/project/locations/us-central1/secrets/test/versions/latest"
+	const secretVersionByID = "projects/project/locations/us-central1/secrets/test/versions/2"
+
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: secretVersionByAlias,
+				FileName:     "good1.txt",
+			},
+			{
+				ResourceName: secretVersionByAlias,
+				FileName:     "good2.txt",
+				Mode:         &secretFileMode,
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	want := &v1alpha1.MountResponse{
+		ObjectVersion: []*v1alpha1.ObjectVersion{
+			{
+				Id:      secretVersionByAlias,
+				Version: secretVersionByID,
+			},
+			{
+				Id:      secretVersionByAlias,
+				Version: secretVersionByID,
+			},
+		},
+		Files: []*v1alpha1.File{
+			{
+				Path:     "good1.txt",
+				Mode:     777,
+				Contents: []byte("My Secret"),
+			},
+			{
+				Path:     "good2.txt",
+				Mode:     384, // octal 0600
+				Contents: []byte("My Secret"),
+			},
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: secretVersionByID,
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte("Global Secret"),
+				},
+			}, nil
+		},
+	})
+
+	regionalClient := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: secretVersionByID,
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte("My Secret"),
+				},
+			}, nil
+		},
+	})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+
+	regionalClients["us-central1"] = regionalClient
+
+	got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
 	}
 }
 
@@ -195,7 +315,7 @@ func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {
 		}
 	}()
 
-	conn, err := grpc.Dial(l.Addr().String(), grpc.WithContextDialer(
+	conn, err := grpc.NewClient("passthrough:whatever", grpc.WithContextDialer(
 		func(context.Context, string) (net.Conn, error) {
 			return l.Dial()
 		}),

@@ -62,6 +62,8 @@ $ gcloud secrets add-iam-policy-binding testsecret \
     --role=roles/secretmanager.secretAccessor
 ```
 
+* Note: Regional secrets are also supported from v1.6.0, Please see [Regional Secret Documentation](https://cloud.google.com/secret-manager/regional-secrets/config-sm-rs).
+
 * Try it out the [example](./examples) which attempts to mount the secret "test" in `$PROJECT_ID` to `/var/secrets/good1.txt` and `/var/secrets/good2.txt`
 
 ```shell

@@ -42,6 +42,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -101,6 +102,7 @@ func main() {
 		klog.ErrorS(err, "failed to read kubeconfig")
 		klog.Fatal("failed to read kubeconfig")
 	}
+	rc.ContentType = runtime.ContentTypeProtobuf
 
 	clientset, err := kubernetes.NewForConfig(rc)
 	if err != nil {
@@ -132,6 +134,9 @@ func main() {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
 	}
+
+	// To cache the clients for regional endpoints.
+	m := make(map[string]*secretmanager.Client)
 
 	// IAM client
 	//
@@ -178,8 +183,10 @@ func main() {
 
 	// setup provider grpc server
 	s := &server.Server{
-		SecretClient: sc,
-		AuthClient:   c,
+		SecretClient:          sc,
+		AuthClient:            c,
+		RegionalSecretClients: m,
+		SmOpts:                smOpts,
 	}
 
 	p, err := vars.ProviderName.GetValue()
