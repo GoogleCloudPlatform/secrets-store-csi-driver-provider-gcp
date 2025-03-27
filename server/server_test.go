@@ -16,12 +16,15 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"hash/crc32"
 	"net"
 	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 	"github.com/google/go-cmp/cmp"
+	"github.com/googleapis/gax-go/v2"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -132,6 +135,53 @@ func TestHandleMountEventSMError(t *testing.T) {
 	}
 }
 
+func (s *mockSecretServer) ListSecrets(ctx context.Context, req *secretmanagerpb.ListSecretsRequest) (*secretmanagerpb.ListSecretsResponse, error) {
+	if s.listFn == nil {
+		return nil, status.Error(codes.Unimplemented, "mock does not implement listFn")
+	}
+	return s.listFn(ctx, req)
+}
+
+func TestFetchSecretsHappyFlow(t *testing.T) {
+	// Mock secret manager client
+
+	// Call fetchSecrets with mock secret client
+	ctx := context.Background()
+	projectID := "test-project"
+	version := "latest"
+	labels := map[string]string{"location": "us-central1"}
+	regionalClients := make(map[string]*secretmanager.Client)
+	regionalClient := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "secret-1",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte("My Secret"),
+				},
+			}, nil
+		},
+		listFn: func(ctx context.Context, req *secretmanagerpb.ListSecretsRequest, opts ...gax.CallOption) (*secretmanagerpb.ListSecretsResponse, error) {
+			secrets := make([]*secretmanagerpb.Secret, 1)
+			for i := range secrets {
+				secrets[i] = &secretmanagerpb.Secret{Name: fmt.Sprintf("secret-%d", i)}
+			}
+			return &secretmanagerpb.ListSecretsResponse{Secrets: secrets}, nil
+		},
+	})
+
+	regionalClients["us-central1"] = regionalClient
+	smOpts := []option.ClientOption{}
+	callAuth := gax.WithGRPCOptions(grpc.PerRPCCredentials(NewFakeCreds()))
+
+	secrets, err := fetchSecrets(ctx, projectID, version, labels, regionalClients, callAuth, smOpts)
+	if err != nil {
+		t.Errorf("fetchSecrets() error = %v, want nil", err)
+	}
+	if len(secrets) != 1 {
+		t.Errorf("fetchSecrets() returned %d secrets, want 1", len(secrets))
+	}
+}
+
 func TestHandleMountEventsInvalidLocations(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
@@ -160,6 +210,15 @@ func TestHandleMountEventsInvalidLocations(t *testing.T) {
 	}
 	if !strings.Contains(got.Error(), "Invalid secret resource name") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+}
+
+func TestBuildFilterSuccess(t *testing.T) {
+	// Setup
+	labels := map[string]string{"key": "value"}
+	filter := buildFilter(labels)
+	if filter != "labels.key=value" {
+		t.Errorf("buildFilter() got filter = %s, want filter = labels.key=value", filter)
 	}
 }
 
@@ -346,13 +405,27 @@ func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {
 type mockSecretServer struct {
 	secretmanagerpb.UnimplementedSecretManagerServiceServer
 	accessFn func(context.Context, *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error)
+	listFn   func(context.Context, *secretmanagerpb.ListSecretsRequest, ...gax.CallOption) (*secretmanagerpb.ListSecretsResponse, error)
 }
 
 func (s *mockSecretServer) AccessSecretVersion(ctx context.Context, req *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
 	if s.accessFn == nil {
 		return nil, status.Error(codes.Unimplemented, "mock does not implement accessFn")
 	}
-	return s.accessFn(ctx, req)
+
+	versionResp, err := s.accessFn(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compute the CRC32 checksum
+	crc32c := crc32.MakeTable(crc32.Castagnoli)
+	checksum := int64(crc32.Checksum(versionResp.Payload.Data, crc32c))
+
+	// Set the DataCrc32C field of the response
+	versionResp.Payload.DataCrc32C = &checksum
+
+	return versionResp, nil
 }
 
 // fakeCreds will adhere to the credentials.PerRPCCredentials interface to add

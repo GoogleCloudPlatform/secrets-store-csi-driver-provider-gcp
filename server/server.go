@@ -18,6 +18,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
 	"math"
 	"os"
 	"regexp"
@@ -29,6 +30,7 @@ import (
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/csrmetrics"
 	"github.com/googleapis/gax-go/v2"
+	"google.golang.org/api/iterator"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
@@ -43,6 +45,103 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
+
+func fetchSecrets(ctx context.Context, projectID string, version string, labels map[string]string, regionalClients map[string]*secretmanager.Client, callAuth gax.CallOption, smOpts []option.ClientOption) ([]*secretmanagerpb.AccessSecretVersionResponse, error) {
+	var parent string
+	var filter string
+	location, ok := labels["location"]
+	var secretClient *secretmanager.Client
+
+	if ok {
+		// Remove location from labels
+		delete(labels, "location")
+		parent = fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+		filter = buildFilter(labels)
+
+		if _, ok := regionalClients[location]; !ok {
+			ep := option.WithEndpoint(fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", location))
+			regionalClient, err := secretmanager.NewClient(ctx, append(smOpts, ep)...)
+			if err != nil {
+				return nil, err
+			}
+			regionalClients[location] = regionalClient
+		}
+		secretClient = regionalClients[location]
+	} else {
+		parent = fmt.Sprintf("projects/%s", projectID)
+		filter = buildFilter(labels)
+		client, err := secretmanager.NewClient(ctx, smOpts...)
+		if err != nil {
+			return nil, err
+		}
+		secretClient = client
+	}
+	klog.InfoS("fetching secrets", "parent", parent, "filter", filter)
+
+	req := &secretmanagerpb.ListSecretsRequest{
+		Parent: parent,
+		Filter: filter,
+	}
+
+	var secrets []*secretmanagerpb.Secret
+
+	it := secretClient.ListSecrets(ctx, req, callAuth)
+
+	for {
+		resp, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		secrets = append(secrets, resp)
+	}
+	klog.InfoS("Total secrets fetched", "count", fmt.Sprintf("%d", len(secrets)))
+
+	// Optimal limit for max number of secrets can be fetched without causing CSI Secret Store Driver to behave abnormally
+	if len(secrets) > 1000 {
+		err := status.Error(codes.Internal, "too many secrets")
+		klog.ErrorS(err, "Too many secrets found while filtering", "count", fmt.Sprintf("%d", len(secrets)))
+		return nil, err
+	}
+
+	if len(secrets) == 0 {
+		err := status.Error(codes.Internal, "No secrets matched.")
+		klog.ErrorS(err, "No secrets matched while filtering", "count", fmt.Sprintf("%d", len(secrets)))
+		return nil, err
+	}
+
+	var result []*secretmanagerpb.AccessSecretVersionResponse
+	for _, secret := range secrets {
+		versionReq := &secretmanagerpb.AccessSecretVersionRequest{
+			Name: fmt.Sprintf("%s/versions/%s", secret.Name, version),
+		}
+		versionResp, err := secretClient.AccessSecretVersion(ctx, versionReq, callAuth)
+		if err != nil {
+			// If the version is disabled, destroyed, or does not exist, skip it
+			continue
+		}
+		crc32c := crc32.MakeTable(crc32.Castagnoli)
+		checksum := int64(crc32.Checksum(versionResp.Payload.Data, crc32c))
+		if checksum != *versionResp.Payload.DataCrc32C {
+			err := status.Error(codes.Internal, "Data corruption detected.")
+			klog.ErrorS(err, "Secret value is corrupted", "secret", secret.Name, "version", version)
+			continue
+		}
+		result = append(result, versionResp)
+	}
+	return result, nil
+}
+
+func buildFilter(labels map[string]string) string {
+	var filterParts []string
+	for key, value := range labels {
+		filterParts = append(filterParts, fmt.Sprintf("labels.%s=%s", key, value))
+	}
+	return strings.Join(filterParts, " AND ")
+}
 
 type Server struct {
 	RuntimeVersion        string
@@ -111,7 +210,45 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 
 	// In parallel fetch all secrets needed for the mount
 	wg := sync.WaitGroup{}
+	out := &v1alpha1.MountResponse{}
+	ovs := []*v1alpha1.ObjectVersion{}
 	for i, secret := range cfg.Secrets {
+		// Check if projectID, version, labels are provided
+		if secret.ProjectID != "" && secret.Versions != "" && secret.Labels != nil {
+
+			// Use the fetchSecrets function to fetch secrets
+			secrets, err := fetchSecrets(ctx, secret.ProjectID, secret.Versions, secret.Labels, regionalClients, callAuth, smOpts)
+			if err != nil {
+				errs[i] = err
+				continue
+			}
+			if cfg.Permissions > math.MaxInt32 {
+				return nil, fmt.Errorf("invalid file permission %d", cfg.Permissions)
+			}
+			// #nosec G115 Checking limit
+			mode := int32(cfg.Permissions)
+			if secret.Mode != nil {
+				mode = *secret.Mode
+			}
+
+			for _, s := range secrets {
+				file := &v1alpha1.File{
+					Path:     strings.ReplaceAll(s.Name[:strings.Index(s.Name, "/versions/")], "/", "_"), // Use the secret name as the file name
+					Mode:     mode,
+					Contents: s.Payload.Data,
+				}
+				out.Files = append(out.Files, file)
+
+				// Add object version to response
+				// Assuming ovs is a slice of ObjectVersion
+				ovs = append(ovs, &v1alpha1.ObjectVersion{
+					Id:      secret.ProjectID + "/" + secret.Versions,
+					Version: secret.Versions,
+				})
+			}
+			klog.InfoS("Files created based on provided labels", "files", fmt.Sprintf("%d", len(ovs)), "skipped", fmt.Sprintf("%d", len(secrets)-len(ovs)))
+			continue
+		}
 		loc, err := locationFromSecretResource(secret.ResourceName)
 		if err != nil {
 			errs[i] = err
@@ -173,31 +310,31 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 		return nil, err
 	}
 
-	out := &v1alpha1.MountResponse{}
-
 	// Add secrets to response.
-	ovs := make([]*v1alpha1.ObjectVersion, len(cfg.Secrets))
 	for i, secret := range cfg.Secrets {
-		if cfg.Permissions > math.MaxInt32 {
-			return nil, fmt.Errorf("invalid file permission %d", cfg.Permissions)
-		}
-		// #nosec G115 Checking limit
-		mode := int32(cfg.Permissions)
-		if secret.Mode != nil {
-			mode = *secret.Mode
-		}
+		if secret.ProjectID == "" && secret.Versions == "" && len(secret.Labels) == 0 {
 
-		result := results[i]
-		out.Files = append(out.Files, &v1alpha1.File{
-			Path:     secret.PathString(),
-			Mode:     mode,
-			Contents: result.Payload.Data,
-		})
-		klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
+			if cfg.Permissions > math.MaxInt32 {
+				return nil, fmt.Errorf("invalid file permission %d", cfg.Permissions)
+			}
+			// #nosec G115 Checking limit
+			mode := int32(cfg.Permissions)
+			if secret.Mode != nil {
+				mode = *secret.Mode
+			}
 
-		ovs[i] = &v1alpha1.ObjectVersion{
-			Id:      secret.ResourceName,
-			Version: result.GetName(),
+			result := results[i]
+			out.Files = append(out.Files, &v1alpha1.File{
+				Path:     secret.PathString(),
+				Mode:     mode,
+				Contents: result.Payload.Data,
+			})
+			klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
+
+			ovs = append(ovs, &v1alpha1.ObjectVersion{
+				Id:      secret.ResourceName,
+				Version: result.GetName(),
+			})
 		}
 	}
 	out.ObjectVersion = ovs
