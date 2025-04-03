@@ -16,6 +16,8 @@ module github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	cloud.google.com/go/compute/metadata v0.6.0
 	cloud.google.com/go/iam v1.3.0
@@ -25,7 +27,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.54.0
-	golang.org/x/oauth2 v0.25.0
+	golang.org/x/oauth2 v0.28.0
 	google.golang.org/api v0.211.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f
 	google.golang.org/grpc v1.71.0
