@@ -294,7 +294,7 @@ func (c *Client) fleetWorkloadIdentity(ctx context.Context, cfg *config.MountCon
 	}
 
 	split := strings.SplitN(f.Audience, ":", 3)
-	if split == nil || len(split) < 3 {
+	if len(split) < 3 {
 		// If the audience is not in the expected format, return the audience as the audience since this is likely a federated pool.
 		return "", "", f.Audience, nil
 	}
