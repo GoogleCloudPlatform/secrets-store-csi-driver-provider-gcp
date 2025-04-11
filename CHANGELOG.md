@@ -6,7 +6,23 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
-## v1.6.0
+## v1.8.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.8.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.8.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.8.0`
+
+Digest: `sha256:430b629bc757e5e6aa667793645b64af232519003a976dd4046c050b1ac8acbb`
+
+### Changes & Security Fixes
+
+* Allow using delegated IAM with Pod Workload Identity [425](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/425)
+* Upgrade base image to static-debian12 [523](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/523)
+* Dependencies upgrade [538](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/538)
+
+## v1.7.0
 
 Images:
 
