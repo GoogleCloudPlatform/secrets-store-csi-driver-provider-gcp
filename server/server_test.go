@@ -367,6 +367,42 @@ func TestHandleMountEventForExtractJSONKey(t *testing.T) {
 		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
 	}
 }
+
+func TestHandleMountEventForExtractJSONKeyNestedFormatError(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   "projects/project/secrets/test/versions/latest",
+				FileName:       "good.txt",
+				ExtractJSONKey: "devEnv",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte(`{"devEnv": {"user": "admin", "password": "password@1234"}}`),
+				},
+			}, nil
+		},
+	})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
+	if !strings.Contains(got.Error(), "wrong type for content, expected string but got") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+}
+
 func TestHandleMountEventForRegionalSecretExtractJSONKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{

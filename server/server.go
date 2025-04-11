@@ -212,7 +212,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 
 				// If there is a type conversion error
 				if !ok {
-					return nil, fmt.Errorf("wrong type for content (%v), expected string", value.(string))
+					return nil, fmt.Errorf("wrong type for content, expected string but got %T", value)
 				}
 				content = []byte(dataContent)
 			}
