@@ -189,11 +189,11 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 		}
 
 		result := results[i]
-		extractKey := secret.ExtractKey
+		extractJsonKey := secret.ExtractJsonKey
 		var content []byte
 
-		// If extractKey is null, then set the entire data
-		if extractKey == "" {
+		// If extractJsonKey is null, then set the entire data
+		if extractJsonKey == "" {
 			content = result.Payload.Data
 		} else {
 			var data map[string]interface{}
@@ -202,11 +202,11 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 				return nil, fmt.Errorf("secret data not in JSON format, %v", err)
 			}
 
-			value, ok := data[extractKey]
+			value, ok := data[extractJsonKey]
 
 			// If the key is not present, an error will be raised
 			if !ok {
-				return nil, fmt.Errorf("key %v does not exist at the secret path", extractKey)
+				return nil, fmt.Errorf("key %v does not exist at the secret path", extractJsonKey)
 			} else {
 				dataContent, ok := value.(string)
 

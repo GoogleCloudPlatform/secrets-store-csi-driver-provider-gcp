@@ -279,11 +279,11 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name: "secrets with extractKey",
+			name: "secrets with extractJsonKey",
 			in: &MountParams{
 				Attributes: `
 				{
-					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  extractKey: user\n",
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  extractJsonKey: user\n",
 					"csi.storage.k8s.io/pod.namespace": "default",
 					"csi.storage.k8s.io/pod.name": "mypod",
 					"csi.storage.k8s.io/pod.uid": "123",
@@ -297,9 +297,9 @@ func TestParse(t *testing.T) {
 			want: &MountConfig{
 				Secrets: []*Secret{
 					{
-						ResourceName: "projects/project/secrets/test/versions/latest",
-						FileName:     "good1.txt",
-						ExtractKey:   "user",
+						ResourceName:   "projects/project/secrets/test/versions/latest",
+						FileName:       "good1.txt",
+						ExtractJsonKey: "user",
 					},
 				},
 				PodInfo: &PodInfo{

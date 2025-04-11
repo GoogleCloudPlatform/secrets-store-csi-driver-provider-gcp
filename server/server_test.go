@@ -301,7 +301,7 @@ func TestHandleMountEventForRegionalSecret(t *testing.T) {
 	}
 }
 
-func TestHandleMountEventForExtractKey(t *testing.T) {
+func TestHandleMountEventForExtractJsonKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
@@ -309,9 +309,9 @@ func TestHandleMountEventForExtractKey(t *testing.T) {
 				FileName:     "good1.txt",
 			},
 			{
-				ResourceName: "projects/project/secrets/test/versions/latest",
-				FileName:     "good2.txt",
-				ExtractKey:   "user",
+				ResourceName:   "projects/project/secrets/test/versions/latest",
+				FileName:       "good2.txt",
+				ExtractJsonKey: "user",
 			},
 		},
 		Permissions: 777,
@@ -367,7 +367,7 @@ func TestHandleMountEventForExtractKey(t *testing.T) {
 		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
 	}
 }
-func TestHandleMountEventForRegionalSecretExtractKey(t *testing.T) {
+func TestHandleMountEventForRegionalSecretExtractJsonKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
@@ -375,9 +375,9 @@ func TestHandleMountEventForRegionalSecretExtractKey(t *testing.T) {
 				FileName:     "good1.txt",
 			},
 			{
-				ResourceName: "projects/project/locations/us-central1/secrets/test/versions/latest",
-				FileName:     "good2.txt",
-				ExtractKey:   "user",
+				ResourceName:   "projects/project/locations/us-central1/secrets/test/versions/latest",
+				FileName:       "good2.txt",
+				ExtractJsonKey: "user",
 			},
 		},
 		Permissions: 777,
@@ -434,18 +434,18 @@ func TestHandleMountEventForRegionalSecretExtractKey(t *testing.T) {
 		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
 	}
 }
-func TestHandleMountEventForMultipleSecretsExtractKey(t *testing.T) {
+func TestHandleMountEventForMultipleSecretsExtractJsonKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
-				ResourceName: "projects/project/secrets/test1/versions/latest",
-				FileName:     "good1.txt",
-				ExtractKey:   "user",
+				ResourceName:   "projects/project/secrets/test1/versions/latest",
+				FileName:       "good1.txt",
+				ExtractJsonKey: "user",
 			},
 			{
-				ResourceName: "projects/project/locations/us-central1/secrets/test2/versions/latest",
-				FileName:     "good2.txt",
-				ExtractKey:   "user",
+				ResourceName:   "projects/project/locations/us-central1/secrets/test2/versions/latest",
+				FileName:       "good2.txt",
+				ExtractJsonKey: "user",
 			},
 		},
 		Permissions: 777,
