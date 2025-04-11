@@ -301,7 +301,7 @@ func TestHandleMountEventForRegionalSecret(t *testing.T) {
 	}
 }
 
-func TestHandleMountEventForExtractJsonKey(t *testing.T) {
+func TestHandleMountEventForExtractJSONKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
@@ -311,7 +311,7 @@ func TestHandleMountEventForExtractJsonKey(t *testing.T) {
 			{
 				ResourceName:   "projects/project/secrets/test/versions/latest",
 				FileName:       "good2.txt",
-				ExtractJsonKey: "user",
+				ExtractJSONKey: "user",
 			},
 		},
 		Permissions: 777,
@@ -367,7 +367,7 @@ func TestHandleMountEventForExtractJsonKey(t *testing.T) {
 		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
 	}
 }
-func TestHandleMountEventForRegionalSecretExtractJsonKey(t *testing.T) {
+func TestHandleMountEventForRegionalSecretExtractJSONKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
@@ -377,7 +377,7 @@ func TestHandleMountEventForRegionalSecretExtractJsonKey(t *testing.T) {
 			{
 				ResourceName:   "projects/project/locations/us-central1/secrets/test/versions/latest",
 				FileName:       "good2.txt",
-				ExtractJsonKey: "user",
+				ExtractJSONKey: "user",
 			},
 		},
 		Permissions: 777,
@@ -434,18 +434,18 @@ func TestHandleMountEventForRegionalSecretExtractJsonKey(t *testing.T) {
 		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
 	}
 }
-func TestHandleMountEventForMultipleSecretsExtractJsonKey(t *testing.T) {
+func TestHandleMountEventForMultipleSecretsExtractJSONKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
 			{
 				ResourceName:   "projects/project/secrets/test1/versions/latest",
 				FileName:       "good1.txt",
-				ExtractJsonKey: "user",
+				ExtractJSONKey: "user",
 			},
 			{
 				ResourceName:   "projects/project/locations/us-central1/secrets/test2/versions/latest",
 				FileName:       "good2.txt",
-				ExtractJsonKey: "user",
+				ExtractJSONKey: "user",
 			},
 		},
 		Permissions: 777,
