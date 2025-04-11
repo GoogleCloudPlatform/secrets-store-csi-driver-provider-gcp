@@ -179,10 +179,25 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 		return idBindToken, nil
 	}
 
-	gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, &credentialspb.GenerateAccessTokenRequest{
+	req := &credentialspb.GenerateAccessTokenRequest{
 		Name:  fmt.Sprintf("projects/-/serviceAccounts/%s", gcpSA),
 		Scope: secretmanager.DefaultAuthScopes(),
-	}, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{TokenSource: oauth2.StaticTokenSource(idBindToken)})))
+	}
+
+	if gcpSADelegates, ok := saResp.Annotations["iam.gke.io/gcp-service-account-delegates"]; ok {
+		var delegates []string
+		if err := json.Unmarshal([]byte(gcpSADelegates), &delegates); err != nil {
+			return nil, fmt.Errorf("unable to parse delegates annotation on SA: %w", err)
+		}
+
+		klog.V(5).InfoS("matched service account delegates", "service_account_delegates", delegates)
+
+		for _, delegate := range delegates {
+			req.Delegates = append(req.Delegates, fmt.Sprintf("projects/-/serviceAccounts/%s", delegate))
+		}
+	}
+
+	gcpSAResp, err := c.IAMClient.GenerateAccessToken(ctx, req, gax.WithGRPCOptions(grpc.PerRPCCredentials(oauth.TokenSource{TokenSource: oauth2.StaticTokenSource(idBindToken)})))
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch gcp service account token: %w", err)
 	}
@@ -279,7 +294,7 @@ func (c *Client) fleetWorkloadIdentity(ctx context.Context, cfg *config.MountCon
 	}
 
 	split := strings.SplitN(f.Audience, ":", 3)
-	if split == nil || len(split) < 3 {
+	if len(split) < 3 {
 		// If the audience is not in the expected format, return the audience as the audience since this is likely a federated pool.
 		return "", "", f.Audience, nil
 	}

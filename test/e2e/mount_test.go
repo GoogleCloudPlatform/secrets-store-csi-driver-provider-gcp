@@ -623,7 +623,7 @@ func TestMountRotateSecret(t *testing.T) {
 
 	// Wait for update. Keep in sync with driver's --rotation-poll-interval to
 	// ensure enough time.
-	time.Sleep(30 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	// Verify update.
 	stdout.Reset()
