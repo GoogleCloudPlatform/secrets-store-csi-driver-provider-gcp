@@ -60,6 +60,11 @@ $ rm secret.data
 $ gcloud secrets add-iam-policy-binding testsecret \
     --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
     --role=roles/secretmanager.secretAccessor
+
+# If secrets will be fetched using the label, grant the new service account permission to list the secrets
+$ gcloud secrets add-iam-policy-binding testsecret \
+    --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
+    --role=roles/secretmanager.viewer
 ```
 
 * Note: Regional secrets are also supported from v1.6.0, Please see [Regional Secret Documentation](https://cloud.google.com/secret-manager/regional-secrets/config-sm-rs).
