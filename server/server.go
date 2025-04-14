@@ -199,7 +199,7 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 			var data map[string]interface{}
 			err := json.Unmarshal(result.Payload.Data, &data)
 			if err != nil {
-				return nil, fmt.Errorf("secret data not in JSON format, %v", err)
+				return nil, fmt.Errorf("secret data not in JSON format")
 			}
 
 			value, ok := data[extractJSONKey]
