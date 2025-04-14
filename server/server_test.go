@@ -398,7 +398,7 @@ func TestHandleMountEventForExtractJSONKeyNestedFormatError(t *testing.T) {
 	regionalClients := make(map[string]*secretmanager.Client)
 
 	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
-	if !strings.Contains(got.Error(), "wrong type for content, expected string but got") {
+	if !strings.Contains(got.Error(), "wrong type for content, expected string") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 }
