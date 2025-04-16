@@ -17,6 +17,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -188,10 +189,39 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 		}
 
 		result := results[i]
+		extractJSONKey := secret.ExtractJSONKey
+		var content []byte
+
+		// If extractJSONKey is null, then set the entire data
+		if extractJSONKey == "" {
+			content = result.Payload.Data
+		} else {
+			var data map[string]interface{}
+			err := json.Unmarshal(result.Payload.Data, &data)
+			if err != nil {
+				return nil, fmt.Errorf("secret data not in JSON format")
+			}
+
+			value, ok := data[extractJSONKey]
+
+			// If the key is not present, an error will be raised
+			if !ok {
+				return nil, fmt.Errorf("key %v does not exist at the secret path", extractJSONKey)
+			} else {
+				dataContent, ok := value.(string)
+
+				// If there is a type conversion error
+				if !ok {
+					return nil, fmt.Errorf("wrong type for content, expected string")
+				}
+				content = []byte(dataContent)
+			}
+		}
+
 		out.Files = append(out.Files, &v1alpha1.File{
 			Path:     secret.PathString(),
 			Mode:     mode,
-			Contents: result.Payload.Data,
+			Contents: content,
 		})
 		klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 

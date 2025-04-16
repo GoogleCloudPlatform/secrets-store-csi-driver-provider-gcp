@@ -301,6 +301,256 @@ func TestHandleMountEventForRegionalSecret(t *testing.T) {
 	}
 }
 
+func TestHandleMountEventForExtractJSONKey(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+			{
+				ResourceName:   "projects/project/secrets/test/versions/latest",
+				FileName:       "good2.txt",
+				ExtractJSONKey: "user",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	want := &v1alpha1.MountResponse{
+		ObjectVersion: []*v1alpha1.ObjectVersion{
+			{
+				Id:      "projects/project/secrets/test/versions/latest",
+				Version: "projects/project/secrets/test/versions/2",
+			},
+			{
+				Id:      "projects/project/secrets/test/versions/latest",
+				Version: "projects/project/secrets/test/versions/2",
+			},
+		},
+		Files: []*v1alpha1.File{
+			{
+				Path:     "good1.txt",
+				Mode:     777,
+				Contents: []byte(`{"user": "admin", "password": "password@1234"}`),
+			},
+			{
+				Path:     "good2.txt",
+				Mode:     777,
+				Contents: []byte("admin"),
+			},
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte(`{"user": "admin", "password": "password@1234"}`),
+				},
+			}, nil
+		},
+	})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+
+	got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+}
+
+func TestHandleMountEventForExtractJSONKeyNestedFormatError(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   "projects/project/secrets/test/versions/latest",
+				FileName:       "good.txt",
+				ExtractJSONKey: "devEnv",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte(`{"devEnv": {"user": "admin", "password": "password@1234"}}`),
+				},
+			}, nil
+		},
+	})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+
+	_, got := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
+	if !strings.Contains(got.Error(), "wrong type for content, expected string") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+}
+
+func TestHandleMountEventForRegionalSecretExtractJSONKey(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: "projects/project/locations/us-central1/secrets/test/versions/latest",
+				FileName:     "good1.txt",
+			},
+			{
+				ResourceName:   "projects/project/locations/us-central1/secrets/test/versions/latest",
+				FileName:       "good2.txt",
+				ExtractJSONKey: "user",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	want := &v1alpha1.MountResponse{
+		ObjectVersion: []*v1alpha1.ObjectVersion{
+			{
+				Id:      "projects/project/locations/us-central1/secrets/test/versions/latest",
+				Version: "projects/project/locations/us-central1/secrets/test/versions/2",
+			},
+			{
+				Id:      "projects/project/locations/us-central1/secrets/test/versions/latest",
+				Version: "projects/project/locations/us-central1/secrets/test/versions/2",
+			},
+		},
+		Files: []*v1alpha1.File{
+			{
+				Path:     "good1.txt",
+				Mode:     777,
+				Contents: []byte(`{"user":"admin", "password":"password@1234"}`),
+			},
+			{
+				Path:     "good2.txt",
+				Mode:     777,
+				Contents: []byte("admin"),
+			},
+		},
+	}
+
+	regionalClient := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/locations/us-central1/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte(`{"user":"admin", "password":"password@1234"}`),
+				},
+			}, nil
+		},
+	})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+	regionalClients["us-central1"] = regionalClient
+
+	got, err := handleMountEvent(context.Background(), regionalClient, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+}
+func TestHandleMountEventForMultipleSecretsExtractJSONKey(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   "projects/project/secrets/test1/versions/latest",
+				FileName:       "good1.txt",
+				ExtractJSONKey: "user",
+			},
+			{
+				ResourceName:   "projects/project/locations/us-central1/secrets/test2/versions/latest",
+				FileName:       "good2.txt",
+				ExtractJSONKey: "user",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	want := &v1alpha1.MountResponse{
+		ObjectVersion: []*v1alpha1.ObjectVersion{
+			{
+				Id:      "projects/project/secrets/test1/versions/latest",
+				Version: "projects/project/secrets/test1/versions/2",
+			},
+			{
+				Id:      "projects/project/locations/us-central1/secrets/test2/versions/latest",
+				Version: "projects/project/locations/us-central1/secrets/test2/versions/2",
+			},
+		},
+		Files: []*v1alpha1.File{
+			{
+				Path:     "good1.txt",
+				Mode:     777,
+				Contents: []byte("admin"),
+			},
+			{
+				Path:     "good2.txt",
+				Mode:     777,
+				Contents: []byte("admin2"),
+			},
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, req *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			switch req.Name {
+			case "projects/project/secrets/test1/versions/latest":
+				return &secretmanagerpb.AccessSecretVersionResponse{
+					Name: "projects/project/secrets/test1/versions/2",
+					Payload: &secretmanagerpb.SecretPayload{
+						Data: []byte(`{"user":"admin", "password":"password@1234"}`),
+					},
+				}, nil
+			case "projects/project/locations/us-central1/secrets/test2/versions/latest":
+				return &secretmanagerpb.AccessSecretVersionResponse{
+					Name: "projects/project/locations/us-central1/secrets/test2/versions/2",
+					Payload: &secretmanagerpb.SecretPayload{
+						Data: []byte(`{"user":"admin2", "password":"password@12345"}`),
+					},
+				}, nil
+			default:
+				return nil, nil
+			}
+		},
+	})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+	regionalClients["us-central1"] = client
+
+	got, err := handleMountEvent(context.Background(), client, NewFakeCreds(), cfg, regionalClients, []option.ClientOption{})
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+}
+
 // mock builds a secretmanager.Client talking to a real in-memory secretmanager
 // GRPC server of the *mockSecretServer.
 func mock(t testing.TB, m *mockSecretServer) *secretmanager.Client {

@@ -32,16 +32,17 @@ import (
 const zone = "us-central1-c"
 
 type testFixture struct {
-	tempDir            string
-	gcpProviderBranch  string
-	testClusterName    string
-	testSecretID       string
-	testRotateSecretID string
-	kubeconfigFile     string
-	testProjectID      string
-	secretStoreVersion string
-	gkeVersion         string
-	location           string
+	tempDir             string
+	gcpProviderBranch   string
+	testClusterName     string
+	testSecretID        string
+	testRotateSecretID  string
+	testExtractSecretID string
+	kubeconfigFile      string
+	testProjectID       string
+	secretStoreVersion  string
+	gkeVersion          string
+	location            string
 }
 
 var f testFixture
@@ -167,6 +168,7 @@ func setupTestSuite(isTokenPassed bool) {
 	f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
 	f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
 	f.testRotateSecretID = f.testSecretID + "-rotate"
+	f.testExtractSecretID = f.testSecretID + "-extract"
 
 	// Build the plugin deploy yaml
 	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
@@ -297,7 +299,7 @@ func teardownTestSuite() {
 		"--kubeconfig", f.kubeconfigFile,
 	))
 
-	// cleanup
+	// Cleanup
 	os.RemoveAll(f.tempDir)
 	execCmd(exec.Command("kubectl", "delete", "containercluster", f.testClusterName))
 	execCmd(exec.Command(
@@ -310,8 +312,13 @@ func teardownTestSuite() {
 		"--project", f.testProjectID,
 		"--quiet",
 	))
+	execCmd(exec.Command(
+		"gcloud", "secrets", "delete", f.testExtractSecretID,
+		"--project", f.testProjectID,
+		"--quiet",
+	))
 
-	// Create regional secret
+	// Cleanup regional secret
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
 		"https://secretmanager."+f.location+".rep.googleapis.com/")))
 	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--location", f.location,
@@ -640,4 +647,54 @@ func TestMountRotateSecret(t *testing.T) {
 	}
 
 	// TODO: Add checks for regional secret
+}
+
+// Execute a test job that mounts a extract secret and checks that the value is correct.
+func TestMountExtractSecret(t *testing.T) {
+	secretData := []byte(`{"user":"admin", "password":"password@1234"}`)
+
+	// Create test secret
+	secretFile := filepath.Join(f.tempDir, "secretExtractValue")
+	check(os.WriteFile(secretFile, secretData, 0644))
+	check(execCmd(exec.Command(
+		"gcloud", "secrets", "create", f.testExtractSecretID,
+		"--replication-policy", "automatic",
+		"--data-file", secretFile,
+		"--project", f.testProjectID,
+	)))
+
+	podFile := filepath.Join(f.tempDir, "test-extract-key.yaml")
+	if err := replaceTemplate("templates/test-extract-key.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter-extract", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for job: %v", err)
+	}
+	testExtractSecret := []byte("admin")
+
+	// Check Mounted Secrets
+	var stdout, stderr bytes.Buffer
+	command := exec.Command(
+		"kubectl", "exec", "test-secret-mounter-extract",
+		"--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default",
+		"--",
+		"cat", "/var/gcp-test-secrets/extract")
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		t.Fatalf("Could not read secret from container: %v", err)
+	}
+	if got := stdout.Bytes(); !bytes.Equal(got, testExtractSecret) {
+		t.Fatalf("Secret value is %v, want: %v", got, testExtractSecret)
+	}
 }
