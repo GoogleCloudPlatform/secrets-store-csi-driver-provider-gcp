@@ -28,7 +28,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// extractLocationFromSecretResource returns location from the secret resource if the resource is in format "projects/<project_id>/locations/<location_id>/..."
+// ExtractLocationFromSecretResource returns location from the secret resource if the resource is in format "projects/<project_id>/locations/<location_id>/..."
 // returns "" for global secret resource.
 func ExtractLocationFromSecretResource(resource string) (string, error) {
 	globalSecretRegexp := regexp.MustCompile(globalSecretRegex)
@@ -45,7 +45,7 @@ func ExtractLocationFromSecretResource(resource string) (string, error) {
 	return "", status.Errorf(codes.InvalidArgument, "Invalid secret resource name: %s", resource)
 }
 
-// extractLocationFromParameterManagerResource returns location from the parameter resource
+// ExtractLocationFromParameterManagerResource returns location from the parameter resource
 // if the resource is in the following format for global resource
 // "projects/<project_id>/locations/global/parameters/<parameter_name>/versions/<pm_version_name>"
 // or in the following format for regionalized resource
@@ -66,7 +66,7 @@ func ExtractLocationFromParameterManagerResource(resource string) (string, error
 	return "", status.Errorf(codes.InvalidArgument, "Invalid parameter resource name: %s", resource)
 }
 
-// Populates the regional client maps with those regions which might have been missed in client_initiator
+// PopulateRegionalClientMap populates the regional client maps with those regions which might have been missed in client_initiator
 // Maps are passed by reference by default in golang
 func PopulateRegionalClientMap(resources []*config.Secret, smRegionalClients map[string]*secretmanager.Client, pmRegionalClients map[string]*parametermanager.Client, clientOptions []option.ClientOption) {
 	for _, resource := range resources {

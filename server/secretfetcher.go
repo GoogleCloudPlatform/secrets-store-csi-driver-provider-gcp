@@ -12,10 +12,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (s *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.CallOption, smClient *secretmanager.Client, resultChan chan<- *Resource) {
-	smMetricRecorder := csrmetrics.OutboundRPCStartRecorder(s.MetricName)
+func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.CallOption, smClient *secretmanager.Client, resultChan chan<- *Resource) {
+	smMetricRecorder := csrmetrics.OutboundRPCStartRecorder(r.MetricName)
 	request := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: s.ResourceURI,
+		Name: r.ResourceURI,
 	}
 	response, err := smClient.AccessSecretVersion(ctx, request, *authOption)
 	if err != nil {
@@ -27,46 +27,46 @@ func (s *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 			// In my opininon we should throw a default 500 error (rare case)
 			smMetricRecorder(csrmetrics.OutboundRPCStatusOK)
 		}
-		resultChan <- getErrorResource(s.ResourceURI, s.FileName, err)
+		resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 		return
 	}
 	// Both simultaneously can't be populated.
-	if len(s.ExtractJSONKey) > 0 && len(s.ExtractYAMLKey) > 0 {
+	if len(r.ExtractJSONKey) > 0 && len(r.ExtractYAMLKey) > 0 {
 		resultChan <- getErrorResource(
-			s.ResourceURI,
-			s.FileName,
-			fmt.Errorf(s.ResourceURI, "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
+			r.ResourceURI,
+			r.FileName,
+			fmt.Errorf(r.ResourceURI, "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
 		)
-	} else if len(s.ExtractJSONKey) > 0 { // ExtractJSONKey populated
-		content, err := util.ExtractContentUsingJSONKey(response.Payload.Data, s.ExtractJSONKey)
+	} else if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
+		content, err := util.ExtractContentUsingJSONKey(response.Payload.Data, r.ExtractJSONKey)
 		if err != nil {
-			resultChan <- getErrorResource(s.ResourceURI, s.FileName, err)
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 			return
 		}
 		resultChan <- &Resource{
-			ID:       s.ResourceURI,
-			FileName: s.FileName,
+			ID:       r.ResourceURI,
+			FileName: r.FileName,
 			Version:  response.GetName(),
 			Payload:  content,
 			Err:      nil,
 		}
-	} else if len(s.ExtractYAMLKey) > 0 { // ExtractJSONKey populated
-		content, err := util.ExtractContentUsingYAMLKey(response.Payload.Data, s.ExtractYAMLKey)
+	} else if len(r.ExtractYAMLKey) > 0 { // ExtractJSONKey populated
+		content, err := util.ExtractContentUsingYAMLKey(response.Payload.Data, r.ExtractYAMLKey)
 		if err != nil {
-			resultChan <- getErrorResource(s.ResourceURI, s.FileName, err)
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 			return
 		}
 		resultChan <- &Resource{
-			ID:       s.ResourceURI,
-			FileName: s.FileName,
+			ID:       r.ResourceURI,
+			FileName: r.FileName,
 			Version:  response.GetName(),
 			Payload:  content,
 			Err:      nil,
 		}
 	} else {
 		resultChan <- &Resource{
-			ID:       s.ResourceURI,
-			FileName: s.FileName,
+			ID:       r.ResourceURI,
+			FileName: r.FileName,
 			Version:  response.GetName(),
 			Payload:  response.Payload.Data,
 			Err:      nil,

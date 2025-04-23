@@ -25,13 +25,13 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var pm_regions = []string{
+var pmRegions = []string{
 	"us-central1", "us-east4", "europe-west1", "europe-west4", "europe-west2",
 	"us-east7", "europe-west3",
 }
 
 // sm probably has more regions they will be initialised in server.go as per the regions required
-var sm_regions = []string{
+var smRegions = []string{
 	"us-central1", "us-east4", "europe-west1", "europe-west4", "europe-west2",
 	"us-east7", "europe-west3",
 }
@@ -62,7 +62,7 @@ func InitializeSecretManagerRegionalMap(ctx context.Context, clientOptions []opt
 	// To cache the clients for secret manager regional endpoints
 	smRep := make(map[string]*secretmanager.Client)
 	// Initialize the map with regional endpoints
-	for _, region := range sm_regions {
+	for _, region := range smRegions {
 		// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
 		regionalClient := GetRegionalSecretManagerClient(region, clientOptions)
 		if regionalClient != nil {
@@ -76,7 +76,7 @@ func InitializeParameterManagerRegionalMap(ctx context.Context, clientOptions []
 	// To cache the clients for parameter manager regional endpoints
 	pmRep := make(map[string]*parametermanager.Client)
 	// Initialize the map with regional endpoints
-	for _, region := range pm_regions {
+	for _, region := range pmRegions {
 		// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
 		regionalClient := GetRegionalParameterManagerClient(region, clientOptions)
 		if regionalClient != nil {

@@ -37,14 +37,14 @@ func TestInitializeSecretManagerRegionalMap(t *testing.T) {
 
 	smMap := InitializeSecretManagerRegionalMap(ctx, opts)
 
-	if len(smMap) != len(sm_regions) {
-		t.Errorf("Expected map size %d, got %d", len(sm_regions), len(smMap))
+	if len(smMap) != len(smRegions) {
+		t.Errorf("Expected map size %d, got %d", len(smRegions), len(smMap))
 	}
 
 	// Check if all expected regions are present as keys
 	// Make copies to avoid modifying the original sm_regions slice
-	expectedKeys := make([]string, len(sm_regions))
-	copy(expectedKeys, sm_regions)
+	expectedKeys := make([]string, len(smRegions))
+	copy(expectedKeys, smRegions)
 	actualKeys := getMapKeys(smMap)
 
 	// Sort slices for consistent comparison using sort.Strings
@@ -72,14 +72,14 @@ func TestInitializeParameterManagerRegionalMap(t *testing.T) {
 	pmMap := InitializeParameterManagerRegionalMap(ctx, opts)
 
 	// Check map size
-	if len(pmMap) != len(pm_regions) {
-		t.Errorf("Expected map size %d, got %d", len(pm_regions), len(pmMap))
+	if len(pmMap) != len(pmRegions) {
+		t.Errorf("Expected map size %d, got %d", len(pmRegions), len(pmMap))
 	}
 
 	// Check keys
 	// Make copies to avoid modifying the original pm_regions slice
-	expectedKeys := make([]string, len(pm_regions))
-	copy(expectedKeys, pm_regions)
+	expectedKeys := make([]string, len(pmRegions))
+	copy(expectedKeys, pmRegions)
 	actualKeys := getMapKeys(pmMap)
 
 	// Sort slices for consistent comparison using sort.Strings
