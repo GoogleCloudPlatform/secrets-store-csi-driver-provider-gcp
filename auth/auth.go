@@ -71,7 +71,7 @@ type credentialsFile struct {
 // TokenSource returns the correct oauth2.TokenSource depending on the auth
 // configuration of the MountConfig.
 func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oauth2.TokenSource, error) {
-	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
+	allowSecretRef, err := vars.AllowNodepublishSecretRef.GetBooleanValue()
 	if err != nil {
 		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")

@@ -88,7 +88,7 @@ var UserAgentIdentifier = EnvVar{
 	isRequired:   false,
 }
 
-var AllowNodepublishSeretRef = EnvVar{
+var AllowNodepublishSecretRef = EnvVar{
 	envVarName:   "ALLOW_NODE_PUBLISH_SECRET",
 	defaultValue: "false",
 	isRequired:   false,

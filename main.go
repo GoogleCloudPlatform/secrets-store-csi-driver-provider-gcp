@@ -32,10 +32,12 @@ import (
 
 	"cloud.google.com/go/compute/metadata"
 	iam "cloud.google.com/go/iam/credentials/apiv1"
+	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/util"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
@@ -114,7 +116,7 @@ func main() {
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
 	// basis for each mount
-	smOpts := []option.ClientOption{
+	clientOptions := []option.ClientOption{
 		option.WithUserAgent(ua),
 		// tell the secretmanager library to not add transport-level ADC since
 		// we need to override on a per call basis
@@ -129,14 +131,23 @@ func main() {
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
 	}
 
-	sc, err := secretmanager.NewClient(ctx, smOpts...)
+	sc, err := secretmanager.NewClient(ctx, clientOptions...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
 	}
 
+	pmClient, err := parametermanager.NewClient(ctx, clientOptions...)
+	if err != nil {
+		klog.ErrorS(err, "failed to create parametermanager client")
+		klog.Fatal("failed to create parametermanager client")
+	}
+
 	// To cache the clients for regional endpoints.
-	m := make(map[string]*secretmanager.Client)
+	m := util.InitializeSecretManagerRegionalMap(ctx, clientOptions)
+
+	// To cache the clients for parameter manager regional endpoints
+	pmRep := util.InitializeParameterManagerRegionalMap(ctx, clientOptions)
 
 	// IAM client
 	//
@@ -183,10 +194,12 @@ func main() {
 
 	// setup provider grpc server
 	s := &server.Server{
-		SecretClient:          sc,
-		AuthClient:            c,
-		RegionalSecretClients: m,
-		SmOpts:                smOpts,
+		SecretClient:                    sc,
+		ParameterManagerClient:          pmClient,
+		AuthClient:                      c,
+		RegionalSecretClients:           m,
+		RegionalParameterManagerClients: pmRep,
+		ServerClientOptions:             clientOptions,
 	}
 
 	p, err := vars.ProviderName.GetValue()
