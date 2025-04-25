@@ -102,4 +102,5 @@ spec:
         - user:anujsg@google.com
         - user:namandave@google.com
         - user:arpangoswami@google.com
+        - user:suyogjain@google.com
       role: roles/owner
