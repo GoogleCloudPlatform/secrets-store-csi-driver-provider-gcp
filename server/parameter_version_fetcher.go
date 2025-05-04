@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
@@ -32,6 +33,16 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 		return
 	}
+	encodedBytes := response.RenderedPayload
+	// Decode from Base64 (directly to byte slice)
+	decodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(encodedBytes)))
+	n, err := base64.StdEncoding.Decode(decodedBytes, encodedBytes)
+	if err != nil {
+		resultChan <- getErrorResource(r.ResourceURI, r.FileName, fmt.Errorf("error decoding base64 rendered payload into plain text: %w", err))
+		return
+	}
+	decodedBytes = decodedBytes[:n]
+
 	// Both simultaneously can't be populated.
 	if len(r.ExtractJSONKey) > 0 && len(r.ExtractYAMLKey) > 0 {
 		resultChan <- getErrorResource(
@@ -40,7 +51,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			fmt.Errorf("both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
 		)
 	} else if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
-		content, err := util.ExtractContentUsingJSONKey(response.RenderedPayload, r.ExtractJSONKey)
+		content, err := util.ExtractContentUsingJSONKey(decodedBytes, r.ExtractJSONKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 			return
@@ -53,7 +64,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			Err:      nil,
 		}
 	} else if len(r.ExtractYAMLKey) > 0 { // ExtractJSONKey populated
-		content, err := util.ExtractContentUsingYAMLKey(response.RenderedPayload, r.ExtractYAMLKey)
+		content, err := util.ExtractContentUsingYAMLKey(decodedBytes, r.ExtractYAMLKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 			return
@@ -70,7 +81,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			ID:       r.ResourceURI,
 			FileName: r.FileName,
 			Version:  response.GetParameterVersion(),
-			Payload:  response.RenderedPayload,
+			Payload:  decodedBytes,
 			Err:      nil,
 		}
 	}

@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -169,23 +170,33 @@ func TestHandleMountEvent(t *testing.T) {
 	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
 		renderFn: func(ctx context.Context, req *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
 			if req.Name == globalParameterVersion {
+				data := []byte("{\"user\":\"admin\", \"password\":\"password@1234\"}")
+				// Encode to Base64 (as byte slice)
+				encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+				base64.StdEncoding.Encode(encodedBytes, data)
 				return &parametermanagerpb.RenderParameterVersionResponse{
 					ParameterVersion: globalParameterVersion,
-					RenderedPayload:  []byte("{\"user\":\"admin\", \"password\":\"password@1234\"}"),
+					RenderedPayload:  encodedBytes,
 				}, nil
 			}
+			data := []byte("user: admin\npassword: password@1234")
+			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+			base64.StdEncoding.Encode(encodedBytes, data)
 			return &parametermanagerpb.RenderParameterVersionResponse{
 				ParameterVersion: globalParameterVersion2,
-				RenderedPayload:  []byte("user: admin\npassword: password@1234"),
+				RenderedPayload:  encodedBytes,
 			}, nil
 		},
 	})
 
 	regionalPmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
 		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
+			data := []byte("user: admin\npassword: password@1234")
+			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+			base64.StdEncoding.Encode(encodedBytes, data)
 			return &parametermanagerpb.RenderParameterVersionResponse{
 				ParameterVersion: regionalParameterVersion,
-				RenderedPayload:  []byte("user: admin\npassword: password@1234"),
+				RenderedPayload:  encodedBytes,
 			}, nil
 		},
 	})
@@ -211,11 +222,92 @@ func TestHandleMountEvent(t *testing.T) {
 }
 
 func TestHandleMountBothSMKeyJSONYAMLKeyProvided(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   "projects/project/secrets/test/versions/latest",
+				FileName:       "good1.txt",
+				ExtractJSONKey: "user",
+				ExtractYAMLKey: "password",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
 
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte("user: admin\npassword: password@1234"),
+				},
+			}, nil
+		},
+	})
+	regionalSmClients := make(map[string]*secretmanager.Client)
+
+	server := &Server{
+		SecretClient:          client,
+		RegionalSecretClients: regionalSmClients,
+		ServerClientOptions:   []option.ClientOption{},
+	}
+	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+
+	if !strings.Contains(got.Error(), "FailedPrecondition") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+	if !strings.Contains(got.Error(), "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
 }
 
 func TestHandleMountBothPMKeyJSONYAMLKeyProvided(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   globalParameterVersion,
+				FileName:       "pm_good1.txt",
+				ExtractJSONKey: "user",
+				ExtractYAMLKey: "password",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
 
+	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
+		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
+			data := []byte("user: admin\npassword: password@1234")
+			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+			base64.StdEncoding.Encode(encodedBytes, data)
+			return &parametermanagerpb.RenderParameterVersionResponse{
+				ParameterVersion: globalParameterVersion2,
+				RenderedPayload:  encodedBytes,
+			}, nil
+		},
+	})
+	regionalPmClients := make(map[string]*parametermanager.Client)
+
+	server := &Server{
+		ParameterManagerClient:          pmClient,
+		RegionalParameterManagerClients: regionalPmClients,
+		ServerClientOptions:             []option.ClientOption{},
+	}
+	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+
+	if !strings.Contains(got.Error(), "FailedPrecondition") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+	if !strings.Contains(got.Error(), "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
 }
 
 // Even 1 error results in error in mounting
@@ -246,9 +338,12 @@ func TestHandleMountEventSMErrorPMVersionOK(t *testing.T) {
 
 	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
 		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
+			data := []byte("user: admin\npassword: password@1234")
+			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+			base64.StdEncoding.Encode(encodedBytes, data)
 			return &parametermanagerpb.RenderParameterVersionResponse{
 				ParameterVersion: globalParameterVersion2,
-				RenderedPayload:  []byte("user: admin\npassword: password@1234"),
+				RenderedPayload:  encodedBytes,
 			}, nil
 		},
 	})
@@ -481,9 +576,12 @@ func TestHandleMountEventPMMultipleErrors(t *testing.T) {
 		renderFn: func(ctx context.Context, req *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
 			switch req.Name {
 			case globalParameterVersion:
+				data := []byte("user: admin\npassword: password@1234")
+				encodedData := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+				base64.StdEncoding.Encode(encodedData, data)
 				return &parametermanagerpb.RenderParameterVersionResponse{
 					ParameterVersion: globalParameterVersion,
-					RenderedPayload:  []byte("user: admin\npassword: password@1234"),
+					RenderedPayload:  encodedData,
 				}, nil
 			case globalParameterVersion2:
 				return nil, status.Error(codes.FailedPrecondition, "ParameterVersion is Disabled")
