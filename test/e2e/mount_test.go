@@ -912,7 +912,7 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML),                                                         // mounted file path
 		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\n", f.testProjectID, f.testSecretID), // expected payload
 	); err != nil {
-		t.Fatalf("Error while testing global yaml parameter version: %w", err)
+		t.Fatalf("Error while testing global yaml parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersion(
@@ -920,7 +920,7 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON),                                                                                   // mounted filepath
 		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\"}", f.testProjectID, f.testSecretID), // expected payload
 	); err != nil {
-		t.Fatalf("Error while testing global json parameter version: %w", err)
+		t.Fatalf("Error while testing global json parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersion(
@@ -928,7 +928,7 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML),                                                          // mounted filepath
 		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\n", f.testProjectID, f.location, f.testSecretID), // expected payload
 	); err != nil {
-		t.Fatalf("Error while testing regional yaml parameter version: %w", err)
+		t.Fatalf("Error while testing regional yaml parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersion(
@@ -936,7 +936,7 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON),                                                                                    // filepath
 		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\"}", f.testProjectID, f.location, f.testSecretID), // expected payload
 	); err != nil {
-		t.Fatalf("Error while testing regional json parameter version: %w", err)
+		t.Fatalf("Error while testing regional json parameter version: %v", err)
 	}
 }
 
@@ -957,7 +957,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
 		f.testSecretID, // expected payload (extractYAMLKey used with key db_pwd used)
 	); err != nil {
-		t.Fatalf("Error while testing global yaml parameter version extracted key 'db_pwd': %w", err) // expected global secret
+		t.Fatalf("Error while testing global yaml parameter version extracted key 'db_pwd': %v", err) // expected global secret
 	}
 
 	if err := checkMountedParameterVersion(
@@ -965,7 +965,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON), // mounted filepath
 		"admin", // expected payload (extractJSONKey with key user used)
 	); err != nil {
-		t.Fatalf("Error while testing global json parameter version extracted key 'user': %w", err)
+		t.Fatalf("Error while testing global json parameter version extracted key 'user': %v", err)
 	}
 
 	if err := checkMountedParameterVersion(
@@ -973,7 +973,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
 		"support",
 	); err != nil {
-		t.Fatalf("Error while testing regional yaml parameter version extracted key 'user2': %w", err)
+		t.Fatalf("Error while testing regional yaml parameter version extracted key 'user2': %v", err)
 	}
 
 	if err := checkMountedParameterVersion(
@@ -981,7 +981,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
 		fmt.Sprintf("%s-regional", f.testSecretID), // expected payload (extractYAMLKey used with key db_pwd used)
 	); err != nil {
-		t.Fatalf("Error while testing regional json parameter version extracted key 'db_pwd': %w", err) // expected regional secret
+		t.Fatalf("Error while testing regional json parameter version extracted key 'db_pwd': %v", err) // expected regional secret
 	}
 }
 
@@ -1002,7 +1002,7 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
 		0420, // expected mode
 	); err != nil {
-		t.Fatalf("Error while testing global yaml parameter version: %w", err)
+		t.Fatalf("Error while testing global yaml parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersionFileMode(
@@ -1010,7 +1010,7 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON), // mounted filepath
 		0600, // expected mode
 	); err != nil {
-		t.Fatalf("Error while testing global json parameter version: %w", err)
+		t.Fatalf("Error while testing global json parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersionFileMode(
@@ -1018,7 +1018,7 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
 		0400, // expected mode
 	); err != nil {
-		t.Fatalf("Error while testing regional yaml parameter version filemode: %w", err)
+		t.Fatalf("Error while testing regional yaml parameter version filemode: %v", err)
 	}
 
 	if err := checkMountedParameterVersionFileMode(
@@ -1026,6 +1026,6 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
 		0440, // expected mode
 	); err != nil {
-		t.Fatalf("Error while testing regional json parameter version filemode: %w", err)
+		t.Fatalf("Error while testing regional json parameter version filemode: %v", err)
 	}
 }
