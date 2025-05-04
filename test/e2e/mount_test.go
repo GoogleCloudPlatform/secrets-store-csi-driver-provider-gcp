@@ -297,8 +297,6 @@ func setupTestSuite(isTokenPassed bool) {
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
 		"--data-file", secretFile, "--project", f.testProjectID)))
 
-	check(execCmd(exec.Command("gcloud", "services", "enable", "parametermanager.googleapis.com", "--project", f.testProjectID)))
-
 	// Create test parameter and parameter versions -> global region (both YAML and JSON)
 	parameterVersionFileYaml := filepath.Join(f.tempDir, "parameterValueYaml")
 	parameterVersionFileJson := filepath.Join(f.tempDir, "parameterValueJson")
