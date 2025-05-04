@@ -181,6 +181,29 @@ func replaceTemplate(templateFile string, destFile string) error {
 	return os.WriteFile(destFile, []byte(template), 0644)
 }
 
+// getParameterPrincipalID describes a parameter and returns its iamPolicyUidPrincipal.
+func getParameterPrincipalID(parameterID, location, projectID string) (string, error) {
+	var stdout, stderr bytes.Buffer
+	args := []string{
+		"parametermanager", "parameters", "describe", parameterID,
+		"--location", location,
+		"--project", projectID,
+		"--format=value(policyMember.iamPolicyUidPrincipal)",
+	}
+	log.Println("+ gcloud", strings.Join(args, " ")) // Log the command
+	cmd := exec.Command("gcloud", args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("Stdout: %v\n", stdout.String())
+		log.Fatalf("Stderr: %v\n", stderr.String())
+		return "", fmt.Errorf("failed to describe parameter %s in location %s: %w\nStderr: %s", parameterID, location, err, stderr.String())
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}
+
 // Executed before any tests are run. Setup is only run once for all tests in the suite.
 func setupTestSuite(isTokenPassed bool) {
 
@@ -274,6 +297,8 @@ func setupTestSuite(isTokenPassed bool) {
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
 		"--data-file", secretFile, "--project", f.testProjectID)))
 
+	check(execCmd(exec.Command("gcloud", "services", "enable", "parametermanager.googleapis.com", "--project", f.testProjectID)))
+
 	// Create test parameter and parameter versions -> global region (both YAML and JSON)
 	parameterVersionFileYaml := filepath.Join(f.tempDir, "parameterValueYaml")
 	parameterVersionFileJson := filepath.Join(f.tempDir, "parameterValueJson")
@@ -285,8 +310,24 @@ func setupTestSuite(isTokenPassed bool) {
 	// Create Parameters first
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.parameterIdYaml,
 		"--location", "global", "--parameter-format", "YAML", "--project", f.testProjectID)))
+
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.parameterIdJson,
 		"--location", "global", "--parameter-format", "JSON", "--project", f.testProjectID)))
+
+	// Grant parameter principals access to the global secret
+	globalYamlPrincipal, err := getParameterPrincipalID(f.parameterIdYaml, "global", f.testProjectID)
+	check(err) // Use check(err) which panics on error
+	check(execCmd(exec.Command("gcloud", "secrets", "add-iam-policy-binding", f.testSecretID,
+		"--member", globalYamlPrincipal,
+		"--role", "roles/secretmanager.secretAccessor",
+		"--project", f.testProjectID)))
+
+	globalJsonPrincipal, err := getParameterPrincipalID(f.parameterIdJson, "global", f.testProjectID)
+	check(err)
+	check(execCmd(exec.Command("gcloud", "secrets", "add-iam-policy-binding", f.testSecretID,
+		"--member", globalJsonPrincipal,
+		"--role", "roles/secretmanager.secretAccessor",
+		"--project", f.testProjectID)))
 
 	// Now create the versions using the files you just wrote
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.parameterVersionIdYAML,
@@ -323,6 +364,21 @@ func setupTestSuite(isTokenPassed bool) {
 		"--location", f.location, "--parameter-format", "YAML", "--project", f.testProjectID)))
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.regionalParameterIdJSON,
 		"--location", f.location, "--parameter-format", "JSON", "--project", f.testProjectID)))
+
+	// Grant parameter principals access to the regional secret
+	regionalYamlPrincipal, err := getParameterPrincipalID(f.regionalParameterIdYAML, f.location, f.testProjectID)
+	check(err)
+	check(execCmd(exec.Command("gcloud", "secrets", "add-iam-policy-binding", f.testSecretID, // Assuming regional secret has same ID but different location context
+		"--member", regionalYamlPrincipal,
+		"--role", "roles/secretmanager.secretAccessor",
+		"--project", f.testProjectID, "--location", f.location))) // Need location for regional secret binding
+
+	regionalJsonPrincipal, err := getParameterPrincipalID(f.regionalParameterIdJSON, f.location, f.testProjectID)
+	check(err)
+	check(execCmd(exec.Command("gcloud", "secrets", "add-iam-policy-binding", f.testSecretID, // Assuming regional secret has same ID but different location context
+		"--member", regionalJsonPrincipal,
+		"--role", "roles/secretmanager.secretAccessor",
+		"--project", f.testProjectID, "--location", f.location))) // Need location for regional secret binding
 
 	// Now create corresponding parameter versions to YAML and JSON parameters just created
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.parameterVersionIdYAML,
