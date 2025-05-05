@@ -76,6 +76,12 @@ spec:
     - members:
         - serviceAccount:e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/secretmanager.admin
+    - members:
+        - serviceAccount:e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/parametermanager.parameterVersionManager
+    - members:
+        - serviceAccount:e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/parametermanager.admin
     # for test cluster to access secrets
     - members:
         - serviceAccount:secretmanager-csi-build.svc.id.goog[default/test-cluster-sa]
