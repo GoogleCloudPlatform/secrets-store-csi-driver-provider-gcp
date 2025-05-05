@@ -86,6 +86,9 @@ spec:
     - members:
         - serviceAccount:secretmanager-csi-build.svc.id.goog[default/test-cluster-sa]
       role: roles/secretmanager.secretAccessor
+    - members:
+        - serviceAccount:secretmanager-csi-build.svc.id.goog[default/test-cluster-sa]
+      role: roles/parametermanager.parameterAccessor
     # service account agent bindings
     - members:
         - serviceAccount:service-735463103342@compute-system.iam.gserviceaccount.com
