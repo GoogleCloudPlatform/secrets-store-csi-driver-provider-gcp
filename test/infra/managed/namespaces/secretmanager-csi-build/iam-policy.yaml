@@ -59,10 +59,10 @@ spec:
       role: roles/secretmanager.admin
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
-      role: roles/secretmanager.admin
+      role: roles/parametermanager.admin
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
-      role: roles/parametermanager.admin
+      role: roles/iam.securityAdmin
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/monitoring.metricWriter
