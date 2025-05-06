@@ -31,7 +31,6 @@ type resourceFetcher struct {
 	MetricName     string
 	Mode           *int32
 	ExtractJSONKey string
-	ExtractYAMLKey string
 }
 
 // Resource represents the Resource that is fetched.

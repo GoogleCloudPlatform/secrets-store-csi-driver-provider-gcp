@@ -43,14 +43,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 	}
 	decodedBytes = decodedBytes[:n]
 
-	// Both simultaneously can't be populated.
-	if len(r.ExtractJSONKey) > 0 && len(r.ExtractYAMLKey) > 0 {
-		resultChan <- getErrorResource(
-			r.ResourceURI,
-			r.FileName,
-			fmt.Errorf("both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
-		)
-	} else if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
+	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(decodedBytes, r.ExtractJSONKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
@@ -63,26 +56,14 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			Payload:  content,
 			Err:      nil,
 		}
-	} else if len(r.ExtractYAMLKey) > 0 { // ExtractJSONKey populated
-		content, err := util.ExtractContentUsingYAMLKey(decodedBytes, r.ExtractYAMLKey)
-		if err != nil {
-			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
-			return
-		}
-		resultChan <- &Resource{
-			ID:       r.ResourceURI,
-			FileName: r.FileName,
-			Version:  response.GetParameterVersion(),
-			Payload:  content,
-			Err:      nil,
-		}
-	} else {
-		resultChan <- &Resource{
-			ID:       r.ResourceURI,
-			FileName: r.FileName,
-			Version:  response.GetParameterVersion(),
-			Payload:  decodedBytes,
-			Err:      nil,
-		}
+		return
+	}
+
+	resultChan <- &Resource{
+		ID:       r.ResourceURI,
+		FileName: r.FileName,
+		Version:  response.GetParameterVersion(),
+		Payload:  decodedBytes,
+		Err:      nil,
 	}
 }
