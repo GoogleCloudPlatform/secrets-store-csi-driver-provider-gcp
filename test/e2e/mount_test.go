@@ -345,7 +345,6 @@ func setupTestSuite(isTokenPassed bool) {
 		"https://secretmanager."+f.location+".rep.googleapis.com/")))
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--location", f.location,
 		"--data-file", secretFile, "--project", f.testProjectID)))
-	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 
 	// Create regional parameter and regional parameter version
 	parameterVersionFileYamlRegional := filepath.Join(f.tempDir, "parameterValueYamlRegional")
@@ -389,6 +388,8 @@ func setupTestSuite(isTokenPassed bool) {
 		"--payload-data-from-file", parameterVersionFileJsonRegional, // And here
 		"--project", f.testProjectID)))
 
+	// Setting endpoints back to the global defaults
+	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/parametermanager")))
 
 	if isTokenPassed {
