@@ -1026,7 +1026,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s-regional\n", f.testProjectID, f.location, f.testSecretID),                        // expected payload
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s-regional\n", f.testSecretID),                                                     // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version extracted key 'user2': %v", err)
 	}

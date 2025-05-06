@@ -17,7 +17,6 @@ package server
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -943,35 +942,4 @@ func (f fakeCreds) GetRequestMetadata(ctx context.Context, uri ...string) (map[s
 // Since these are fake credentials for use with mock local server this is set to false.
 func (f fakeCreds) RequireTransportSecurity() bool {
 	return false
-}
-
-func compareContents(t *testing.T, want *v1alpha1.MountResponse, got *v1alpha1.MountResponse) {
-	t.Helper()
-	if diff := cmp.Diff(want.ObjectVersion, got.ObjectVersion, protocmp.Transform()); diff != "" {
-		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
-	}
-	for i := range want.Files {
-		if diff := cmp.Diff(want.Files[i].Path, got.Files[i].Path); diff != "" {
-			t.Errorf("handleMountEvent() returned unexpected response file path (-want +got):\n%s", diff)
-		}
-		if diff := cmp.Diff(want.Files[i].Mode, got.Files[i].Mode); diff != "" {
-			t.Errorf("handleMountEvent() returned unexpected response file path (-want +got):\n%s", diff)
-		}
-		var nestedMapWanted map[string]interface{}
-		var nestedMapGot map[string]interface{}
-		err := json.Unmarshal(want.Files[i].Contents, &nestedMapWanted)
-		err2 := json.Unmarshal(got.Files[i].Contents, &nestedMapGot)
-		if err != nil || err2 != nil {
-			t.Errorf("unexpectedError() while trying to unmarshal contents into map got err = %v, want err = nil", err)
-		}
-		for key, val := range nestedMapWanted {
-			val2, ok := nestedMapGot[key]
-			if !ok {
-				t.Errorf("unexpectedError() while trying to unmarshal contents into map receivedMap doesn't contain the key")
-			}
-			if diff := cmp.Diff(val, val2); diff != "" {
-				t.Errorf("handleMountEvent() returned unexpected response file path (-want +got):\n%s", diff)
-			}
-		}
-	}
 }
