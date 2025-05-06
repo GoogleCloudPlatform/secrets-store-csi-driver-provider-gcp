@@ -17,6 +17,7 @@ package server
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -59,6 +60,11 @@ func TestHandleMountEvent(t *testing.T) {
 				Mode:         &secretFileMode,
 			},
 			{
+				ResourceName:   "projects/project/secrets/secretId/versions/latest",
+				FileName:       "good3.txt",
+				ExtractYAMLKey: "password",
+			},
+			{
 				ResourceName:   globalParameterVersion,
 				FileName:       "pm_good1.txt",
 				ExtractJSONKey: "user",
@@ -67,6 +73,11 @@ func TestHandleMountEvent(t *testing.T) {
 				ResourceName: globalParameterVersion2,
 				FileName:     "pm_good2.txt",
 				Mode:         &parameterManagerFileMode,
+			},
+			{
+				ResourceName:   regionalParameterVersion,
+				FileName:       "pm_good3.txt",
+				ExtractYAMLKey: "password",
 			},
 		},
 		Permissions: 777,
@@ -87,12 +98,20 @@ func TestHandleMountEvent(t *testing.T) {
 				Version: "projects/project/secrets/test/versions/2",
 			},
 			{
+				Id:      "projects/project/secrets/secretId/versions/latest",
+				Version: "projects/project/secrets/secretId/versions/1",
+			},
+			{
 				Id:      globalParameterVersion,
 				Version: globalParameterVersion,
 			},
 			{
 				Id:      globalParameterVersion2,
 				Version: globalParameterVersion2,
+			},
+			{
+				Id:      regionalParameterVersion,
+				Version: regionalParameterVersion,
 			},
 		},
 		Files: []*v1alpha1.File{
@@ -107,6 +126,11 @@ func TestHandleMountEvent(t *testing.T) {
 				Contents: []byte("My Secret"),
 			},
 			{
+				Path:     "good3.txt",
+				Mode:     777,
+				Contents: []byte("password@1234"),
+			},
+			{
 				Path:     "pm_good1.txt",
 				Mode:     777, // octal 0500 as 5*64 = 320
 				Contents: []byte("admin"),
@@ -115,6 +139,11 @@ func TestHandleMountEvent(t *testing.T) {
 				Path:     "pm_good2.txt",
 				Mode:     320, // octal 0500 as 5*64 = 320
 				Contents: []byte("user: admin\npassword: password@1234"),
+			},
+			{
+				Path:     "pm_good3.txt",
+				Mode:     777,
+				Contents: []byte("password@1234"),
 			},
 		},
 	}
@@ -189,6 +218,95 @@ func TestHandleMountEvent(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
 		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+}
+
+func TestHandleMountBothSMKeyJSONYAMLKeyProvided(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   "projects/project/secrets/test/versions/latest",
+				FileName:       "good1.txt",
+				ExtractJSONKey: "user",
+				ExtractYAMLKey: "password",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte("user: admin\npassword: password@1234"),
+				},
+			}, nil
+		},
+	})
+	regionalSmClients := make(map[string]*secretmanager.Client)
+
+	server := &Server{
+		SecretClient:          client,
+		RegionalSecretClients: regionalSmClients,
+		ServerClientOptions:   []option.ClientOption{},
+	}
+	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+
+	if !strings.Contains(got.Error(), "FailedPrecondition") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+	if !strings.Contains(got.Error(), "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+}
+
+func TestHandleMountBothPMKeyJSONYAMLKeyProvided(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   globalParameterVersion,
+				FileName:       "pm_good1.txt",
+				ExtractJSONKey: "user",
+				ExtractYAMLKey: "password",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
+		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
+			data := []byte("user: admin\npassword: password@1234")
+			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+			base64.StdEncoding.Encode(encodedBytes, data)
+			return &parametermanagerpb.RenderParameterVersionResponse{
+				ParameterVersion: globalParameterVersion2,
+				RenderedPayload:  encodedBytes,
+			}, nil
+		},
+	})
+	regionalPmClients := make(map[string]*parametermanager.Client)
+
+	server := &Server{
+		ParameterManagerClient:          pmClient,
+		RegionalParameterManagerClients: regionalPmClients,
+		ServerClientOptions:             []option.ClientOption{},
+	}
+	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+
+	if !strings.Contains(got.Error(), "FailedPrecondition") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
+	if !strings.Contains(got.Error(), "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings") {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 }
 
@@ -655,6 +773,69 @@ func TestHandleMountEventForExtractJSONKey(t *testing.T) {
 	}
 }
 
+// TODO: (arpangoswami) Not throwing an error when the value is a nested JSON
+// Let me know if that needs to be changed
+// json.Marshal doesn't maintain the order of the keys inside the map
+// as map inside golang is inherently unordered
+// hence matching the values inside
+func TestHandleMountEventForExtractJSONKeyNestedFormat(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   "projects/project/secrets/test/versions/latest",
+				FileName:       "good1.txt",
+				ExtractJSONKey: "devEnv",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	want := &v1alpha1.MountResponse{
+		ObjectVersion: []*v1alpha1.ObjectVersion{
+			{
+				Id:      "projects/project/secrets/test/versions/latest",
+				Version: "projects/project/secrets/test/versions/2",
+			},
+		},
+		Files: []*v1alpha1.File{
+			{
+				Path:     "good1.txt",
+				Mode:     777,
+				Contents: []byte(`{"user": "admin","password": "password@1234"}`),
+			},
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte(`{"devEnv": {"user": "admin","password": "password@1234"}}`),
+				},
+			}, nil
+		},
+	})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+
+	server := &Server{
+		SecretClient:          client,
+		RegionalSecretClients: regionalClients,
+		ServerClientOptions:   []option.ClientOption{},
+	}
+
+	got, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+	if err != nil {
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
+	}
+	compareContents(t, want, got)
+}
+
 func TestHandleMountEventForRegionalSecretExtractJSONKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
@@ -942,4 +1123,35 @@ func (f fakeCreds) GetRequestMetadata(ctx context.Context, uri ...string) (map[s
 // Since these are fake credentials for use with mock local server this is set to false.
 func (f fakeCreds) RequireTransportSecurity() bool {
 	return false
+}
+
+func compareContents(t *testing.T, want *v1alpha1.MountResponse, got *v1alpha1.MountResponse) {
+	t.Helper()
+	if diff := cmp.Diff(want.ObjectVersion, got.ObjectVersion, protocmp.Transform()); diff != "" {
+		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+	for i := range want.Files {
+		if diff := cmp.Diff(want.Files[i].Path, got.Files[i].Path); diff != "" {
+			t.Errorf("handleMountEvent() returned unexpected response file path (-want +got):\n%s", diff)
+		}
+		if diff := cmp.Diff(want.Files[i].Mode, got.Files[i].Mode); diff != "" {
+			t.Errorf("handleMountEvent() returned unexpected response file path (-want +got):\n%s", diff)
+		}
+		var nestedMapWanted map[string]interface{}
+		var nestedMapGot map[string]interface{}
+		err := json.Unmarshal(want.Files[i].Contents, &nestedMapWanted)
+		err2 := json.Unmarshal(got.Files[i].Contents, &nestedMapGot)
+		if err != nil || err2 != nil {
+			t.Errorf("unexpectedError() while trying to unmarshal contents into map got err = %v, want err = nil", err)
+		}
+		for key, val := range nestedMapWanted {
+			val2, ok := nestedMapGot[key]
+			if !ok {
+				t.Errorf("unexpectedError() while trying to unmarshal contents into map receivedMap doesn't contain the key")
+			}
+			if diff := cmp.Diff(val, val2); diff != "" {
+				t.Errorf("handleMountEvent() returned unexpected response file path (-want +got):\n%s", diff)
+			}
+		}
+	}
 }

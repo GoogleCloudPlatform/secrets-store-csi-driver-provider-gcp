@@ -995,7 +995,7 @@ func TestMountParameterVersion(t *testing.T) {
 	}
 }
 
-// mounts global and regional parameter versions and applies extractJSONKey whenever applicable
+// mounts global and regional parameter versions and applies extractYAMLKey and extractJSONKey whenever applicable
 func TestMountParameterVersionExtractKeys(t *testing.T) {
 	podFile := filepath.Join(f.tempDir, "test-parameter-version-extract-keys.yaml")
 	if err := replaceTemplate("templates/test-parameter-version-extract-keys.yaml.tmpl", podFile); err != nil {
@@ -1010,7 +1010,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s\n", f.testSecretID),                                      // expected payload
+		f.testSecretID, // expected payload (extractYAMLKey used with key db_pwd used)
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version extracted key 'db_pwd': %v", err) // expected global secret
 	}
@@ -1026,7 +1026,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s-regional\n", f.testSecretID),                                                     // expected payload
+		"support", // expected payload (extractYAMLKey used with key user2 used)
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version extracted key 'user2': %v", err)
 	}
@@ -1034,7 +1034,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
-		fmt.Sprintf("%s-regional", f.testSecretID), // expected payload (extractJSONKey used with key db_pwd used)
+		fmt.Sprintf("%s-regional", f.testSecretID), // expected payload (extractYAMLKey used with key db_pwd used)
 	); err != nil {
 		t.Fatalf("Error while testing regional json parameter version extracted key 'db_pwd': %v", err) // expected regional secret
 	}

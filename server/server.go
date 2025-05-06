@@ -151,6 +151,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 			ResourceURI:    secret.ResourceName,
 			FileName:       secret.FileName,
 			ExtractJSONKey: secret.ExtractJSONKey,
+			ExtractYAMLKey: secret.ExtractYAMLKey,
 		}
 		go resourceFetcher.Orchestrator(ctx, s, &callAuth, outputChannel, &wg)
 	}
