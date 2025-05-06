@@ -964,32 +964,32 @@ func TestMountParameterVersion(t *testing.T) {
 
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter", // podName
-		fmt.Sprintf("/var/gcp-test-parameter-version/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML),                                                         // mounted file path
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\n", f.testProjectID, f.testSecretID), // expected payload
+		fmt.Sprintf("/var/gcp-test-parameter-version/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s\n", f.testSecretID),                                 // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter", // podName
-		fmt.Sprintf("/var/gcp-test-parameter-version/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON),                                                                                   // mounted filepath
-		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\"}", f.testProjectID, f.testSecretID), // expected payload
+		fmt.Sprintf("/var/gcp-test-parameter-version/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON), // mounted filepath
+		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"%s\"}", f.testSecretID),       // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing global json parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter", // podName
-		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML),                                                          // mounted filepath
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\n", f.testProjectID, f.location, f.testSecretID), // expected payload
+		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s-regional\n", f.testSecretID),                                                // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter", // podName
-		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON),                                                                                    // filepath
-		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\"}", f.testProjectID, f.location, f.testSecretID), // expected payload
+		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
+		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"%s-regional\"}", f.testSecretID),                      // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing regional json parameter version: %v", err)
 	}
@@ -1009,8 +1009,8 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter-filemode", // podName
-		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML),                                                    // mounted file path
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\n", f.testProjectID, f.testSecretID), // expected payload
+		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s\n", f.testSecretID),                                      // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version extracted key 'db_pwd': %v", err) // expected global secret
 	}
@@ -1025,8 +1025,8 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter-filemode", // podName
-		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML),                                                     // mounted filepath
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\n", f.testProjectID, f.location, f.testSecretID), // expected payload
+		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s-regional\n", f.testProjectID, f.location, f.testSecretID),                        // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version extracted key 'user2': %v", err)
 	}
