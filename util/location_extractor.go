@@ -16,16 +16,10 @@
 package util
 
 import (
-	"fmt"
 	"regexp"
 
-	parametermanager "cloud.google.com/go/parametermanager/apiv1"
-	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
-	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/klog/v2"
 )
 
 // ExtractLocationFromSecretResource returns location from the secret resource if the resource is in format "projects/<project_id>/locations/<location_id>/..."
@@ -64,36 +58,4 @@ func ExtractLocationFromParameterManagerResource(resource string) (string, error
 		return m[2], nil
 	}
 	return "", status.Errorf(codes.InvalidArgument, "Invalid parameter resource name: %s", resource)
-}
-
-// PopulateRegionalClientMap populates the regional client maps with those regions which might have been missed in client_initiator
-// Maps are passed by reference by default in golang
-func PopulateRegionalClientMap(resources []*config.Secret, smRegionalClients map[string]*secretmanager.Client, pmRegionalClients map[string]*parametermanager.Client, clientOptions []option.ClientOption) {
-	for _, resource := range resources {
-		if IsSecretResource(resource.ResourceName) {
-			location, err := ExtractLocationFromSecretResource(resource.ResourceName)
-			if err != nil {
-				klog.ErrorS(err, "failed to extract location from secret resource")
-				continue
-			}
-			if len(location) > 0 {
-				if _, ok := smRegionalClients[location]; !ok {
-					smRegionalClients[location] = GetRegionalSecretManagerClient(location, clientOptions)
-				}
-			}
-		} else if IsParameterManagerResource(resource.ResourceName) {
-			location, err := ExtractLocationFromParameterManagerResource(resource.ResourceName)
-			if err != nil {
-				klog.ErrorS(err, "failed to extract location from parameter manager resource")
-				continue
-			}
-			if len(location) > 0 {
-				if _, ok := pmRegionalClients[location]; !ok {
-					pmRegionalClients[location] = GetRegionalParameterManagerClient(location, clientOptions)
-				}
-			}
-		} else {
-			klog.ErrorS(fmt.Errorf("invalid resource type based on resource name"), "invalid resource type")
-		}
-	}
 }
