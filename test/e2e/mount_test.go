@@ -110,7 +110,7 @@ func checkMountedParameterVersion(podName, filePath, expectedPayload string) err
 	return nil
 }
 
-func checkMountedParameterVersionFileMode(dataFilePath string, fileMode int) error {
+func checkMountedParameterVersionFileMode(dataFilePath, fileMode string) error {
 	var stdout, stderr bytes.Buffer
 	command := exec.Command("kubectl", "exec", "test-parameter-version-mounter-filemode",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
@@ -123,9 +123,8 @@ func checkMountedParameterVersionFileMode(dataFilePath string, fileMode int) err
 		fmt.Println("Stderr:", stderr.String())
 		return fmt.Errorf("could not read parameter version file %s from container, error: %w", dataFilePath, err)
 	}
-	expectedFileMode := fmt.Sprintf("%o", fileMode)
-	if !bytes.Equal(stdout.Bytes(), []byte(expectedFileMode)) {
-		return fmt.Errorf("parameter version file mode is %v, want: %d", stdout.String(), fileMode)
+	if !bytes.Equal(stdout.Bytes(), []byte(fileMode)) {
+		return fmt.Errorf("parameter version file mode is %v, want: %s", stdout.String(), fileMode)
 	}
 	return nil
 }
@@ -1078,28 +1077,28 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 
 	if err := checkMountedParameterVersionFileMode(
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
-		0420, // expected mode
+		"420", // expected mode
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersionFileMode(
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON), // mounted filepath
-		0600, // expected mode
+		"600", // expected mode
 	); err != nil {
 		t.Fatalf("Error while testing global json parameter version: %v", err)
 	}
 
 	if err := checkMountedParameterVersionFileMode(
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
-		0400, // expected mode
+		"400", // expected mode
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version filemode: %v", err)
 	}
 
 	if err := checkMountedParameterVersionFileMode(
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
-		0440, // expected mode
+		"440", // expected mode
 	); err != nil {
 		t.Fatalf("Error while testing regional json parameter version filemode: %v", err)
 	}
