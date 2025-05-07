@@ -171,20 +171,15 @@ func TestHandleMountEvent(t *testing.T) {
 		renderFn: func(ctx context.Context, req *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
 			if req.Name == globalParameterVersion {
 				data := []byte("{\"user\":\"admin\", \"password\":\"password@1234\"}")
-				// Encode to Base64 (as byte slice)
-				encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
-				base64.StdEncoding.Encode(encodedBytes, data)
 				return &parametermanagerpb.RenderParameterVersionResponse{
 					ParameterVersion: globalParameterVersion,
-					RenderedPayload:  encodedBytes,
+					RenderedPayload:  data,
 				}, nil
 			}
 			data := []byte("user: admin\npassword: password@1234")
-			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
-			base64.StdEncoding.Encode(encodedBytes, data)
 			return &parametermanagerpb.RenderParameterVersionResponse{
 				ParameterVersion: globalParameterVersion2,
-				RenderedPayload:  encodedBytes,
+				RenderedPayload:  data,
 			}, nil
 		},
 	})
@@ -192,11 +187,9 @@ func TestHandleMountEvent(t *testing.T) {
 	regionalPmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
 		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
 			data := []byte("user: admin\npassword: password@1234")
-			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
-			base64.StdEncoding.Encode(encodedBytes, data)
 			return &parametermanagerpb.RenderParameterVersionResponse{
 				ParameterVersion: regionalParameterVersion,
-				RenderedPayload:  encodedBytes,
+				RenderedPayload:  data,
 			}, nil
 		},
 	})
@@ -339,11 +332,9 @@ func TestHandleMountEventSMErrorPMVersionOK(t *testing.T) {
 	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
 		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
 			data := []byte("user: admin\npassword: password@1234")
-			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
-			base64.StdEncoding.Encode(encodedBytes, data)
 			return &parametermanagerpb.RenderParameterVersionResponse{
 				ParameterVersion: globalParameterVersion2,
-				RenderedPayload:  encodedBytes,
+				RenderedPayload:  data,
 			}, nil
 		},
 	})
@@ -577,11 +568,9 @@ func TestHandleMountEventPMMultipleErrors(t *testing.T) {
 			switch req.Name {
 			case globalParameterVersion:
 				data := []byte("user: admin\npassword: password@1234")
-				encodedData := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
-				base64.StdEncoding.Encode(encodedData, data)
 				return &parametermanagerpb.RenderParameterVersionResponse{
 					ParameterVersion: globalParameterVersion,
-					RenderedPayload:  encodedData,
+					RenderedPayload:  data,
 				}, nil
 			case globalParameterVersion2:
 				return nil, status.Error(codes.FailedPrecondition, "ParameterVersion is Disabled")

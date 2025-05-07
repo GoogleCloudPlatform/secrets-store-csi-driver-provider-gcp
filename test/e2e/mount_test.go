@@ -110,9 +110,9 @@ func checkMountedParameterVersion(podName, filePath, expectedPayload string) err
 	return nil
 }
 
-func checkMountedParameterVersionFileMode(podName, dataFilePath string, fileMode int) error {
+func checkMountedParameterVersionFileMode(dataFilePath string, fileMode int) error {
 	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", podName,
+	command := exec.Command("kubectl", "exec", "test-parameter-version-mounter-filemode",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
 		"--",
 		"stat", "--printf", "%a", dataFilePath)
@@ -121,7 +121,7 @@ func checkMountedParameterVersionFileMode(podName, dataFilePath string, fileMode
 	if err := command.Run(); err != nil {
 		fmt.Println("Stdout:", stdout.String())
 		fmt.Println("Stderr:", stderr.String())
-		return fmt.Errorf("could not stat parameter version file %s in pod %s: %w", dataFilePath, podName, err)
+		return fmt.Errorf("could not read parameter version file %s from container, error: %w", dataFilePath, err)
 	}
 	expectedFileMode := fmt.Sprintf("%o", fileMode)
 	if !bytes.Equal(stdout.Bytes(), []byte(expectedFileMode)) {
@@ -298,12 +298,16 @@ func setupTestSuite(isTokenPassed bool) {
 		"--data-file", secretFile, "--project", f.testProjectID)))
 
 	// Create test parameter and parameter versions -> global region (both YAML and JSON)
-	parameterVersionFileYaml := filepath.Join(f.tempDir, "parameterValueYaml")
-	parameterVersionFileJson := filepath.Join(f.tempDir, "parameterValueJson")
+	parameterVersionFileYaml := filepath.Join(f.tempDir, "parameterValueYaml.yaml")
+	parameterVersionFileJson := filepath.Join(f.tempDir, "parameterValueJson.json")
 
 	// Write the byte payload of the parameters into files similar to how secret manager is doing it.
-	check(os.WriteFile(parameterVersionFileYaml, []byte(fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\n", f.testProjectID, f.testSecretID)), 0644))
-	check(os.WriteFile(parameterVersionFileJson, []byte(fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\"}", f.testProjectID, f.testSecretID)), 0644))
+	check(os.WriteFile(parameterVersionFileYaml, []byte(
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\n",
+			f.testProjectID, f.testSecretID)), 0644))
+	check(os.WriteFile(parameterVersionFileJson, []byte(
+		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\"}",
+			f.testProjectID, f.testSecretID)), 0644))
 
 	// Create Parameters first
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.parameterIdYaml,
@@ -347,10 +351,14 @@ func setupTestSuite(isTokenPassed bool) {
 		"--data-file", secretFile, "--project", f.testProjectID)))
 
 	// Create regional parameter and regional parameter version
-	parameterVersionFileYamlRegional := filepath.Join(f.tempDir, "parameterValueYamlRegional")
-	parameterVersionFileJsonRegional := filepath.Join(f.tempDir, "parameterValueJsonRegional")
-	check(os.WriteFile(parameterVersionFileYamlRegional, []byte(fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\n", f.testProjectID, f.location, f.testSecretID)), 0644))
-	check(os.WriteFile(parameterVersionFileJsonRegional, []byte(fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\"}", f.testProjectID, f.location, f.testSecretID)), 0644))
+	parameterVersionFileYamlRegional := filepath.Join(f.tempDir, "parameterValueYamlRegional.yaml")
+	parameterVersionFileJsonRegional := filepath.Join(f.tempDir, "parameterValueJsonRegional.json")
+	check(os.WriteFile(parameterVersionFileYamlRegional, []byte(
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\n",
+			f.testProjectID, f.location, f.testSecretID)), 0644))
+	check(os.WriteFile(parameterVersionFileJsonRegional, []byte(
+		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\"}",
+			f.testProjectID, f.location, f.testSecretID)), 0644))
 
 	// Set regional endpoint
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/parametermanager",
@@ -1008,7 +1016,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	}
 
 	if err := checkMountedParameterVersion(
-		"test-parameter-version-mounter-filemode", // podName
+		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
 		f.testSecretID, // expected payload (extractYAMLKey used with key db_pwd used)
 	); err != nil {
@@ -1016,7 +1024,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	}
 
 	if err := checkMountedParameterVersion(
-		"test-parameter-version-mounter-filemode", // podName
+		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON), // mounted filepath
 		"admin", // expected payload (extractJSONKey with key user used)
 	); err != nil {
@@ -1024,7 +1032,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	}
 
 	if err := checkMountedParameterVersion(
-		"test-parameter-version-mounter-filemode", // podName
+		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
 		"support", // expected payload (extractYAMLKey used with key user2 used)
 	); err != nil {
@@ -1032,7 +1040,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	}
 
 	if err := checkMountedParameterVersion(
-		"test-parameter-version-mounter-filemode", // podName
+		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
 		fmt.Sprintf("%s-regional", f.testSecretID), // expected payload (extractJSONKey used with key db_pwd used)
 	); err != nil {
@@ -1052,8 +1060,15 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 		t.Fatalf("Error creating job: %v", err)
 	}
 
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-parameter-version-mounter-filemode", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for pod test-parameter-version-mounter-filemode: %v", err)
+	}
+
 	if err := checkMountedParameterVersionFileMode(
-		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
 		0420, // expected mode
 	); err != nil {
@@ -1061,7 +1076,6 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 	}
 
 	if err := checkMountedParameterVersionFileMode(
-		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON), // mounted filepath
 		0600, // expected mode
 	); err != nil {
@@ -1069,7 +1083,6 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 	}
 
 	if err := checkMountedParameterVersionFileMode(
-		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
 		0400, // expected mode
 	); err != nil {
@@ -1077,7 +1090,6 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 	}
 
 	if err := checkMountedParameterVersionFileMode(
-		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-mode/..data/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
 		0440, // expected mode
 	); err != nil {
