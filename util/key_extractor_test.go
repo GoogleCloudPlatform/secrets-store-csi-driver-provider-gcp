@@ -201,7 +201,7 @@ func TestExtractContentUsingYAMLKey(t *testing.T) {
 			name:    "valid_yaml_key_exists_value_is_number_int",
 			payload: []byte("count: 123"),
 			key:     "count",
-			want:    func() []byte { b := anyToBytesConvertInt(int64(123)); return b }(),
+			want:    func() []byte { b, _ := anyToBytesConvertInt(int64(123)); return b }(),
 			wantErr: false,
 		},
 		{

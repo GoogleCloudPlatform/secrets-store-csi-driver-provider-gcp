@@ -44,25 +44,7 @@ func ExtractContentUsingJSONKey(payload []byte, key string) ([]byte, error) {
 	case []any:
 		return json.Marshal(v)
 	case int:
-		return anyToBytesConvertInt(int64(v)), nil
-	case int8:
-		return anyToBytesConvertInt(int64(v)), nil
-	case int16:
-		return anyToBytesConvertInt(int64(v)), nil
-	case int32:
-		return anyToBytesConvertInt(int64(v)), nil
-	case int64:
-		return anyToBytesConvertInt(v), nil
-	case uint:
-		return anyToBytesConvertInt(int64(v)), nil
-	case uint8:
-		return anyToBytesConvertInt(int64(v)), nil
-	case uint16:
-		return anyToBytesConvertInt(int64(v)), nil
-	case uint32:
-		return anyToBytesConvertInt(int64(v)), nil
-	case float32:
-		return anyToBytesFloat64(float64(v))
+		return anyToBytesConvertInt(int64(v))
 	case float64:
 		return anyToBytesFloat64(v)
 	case bool:
@@ -94,25 +76,7 @@ func ExtractContentUsingYAMLKey(payload []byte, key string) ([]byte, error) {
 	case []any:
 		return yaml.Marshal(v)
 	case int:
-		return anyToBytesConvertInt(int64(v)), nil
-	case int8:
-		return anyToBytesConvertInt(int64(v)), nil
-	case int16:
-		return anyToBytesConvertInt(int64(v)), nil
-	case int32:
-		return anyToBytesConvertInt(int64(v)), nil
-	case int64:
-		return anyToBytesConvertInt(v), nil
-	case uint:
-		return anyToBytesConvertInt(int64(v)), nil
-	case uint8:
-		return anyToBytesConvertInt(int64(v)), nil
-	case uint16:
-		return anyToBytesConvertInt(int64(v)), nil
-	case uint32:
-		return anyToBytesConvertInt(int64(v)), nil
-	case float32:
-		return anyToBytesFloat64(float64(v))
+		return anyToBytesConvertInt(int64(v))
 	case float64:
 		return anyToBytesFloat64(v)
 	case bool:
@@ -124,10 +88,10 @@ func ExtractContentUsingYAMLKey(payload []byte, key string) ([]byte, error) {
 	}
 }
 
-func anyToBytesConvertInt(val int64) []byte {
+func anyToBytesConvertInt(val int64) ([]byte, error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, val)
-	return buf.Bytes()
+	err := binary.Write(buf, binary.BigEndian, val)
+	return buf.Bytes(), err
 }
 
 func anyToBytesBool(val bool) ([]byte, error) {
