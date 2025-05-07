@@ -378,13 +378,13 @@ func setupTestSuite(isTokenPassed bool) {
 		"--project", f.testProjectID, "--location", f.location))) // Need location for regional secret binding
 
 	// Now create corresponding parameter versions to YAML and JSON parameters just created
-	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.parameterVersionIdYAML,
-		"--parameter", f.parameterIdYaml, "--location", f.location,
+	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.regionalParameterVersionIdYAML,
+		"--parameter", f.regionalParameterVersionIdYAML, "--location", f.location,
 		"--payload-data-from-file", parameterVersionFileYamlRegional, // Use the file path here
 		"--project", f.testProjectID)))
 
-	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.parameterVersionIdJSON,
-		"--parameter", f.parameterIdJson, "--location", f.location,
+	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.regionalParameterVersionIdJSON,
+		"--parameter", f.regionalParameterIdJSON, "--location", f.location,
 		"--payload-data-from-file", parameterVersionFileJsonRegional, // And here
 		"--project", f.testProjectID)))
 
@@ -539,14 +539,14 @@ func teardownTestSuite() {
 		"https://parametermanager."+f.location+".rep.googleapis.com/")))
 
 	check(execCmd(exec.Command(
-		"gcloud", "parametermanager", "parameters", "versions", "delete", f.regionalParameterIdYAML,
+		"gcloud", "parametermanager", "parameters", "versions", "delete", f.regionalParameterVersionIdYAML,
 		"--parameter", f.regionalParameterIdYAML,
 		"--location", f.location,
 		"--project", f.testProjectID,
 		"--quiet",
 	)))
 	check(execCmd(exec.Command(
-		"gcloud", "parametermanager", "parameters", "versions", "delete", f.regionalParameterIdJSON,
+		"gcloud", "parametermanager", "parameters", "versions", "delete", f.regionalParameterVersionIdJSON,
 		"--parameter", f.regionalParameterIdJSON,
 		"--location", f.location,
 		"--project", f.testProjectID,
