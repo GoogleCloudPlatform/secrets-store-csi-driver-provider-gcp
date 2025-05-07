@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
@@ -33,21 +32,10 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 		return
 	}
-	encodedBytes := response.RenderedPayload
-	fmt.Printf("\n\n*****Encoded Bytes is %v*****\n\n", encodedBytes)
-	fmt.Printf("\n\n*****Encoded Bytes is as string %s*****\n\n", string(encodedBytes))
-	// Decode from Base64 (directly to byte slice)
-	decodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(encodedBytes)))
-	n, err := base64.StdEncoding.Decode(decodedBytes, encodedBytes)
-	if err != nil {
-		resultChan <- getErrorResource(r.ResourceURI, r.FileName, fmt.Errorf("error decoding base64 rendered payload into plain text: %w", err))
-		return
-	}
-	decodedBytes = decodedBytes[:n]
-	fmt.Printf("\n\n++++++++Decoded Bytes is %s+++++++\n\n", string(decodedBytes))
-	fmt.Printf("\n\n++++++++Decoded Bytes is %v+++++++\n\n", decodedBytes)
+	fmt.Printf("\n\n*****Rendered Payload Bytes is %v*****\n\n", response.RenderedPayload)
+	fmt.Printf("\n\n*****Encoded Bytes is as string %s*****\n\n", string(response.RenderedPayload))
 	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
-		content, err := util.ExtractContentUsingJSONKey(decodedBytes, r.ExtractJSONKey)
+		content, err := util.ExtractContentUsingJSONKey(response.RenderedPayload, r.ExtractJSONKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 			return
@@ -66,7 +54,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		ID:       r.ResourceURI,
 		FileName: r.FileName,
 		Version:  response.GetParameterVersion(),
-		Payload:  decodedBytes,
+		Payload:  response.RenderedPayload,
 		Err:      nil,
 	}
 }

@@ -298,12 +298,16 @@ func setupTestSuite(isTokenPassed bool) {
 		"--data-file", secretFile, "--project", f.testProjectID)))
 
 	// Create test parameter and parameter versions -> global region (both YAML and JSON)
-	parameterVersionFileYaml := filepath.Join(f.tempDir, "parameterValueYaml")
-	parameterVersionFileJson := filepath.Join(f.tempDir, "parameterValueJson")
+	parameterVersionFileYaml := filepath.Join(f.tempDir, "parameterValueYaml.yaml")
+	parameterVersionFileJson := filepath.Join(f.tempDir, "parameterValueJson.json")
 
 	// Write the byte payload of the parameters into files similar to how secret manager is doing it.
-	check(os.WriteFile(parameterVersionFileYaml, []byte(fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\n", f.testProjectID, f.testSecretID)), 0644))
-	check(os.WriteFile(parameterVersionFileJson, []byte(fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\"}", f.testProjectID, f.testSecretID)), 0644))
+	check(os.WriteFile(parameterVersionFileYaml, []byte(
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\n",
+			f.testProjectID, f.testSecretID)), 0644))
+	check(os.WriteFile(parameterVersionFileJson, []byte(
+		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)\"}",
+			f.testProjectID, f.testSecretID)), 0644))
 
 	// Create Parameters first
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.parameterIdYaml,
@@ -347,10 +351,14 @@ func setupTestSuite(isTokenPassed bool) {
 		"--data-file", secretFile, "--project", f.testProjectID)))
 
 	// Create regional parameter and regional parameter version
-	parameterVersionFileYamlRegional := filepath.Join(f.tempDir, "parameterValueYamlRegional")
-	parameterVersionFileJsonRegional := filepath.Join(f.tempDir, "parameterValueJsonRegional")
-	check(os.WriteFile(parameterVersionFileYamlRegional, []byte(fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\n", f.testProjectID, f.location, f.testSecretID)), 0644))
-	check(os.WriteFile(parameterVersionFileJsonRegional, []byte(fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\"}", f.testProjectID, f.location, f.testSecretID)), 0644))
+	parameterVersionFileYamlRegional := filepath.Join(f.tempDir, "parameterValueYamlRegional.yaml")
+	parameterVersionFileJsonRegional := filepath.Join(f.tempDir, "parameterValueJsonRegional.json")
+	check(os.WriteFile(parameterVersionFileYamlRegional, []byte(
+		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\n",
+			f.testProjectID, f.location, f.testSecretID)), 0644))
+	check(os.WriteFile(parameterVersionFileJsonRegional, []byte(
+		fmt.Sprintf("{\"user\": \"admin\",\n \"user2\": \"support\", \"db_pwd\": \"__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)\"}",
+			f.testProjectID, f.location, f.testSecretID)), 0644))
 
 	// Set regional endpoint
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/parametermanager",
