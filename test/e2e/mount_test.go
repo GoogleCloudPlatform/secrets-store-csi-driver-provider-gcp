@@ -1015,6 +1015,14 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 		t.Fatalf("Error creating job: %v", err)
 	}
 
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exists before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-parameter-version-key-extraction", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for pod test-parameter-version-key-extraction: %v", err)
+	}
+
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
