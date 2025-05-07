@@ -1034,7 +1034,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter-filemode", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
-		fmt.Sprintf("%s-regional", f.testSecretID), // expected payload (extractYAMLKey used with key db_pwd used)
+		fmt.Sprintf("%s-regional", f.testSecretID), // expected payload (extractJSONKey used with key db_pwd used)
 	); err != nil {
 		t.Fatalf("Error while testing regional json parameter version extracted key 'db_pwd': %v", err) // expected regional secret
 	}
