@@ -379,7 +379,7 @@ func setupTestSuite(isTokenPassed bool) {
 
 	// Now create corresponding parameter versions to YAML and JSON parameters just created
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.regionalParameterVersionIdYAML,
-		"--parameter", f.regionalParameterVersionIdYAML, "--location", f.location,
+		"--parameter", f.regionalParameterIdYAML, "--location", f.location,
 		"--payload-data-from-file", parameterVersionFileYamlRegional, // Use the file path here
 		"--project", f.testProjectID)))
 
