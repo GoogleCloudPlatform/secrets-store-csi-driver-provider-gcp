@@ -34,6 +34,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		return
 	}
 	encodedBytes := response.RenderedPayload
+	fmt.Printf("\n\n*****Encoded Bytes is %v*****\n\n", encodedBytes)
 	// Decode from Base64 (directly to byte slice)
 	decodedBytes := make([]byte, base64.StdEncoding.DecodedLen(len(encodedBytes)))
 	n, err := base64.StdEncoding.Decode(decodedBytes, encodedBytes)
@@ -42,7 +43,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		return
 	}
 	decodedBytes = decodedBytes[:n]
-
+	fmt.Printf("\n\n++++++++Decoded Bytes is %v+++++++\n\n", decodedBytes)
 	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(decodedBytes, r.ExtractJSONKey)
 		if err != nil {
