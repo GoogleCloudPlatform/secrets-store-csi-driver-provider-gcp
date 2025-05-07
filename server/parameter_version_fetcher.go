@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	"cloud.google.com/go/parametermanager/apiv1/parametermanagerpb"
@@ -32,8 +31,6 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
 		return
 	}
-	fmt.Printf("\n\n*****Rendered Payload Bytes is %v*****\n\n", response.RenderedPayload)
-	fmt.Printf("\n\n*****Encoded Bytes is as string %s*****\n\n", string(response.RenderedPayload))
 	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(response.RenderedPayload, r.ExtractJSONKey)
 		if err != nil {
