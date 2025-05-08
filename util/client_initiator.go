@@ -36,10 +36,10 @@ var smRegions = []string{
 	"us-east7", "europe-west3",
 }
 
-func GetRegionalSecretManagerClient(region string, clientOptions []option.ClientOption) *secretmanager.Client {
+func GetRegionalSecretManagerClient(ctx context.Context, region string, clientOptions []option.ClientOption) *secretmanager.Client {
 	// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
-	regionalClient, err := secretmanager.NewClient(context.Background(),
-		append(clientOptions, option.WithEndpoint(fmt.Sprintf("secretmanager.%s.googleapis.com:443", region)))...)
+	regionalClient, err := secretmanager.NewClient(ctx,
+		append(clientOptions, option.WithEndpoint(fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", region)))...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secret manager client for region", region)
 		return nil
@@ -47,9 +47,9 @@ func GetRegionalSecretManagerClient(region string, clientOptions []option.Client
 	return regionalClient
 }
 
-func GetRegionalParameterManagerClient(region string, clientOptions []option.ClientOption) *parametermanager.Client {
+func GetRegionalParameterManagerClient(ctx context.Context, region string, clientOptions []option.ClientOption) *parametermanager.Client {
 	// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
-	regionalClient, err := parametermanager.NewClient(context.Background(),
+	regionalClient, err := parametermanager.NewClient(ctx,
 		append(clientOptions, option.WithEndpoint(fmt.Sprintf("parametermanager.%s.rep.googleapis.com:443", region)))...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create parameter manager client for region", region)
@@ -64,7 +64,7 @@ func InitializeSecretManagerRegionalMap(ctx context.Context, clientOptions []opt
 	// Initialize the map with regional endpoints
 	for _, region := range smRegions {
 		// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
-		regionalClient := GetRegionalSecretManagerClient(region, clientOptions)
+		regionalClient := GetRegionalSecretManagerClient(ctx, region, clientOptions)
 		if regionalClient != nil {
 			smRep[region] = regionalClient
 		}
@@ -78,7 +78,7 @@ func InitializeParameterManagerRegionalMap(ctx context.Context, clientOptions []
 	// Initialize the map with regional endpoints
 	for _, region := range pmRegions {
 		// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
-		regionalClient := GetRegionalParameterManagerClient(region, clientOptions)
+		regionalClient := GetRegionalParameterManagerClient(ctx, region, clientOptions)
 		if regionalClient != nil {
 			pmRep[region] = regionalClient
 		}

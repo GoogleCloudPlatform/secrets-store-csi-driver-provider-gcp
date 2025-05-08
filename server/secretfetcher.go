@@ -18,6 +18,7 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 		Name: r.ResourceURI,
 	}
 	response, err := smClient.AccessSecretVersion(ctx, request, *authOption)
+
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
 			smMetricRecorder(csrmetrics.OutboundRPCStatus(e.Code().String()))

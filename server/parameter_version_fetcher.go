@@ -20,6 +20,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		Name: r.ResourceURI,
 	}
 	response, err := pmClient.RenderParameterVersion(ctx, request, *authOption)
+
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
 			pmMetricRecorder(csrmetrics.OutboundRPCStatus(e.Code().String()))

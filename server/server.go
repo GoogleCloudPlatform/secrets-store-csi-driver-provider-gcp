@@ -121,7 +121,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 			locationMap[secret.ResourceName] = location
 			_, ok := s.RegionalSecretClients[location]
 			if !ok {
-				s.RegionalSecretClients[location] = util.GetRegionalSecretManagerClient(location, s.ServerClientOptions)
+				s.RegionalSecretClients[location] = util.GetRegionalSecretManagerClient(ctx, location, s.ServerClientOptions)
 			}
 		} else if util.IsParameterManagerResource(secret.ResourceName) {
 			location, err := util.ExtractLocationFromParameterManagerResource(secret.ResourceName)
@@ -132,7 +132,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 			locationMap[secret.ResourceName] = location
 			_, ok := s.RegionalParameterManagerClients[location]
 			if !ok {
-				s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(location, s.ServerClientOptions)
+				s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
 			}
 		} else {
 			resultMap[getKey(secret.ResourceName, secret.FileName)] = getErrorResource(secret.ResourceName, secret.FileName, fmt.Errorf("unknown resource type"))
