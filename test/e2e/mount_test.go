@@ -618,6 +618,17 @@ func TestMountSecret(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter", "--for=condition=Ready",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		execCmd(exec.Command(
+			"kubectl", "describe", "pods",
+			"--all-namespaces",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
@@ -645,6 +656,17 @@ func TestMountSecretFileMode(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mode", "--for=condition=Ready",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		execCmd(exec.Command(
+			"kubectl", "describe", "pods",
+			"--all-namespaces",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
@@ -673,6 +695,17 @@ func TestMountNestedPath(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-nested", "--for=condition=Ready",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		execCmd(exec.Command(
+			"kubectl", "describe", "pods",
+			"--all-namespaces",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
@@ -747,6 +780,17 @@ func TestMountSyncSecret(t *testing.T) {
 		"--namespace", "default",
 		"--timeout", "5m",
 	)); err != nil {
+		execCmd(exec.Command(
+			"kubectl", "describe", "pods",
+			"--all-namespaces",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
@@ -925,6 +969,17 @@ func TestMountExtractSecret(t *testing.T) {
 
 	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter-extract", "--for=condition=Ready",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		execCmd(exec.Command(
+			"kubectl", "describe", "pods",
+			"--all-namespaces",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 	testExtractSecret := []byte("admin")
@@ -966,6 +1021,17 @@ func TestMountParameterVersion(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-parameter-version-mounter", "--for=condition=Ready",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		execCmd(exec.Command(
+			"kubectl", "describe", "pods",
+			"--all-namespaces",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
@@ -1019,6 +1085,17 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-parameter-version-key-extraction", "--for=condition=Ready",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		execCmd(exec.Command(
+			"kubectl", "describe", "pods",
+			"--all-namespaces",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 		t.Fatalf("Error waiting for pod test-parameter-version-key-extraction: %v", err)
 	}
 
@@ -1072,6 +1149,17 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-parameter-version-mounter-filemode", "--for=condition=Ready",
 		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		execCmd(exec.Command(
+			"kubectl", "describe", "pods",
+			"--all-namespaces",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 		t.Fatalf("Error waiting for pod test-parameter-version-mounter-filemode: %v", err)
 	}
 
