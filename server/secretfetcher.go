@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
@@ -18,11 +17,6 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 		Name: r.ResourceURI,
 	}
 	response, err := smClient.AccessSecretVersion(ctx, request, *authOption)
-	fmt.Printf("\n\n+++++Request is %v++++++", request)
-	fmt.Printf("\n\n+++++Response is %v++++++", response)
-	fmt.Printf("\n\n+++++Error is %v++++++", err)
-	fmt.Printf("\n\n****Client endpoint is %v*****", smClient)
-	fmt.Printf("\n\n&&&&& Auth Option is %v&&&&&&", authOption)
 
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
