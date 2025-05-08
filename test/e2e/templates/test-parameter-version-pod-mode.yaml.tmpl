@@ -26,16 +26,16 @@ spec:
     secrets: |
       - resourceName: "projects/$PROJECT_ID/locations/global/parameters/$TEST_PARAMETER_ID_YAML/versions/$TEST_VERSION_ID_YAML"
         path: "$TEST_PARAMETER_ID_YAML/global/$TEST_VERSION_ID_YAML"
-        fileMode: 0420
+        mode: 0420
       - resourceName: "projects/$PROJECT_ID/locations/global/parameters/$TEST_PARAMETER_ID_JSON/versions/$TEST_VERSION_ID_JSON"
         path: "$TEST_PARAMETER_ID_JSON/global/$TEST_VERSION_ID_JSON"
-        fileMode: 0600
+        mode: 0600
       - resourceName: "projects/$PROJECT_ID/locations/$LOCATION_ID/parameters/$TEST_REGIONAL_PARAMETER_ID_YAML/versions/$TEST_REGIONAL_VERSION_ID_YAML"
         path: "$TEST_REGIONAL_PARAMETER_ID_YAML/$LOCATION_ID/$TEST_REGIONAL_VERSION_ID_YAML"
-        fileMode: 0400
+        mode: 0400
       - resourceName: "projects/$PROJECT_ID/locations/$LOCATION_ID/parameters/$TEST_REGIONAL_PARAMETER_ID_JSON/versions/$TEST_REGIONAL_VERSION_ID_JSON"
         path: "$TEST_REGIONAL_PARAMETER_ID_JSON/$LOCATION_ID/$TEST_REGIONAL_VERSION_ID_JSON"
-        fileMode: 0440
+        mode: 0440
 ---
 apiVersion: v1
 kind: Pod
