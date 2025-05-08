@@ -456,7 +456,7 @@ func setupTestSuite(isTokenPassed bool) {
 
 		// set tokenRequests in driver spec and reinstall driver to perform E2E testing when token is received by provider from driver
 		check(execCmd(exec.Command("kubectl", "apply",
-			"-f", fmt.Sprintf("./csidriver.yaml"),
+			"-f", fileName,
 		)))
 	}
 }
