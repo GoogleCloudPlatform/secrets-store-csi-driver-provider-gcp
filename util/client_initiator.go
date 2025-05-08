@@ -39,7 +39,7 @@ var smRegions = []string{
 func GetRegionalSecretManagerClient(ctx context.Context, region string, clientOptions []option.ClientOption) *secretmanager.Client {
 	// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
 	regionalClient, err := secretmanager.NewClient(ctx,
-		append(clientOptions, option.WithEndpoint(fmt.Sprintf("secretmanager.%s.googleapis.com:443", region)))...)
+		append(clientOptions, option.WithEndpoint(fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", region)))...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secret manager client for region", region)
 		return nil
