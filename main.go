@@ -37,7 +37,6 @@ import (
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/server"
-	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/util"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
@@ -143,12 +142,11 @@ func main() {
 		klog.Fatal("failed to create parametermanager client")
 	}
 
-	// To cache the clients for regional endpoints.
-	m := util.InitializeSecretManagerRegionalMap(ctx, clientOptions)
+	// Used to store regional clients inside map
+	regionalSmClientMap := make(map[string]*secretmanager.Client)
 
 	// To cache the clients for parameter manager regional endpoints
-	pmRep := util.InitializeParameterManagerRegionalMap(ctx, clientOptions)
-
+	regionalPmClientMap := make(map[string]*parametermanager.Client)
 	// IAM client
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
@@ -197,8 +195,8 @@ func main() {
 		SecretClient:                    sc,
 		ParameterManagerClient:          pmClient,
 		AuthClient:                      c,
-		RegionalSecretClients:           m,
-		RegionalParameterManagerClients: pmRep,
+		RegionalSecretClients:           regionalSmClientMap,
+		RegionalParameterManagerClients: regionalPmClientMap,
 		ServerClientOptions:             clientOptions,
 	}
 

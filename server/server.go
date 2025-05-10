@@ -53,6 +53,13 @@ type Server struct {
 	ServerClientOptions             []option.ClientOption
 }
 
+// Keeping it separate as same resource name can be used to
+// mount at 2 different locations (maybe in different modes for different permissions)
+type ResourceIdentity struct {
+	ResourceName string
+	FileName     string
+}
+
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
 var _ resourceFetcherInterface = &resourceFetcher{}
 
@@ -108,17 +115,17 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 	// need to build a per-rpc call option based of the tokensource
 	callAuth := gax.WithGRPCOptions(grpc.PerRPCCredentials(creds))
 
-	resultMap := make(map[string]*Resource)
+	// Storing it as a resultMap to have 1 API call for each resource instead
+	// of de-duplicating API calls for duplicate resources
+	resultMap := make(map[ResourceIdentity]*Resource)
 
-	locationMap := make(map[string]string)
 	for _, secret := range cfg.Secrets {
 		if util.IsSecretResource(secret.ResourceName) {
 			location, err := util.ExtractLocationFromSecretResource(secret.ResourceName)
 			if err != nil {
-				resultMap[getKey(secret.ResourceName, secret.FileName)] = getErrorResource(secret.ResourceName, secret.FileName, err)
+				resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, err)
 				continue
 			}
-			locationMap[secret.ResourceName] = location
 			_, ok := s.RegionalSecretClients[location]
 			if !ok {
 				s.RegionalSecretClients[location] = util.GetRegionalSecretManagerClient(ctx, location, s.ServerClientOptions)
@@ -126,23 +133,22 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		} else if util.IsParameterManagerResource(secret.ResourceName) {
 			location, err := util.ExtractLocationFromParameterManagerResource(secret.ResourceName)
 			if err != nil {
-				resultMap[getKey(secret.ResourceName, secret.FileName)] = getErrorResource(secret.ResourceName, secret.FileName, err)
+				resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, err)
 				continue
 			}
-			locationMap[secret.ResourceName] = location
 			_, ok := s.RegionalParameterManagerClients[location]
 			if !ok {
 				s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
 			}
 		} else {
-			resultMap[getKey(secret.ResourceName, secret.FileName)] = getErrorResource(secret.ResourceName, secret.FileName, fmt.Errorf("unknown resource type"))
+			resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, fmt.Errorf("unknown resource type"))
 		}
 	}
 	// In parallel fetch all secrets needed for the mount
 	wg := sync.WaitGroup{}
 	outputChannel := make(chan *Resource, len(cfg.Secrets))
 	for _, secret := range cfg.Secrets {
-		if val, ok := resultMap[getKey(secret.ResourceName, secret.FileName)]; ok && val.Err != nil {
+		if val, ok := resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}]; ok && val.Err != nil {
 			klog.ErrorS(val.Err, "error for resourceName: ", secret.ResourceName, val.Err)
 			continue
 		}
@@ -160,7 +166,8 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		if item.Err != nil {
 			klog.ErrorS(item.Err, "failed to fetch secret", "resource_name", item.ID)
 		}
-		resultMap[getKey(item.ID, item.FileName)] = item
+		resultMap[ResourceIdentity{item.ID, item.FileName}] = item
+
 	}
 	// If any access failed, return a grpc status error that includes each
 	// individual status error in the Details field.
@@ -172,7 +179,6 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 	// username file was updated to a new value but the corresponding password
 	// field was not).
 
-	//TODO: arpangoswami
 	if err := buildErr(resultMap); err != nil {
 		return nil, err
 	}
@@ -191,7 +197,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		if secret.Mode != nil {
 			mode = *secret.Mode
 		}
-		resource := resultMap[getKey(secret.ResourceName, secret.FileName)]
+		resource := resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}]
 
 		out.Files = append(out.Files, &v1alpha1.File{
 			Path:     secret.PathString(),
@@ -216,7 +222,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 // buildErr consolidates many errors into a single Status protobuf error message
 // with each individual error included into the status Details any proto. The
 // consolidated proto is converted to a general error.
-func buildErr(resultMap map[string]*Resource) error {
+func buildErr(resultMap map[ResourceIdentity]*Resource) error {
 	msgs := make([]string, 0, len(resultMap))
 	hasErr := false
 	s := &spb.Status{
@@ -237,8 +243,4 @@ func buildErr(resultMap map[string]*Resource) error {
 	}
 	s.Message = strings.Join(msgs, ",")
 	return status.FromProto(s).Err()
-}
-
-func getKey(resourceName, fileName string) string {
-	return fmt.Sprintf("%s-%s", resourceName, fileName)
 }
