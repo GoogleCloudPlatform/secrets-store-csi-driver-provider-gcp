@@ -923,6 +923,8 @@ func TestMountRotateSecret(t *testing.T) {
 	// Wait for the global secret to have 2 versions.
 	waitForMinVersions(t, f.testRotateSecretID, f.testProjectID, "" /* global */, 2, 180*time.Second)
 
+	time.Sleep(150 * time.Second)
+
 	// Verify update.
 	stdout.Reset()
 	stderr.Reset()
