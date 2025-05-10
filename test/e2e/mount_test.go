@@ -921,7 +921,7 @@ func TestMountRotateSecret(t *testing.T) {
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 
 	// Wait for the global secret to have 2 versions.
-	waitForMinVersions(t, f.testRotateSecretID, f.testProjectID, "" /* global */, 2, 60*time.Second)
+	waitForMinVersions(t, f.testRotateSecretID, f.testProjectID, "" /* global */, 2, 180*time.Second)
 
 	// Verify update.
 	stdout.Reset()
