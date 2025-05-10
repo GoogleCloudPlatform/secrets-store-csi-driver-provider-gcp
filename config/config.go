@@ -130,7 +130,7 @@ func Parse(in *MountParams) (*MountConfig, error) {
 
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
-	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
+	allowSecretRef, err := vars.AllowNodepublishSecretRef.GetBooleanValue()
 	if err != nil {
 		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")
