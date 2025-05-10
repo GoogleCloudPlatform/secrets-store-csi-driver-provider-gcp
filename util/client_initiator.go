@@ -25,10 +25,16 @@ import (
 	"k8s.io/klog/v2"
 )
 
+var newSMRegionalClientFunc = secretmanager.NewClient
+
+var newPMRegionalClientFunc = parametermanager.NewClient
+
 func GetRegionalSecretManagerClient(ctx context.Context, region string, clientOptions []option.ClientOption) *secretmanager.Client {
 	// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
-	regionalClient, err := secretmanager.NewClient(ctx,
-		append(clientOptions, option.WithEndpoint(fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", region)))...)
+	regionalEndpoint := fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", region)
+	allOpts := append(clientOptions, option.WithEndpoint(regionalEndpoint))
+	regionalClient, err := newSMRegionalClientFunc(ctx, allOpts...)
+
 	if err != nil {
 		klog.ErrorS(err, "failed to create secret manager client for region", region)
 		return nil
@@ -38,8 +44,9 @@ func GetRegionalSecretManagerClient(ctx context.Context, region string, clientOp
 
 func GetRegionalParameterManagerClient(ctx context.Context, region string, clientOptions []option.ClientOption) *parametermanager.Client {
 	// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
-	regionalClient, err := parametermanager.NewClient(ctx,
-		append(clientOptions, option.WithEndpoint(fmt.Sprintf("parametermanager.%s.rep.googleapis.com:443", region)))...)
+	regionalEndpoint := fmt.Sprintf("parametermanager.%s.rep.googleapis.com:443", region)
+	allOpts := append(clientOptions, option.WithEndpoint(regionalEndpoint))
+	regionalClient, err := newPMRegionalClientFunc(ctx, allOpts...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create parameter manager client for region", region)
 		return nil

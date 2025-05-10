@@ -55,7 +55,7 @@ type Server struct {
 
 // Keeping it separate as same resource name can be used to
 // mount at 2 different locations (maybe in different modes for different permissions)
-type ResourceIdentity struct {
+type resourceIdentity struct {
 	ResourceName string
 	FileName     string
 }
@@ -117,13 +117,13 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 
 	// Storing it as a resultMap to have 1 API call for each resource instead
 	// of de-duplicating API calls for duplicate resources
-	resultMap := make(map[ResourceIdentity]*Resource)
+	resultMap := make(map[resourceIdentity]*Resource)
 
 	for _, secret := range cfg.Secrets {
 		if util.IsSecretResource(secret.ResourceName) {
 			location, err := util.ExtractLocationFromSecretResource(secret.ResourceName)
 			if err != nil {
-				resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, err)
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, err)
 				continue
 			}
 			_, ok := s.RegionalSecretClients[location]
@@ -133,7 +133,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		} else if util.IsParameterManagerResource(secret.ResourceName) {
 			location, err := util.ExtractLocationFromParameterManagerResource(secret.ResourceName)
 			if err != nil {
-				resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, err)
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, err)
 				continue
 			}
 			_, ok := s.RegionalParameterManagerClients[location]
@@ -141,14 +141,14 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 				s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
 			}
 		} else {
-			resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, fmt.Errorf("unknown resource type"))
+			resultMap[resourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, fmt.Errorf("unknown resource type"))
 		}
 	}
 	// In parallel fetch all secrets needed for the mount
 	wg := sync.WaitGroup{}
 	outputChannel := make(chan *Resource, len(cfg.Secrets))
 	for _, secret := range cfg.Secrets {
-		if val, ok := resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}]; ok && val.Err != nil {
+		if val, ok := resultMap[resourceIdentity{secret.ResourceName, secret.FileName}]; ok && val.Err != nil {
 			klog.ErrorS(val.Err, "error for resourceName: ", secret.ResourceName, val.Err)
 			continue
 		}
@@ -166,7 +166,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		if item.Err != nil {
 			klog.ErrorS(item.Err, "failed to fetch secret", "resource_name", item.ID)
 		}
-		resultMap[ResourceIdentity{item.ID, item.FileName}] = item
+		resultMap[resourceIdentity{item.ID, item.FileName}] = item
 
 	}
 	// If any access failed, return a grpc status error that includes each
@@ -197,7 +197,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		if secret.Mode != nil {
 			mode = *secret.Mode
 		}
-		resource := resultMap[ResourceIdentity{secret.ResourceName, secret.FileName}]
+		resource := resultMap[resourceIdentity{secret.ResourceName, secret.FileName}]
 
 		out.Files = append(out.Files, &v1alpha1.File{
 			Path:     secret.PathString(),
@@ -222,7 +222,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 // buildErr consolidates many errors into a single Status protobuf error message
 // with each individual error included into the status Details any proto. The
 // consolidated proto is converted to a general error.
-func buildErr(resultMap map[ResourceIdentity]*Resource) error {
+func buildErr(resultMap map[resourceIdentity]*Resource) error {
 	msgs := make([]string, 0, len(resultMap))
 	hasErr := false
 	s := &spb.Status{
