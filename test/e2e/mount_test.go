@@ -331,22 +331,41 @@ func teardownTestSuite(suiteType string) {
 
 // Entry point for go test.
 func TestMain(m *testing.M) {
-
-	suiteType := os.Getenv("E2E_TEST_SUITE")
-	if suiteType == "" {
-		// This default is for local runs or if the e2e_all.test binary is run
-		// without E2E_TEST_SUITE explicitly set to "all".
-		// The setup/teardown logic for "all" will handle both SM and PM resources.
-		log.Println("E2E_TEST_SUITE environment variable not set, defaulting to 'all' for setup/teardown logic.")
-		suiteType = "all"
+	envSuiteType := os.Getenv("E2E_TEST_SUITE")
+	if envSuiteType == "" {
+		log.Println("E2E_TEST_SUITE environment variable not set, defaulting to 'all'.")
+		envSuiteType = "all"
 	}
-	log.Printf("Running E2E tests for suite: %s\n", suiteType)
+	log.Printf("E2E_TEST_SUITE is '%s'. This will determine which test sequences (setup/teardown pairs) are run.\n", envSuiteType)
+	log.Println("The actual tests executed by m.Run() within each sequence are determined by build tags.")
 
-	withoutTokenStatus := runTest(m, false)
-	withTokenStatus := runTest(m, true)
-	fmt.Printf("Exit Code when token is not passed from driver to provder is: %v\n", withoutTokenStatus)
-	fmt.Printf("Exit Code when token is passed from driver to provder is: %v\n", withTokenStatus)
-	os.Exit(withoutTokenStatus | withTokenStatus)
+	var exitCode int
+
+	if envSuiteType == "secretmanager" || envSuiteType == "all" {
+		log.Println("Executing Secret Manager test runs...")
+		// Pass "secretmanager" to runTest, which setupTestSuite/teardownTestSuite will use.
+		smWithoutTokenStatus := runTest(m, false, "secretmanager")
+		smWithTokenStatus := runTest(m, true, "secretmanager")
+		fmt.Printf("Secret Manager Tests -> No Token Exit Code: %v, With Token Exit Code: %v\n", smWithoutTokenStatus, smWithTokenStatus)
+		exitCode |= smWithoutTokenStatus | smWithTokenStatus
+	}
+
+	if envSuiteType == "parametermanager" || envSuiteType == "all" {
+		log.Println("Executing Parameter Manager test runs...")
+		// Pass "parametermanager" to runTest.
+		pmWithoutTokenStatus := runTest(m, false, "parametermanager")
+		pmWithTokenStatus := runTest(m, true, "parametermanager")
+		fmt.Printf("Parameter Manager Tests -> No Token Exit Code: %v, With Token Exit Code: %v\n", pmWithoutTokenStatus, pmWithTokenStatus)
+		exitCode |= pmWithoutTokenStatus | pmWithTokenStatus
+	}
+
+	if envSuiteType != "secretmanager" && envSuiteType != "parametermanager" && envSuiteType != "all" {
+		log.Printf("Error: Invalid E2E_TEST_SUITE value: '%s'. Must be 'secretmanager', 'parametermanager', or 'all'.", envSuiteType)
+		if exitCode == 0 {
+			exitCode = 1
+		} // Ensure non-zero exit if invalid suite and no tests ran.
+	}
+	os.Exit(exitCode)
 }
 
 // Handles setup/teardown test suite and runs test. Returns exit code.
