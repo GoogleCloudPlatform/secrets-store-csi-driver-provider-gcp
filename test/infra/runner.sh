@@ -91,11 +91,11 @@ PM_JOB_STATUS=-1 # -1: running, 0: success, 1: failed
 # Arguments: $1=job_name
 check_job_status() {
     local job_name="$1"
-    if kubectl wait --for=condition=complete "job/${job_name}" -n e2e-test --timeout 0s > /dev/null 2>&1; then
+    if kubectl wait --for=condition=complete "job/${job_name}" -n e2e-test --timeout 45m > /dev/null 2>&1; then
         echo "Job ${job_name} completed successfully."
         kubectl delete job "${job_name}" -n e2e-test --ignore-not-found=true
         return 0
-    elif kubectl wait --for=condition=failed "job/${job_name}" -n e2e-test --timeout 0s > /dev/null 2>&1; then
+    elif kubectl wait --for=condition=failed "job/${job_name}" -n e2e-test --timeout 45m > /dev/null 2>&1; then
         echo "Job ${job_name} failed."
         kubectl delete job "${job_name}" -n e2e-test --ignore-not-found=true
         return 1
