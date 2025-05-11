@@ -29,7 +29,7 @@ spec:
           image: gcr.io/$PROJECT_ID/e2e-test:$GCP_PROVIDER_SHA
           imagePullPolicy: Always
           command: ["/bin/bash", "-c"]
-          args: ["./run-tests.sh"]
+          args: ["./run_tests.sh"]
           env:
           - name: GCP_PROVIDER_SHA
             value: "$GCP_PROVIDER_SHA"
