@@ -29,6 +29,55 @@ import (
 	"time"
 )
 
+// countGcloudVersions lists versions for a secret and returns the count or an error.
+func countGcloudVersions(secretID, projectID, locationID string) (int, error) {
+	args := []string{"secrets", "versions", "list", secretID, "--project", projectID, "--format=value(name)"}
+	if locationID != "" {
+		args = append(args, "--location", locationID)
+	}
+
+	cmd := exec.Command("gcloud", args...)
+	// Log the command being executed
+	fmt.Println("+", cmd.String())
+
+	output, err := cmd.CombinedOutput()
+	// Log the full output of the command for debugging
+	logMessage := fmt.Sprintf("gcloud output for counting versions of secret '%s' (location: '%s'):\n%s", secretID, locationID, string(output))
+	fmt.Println(logMessage)
+
+	if err != nil {
+		return 0, fmt.Errorf("error listing versions for %s (location: %s): %w. Output: %s", secretID, locationID, err, string(output))
+	}
+
+	trimmedOutput := strings.TrimSpace(string(output))
+	if trimmedOutput == "" {
+		return 0, nil // No versions found, no error from gcloud
+	}
+	return len(strings.Split(trimmedOutput, "\n")), nil
+}
+
+// waitForMinVersions polls until the specified secret has at least minVersions or a timeout is reached.
+func waitForMinVersions(t *testing.T, secretID, projectID, locationID string, minVersions int, timeout time.Duration) {
+	t.Helper()
+	startTime := time.Now()
+	var lastErr error
+	for {
+		if time.Since(startTime) > timeout {
+			t.Fatalf("Timeout waiting for secret %s (location: %s) to have at least %d versions. Last error: %v", secretID, locationID, minVersions, lastErr)
+		}
+
+		count, err := countGcloudVersions(secretID, projectID, locationID)
+		lastErr = err // Store the last error for the timeout message
+
+		if err == nil && count >= minVersions {
+			t.Logf("Secret %s (location: %s) now has %d version(s).", secretID, locationID, count)
+			return
+		}
+		t.Logf("Secret %s (location: %s) has %d/%d versions. Error (if any): %v. Retrying in 5s...", secretID, locationID, count, minVersions, err)
+		time.Sleep(5 * time.Second) // Poll interval
+	}
+}
+
 func setupSmTestSuite() {
 
 	f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
