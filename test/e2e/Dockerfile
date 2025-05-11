@@ -37,4 +37,4 @@ COPY run_tests.sh /test/run_tests.sh
 RUN chmod +x /test/run_tests.sh
 
 WORKDIR /test
-ENTRYPOINT ["./run-tests.sh"]
+ENTRYPOINT ["./run_tests.sh"]
