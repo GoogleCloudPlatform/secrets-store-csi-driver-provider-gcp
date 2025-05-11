@@ -31,10 +31,10 @@ COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/test/e2e/templa
 COPY enable-rotation.sh /bin/
 
 
-# Copy the run-tests.sh script from the build context (same directory as Dockerfile)
+# Copy the run_tests.sh script from the build context (same directory as Dockerfile)
 # into the /test directory in the image and make it executable.
-COPY run-tests.sh /test/run-tests.sh
-RUN chmod +x /test/run-tests.sh
+COPY run_tests.sh /test/run_tests.sh
+RUN chmod +x /test/run_tests.sh
 
 WORKDIR /test
 ENTRYPOINT ["./run-tests.sh"]
