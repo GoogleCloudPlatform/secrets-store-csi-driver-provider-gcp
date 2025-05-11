@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,91 +11,191 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package util
 
 import (
 	"context"
-	"sort" // Import the standard sort package
+	"fmt"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
+	parametermanager "cloud.google.com/go/parametermanager/apiv1"
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+
 	"google.golang.org/api/option"
 )
 
-// Helper function to get keys from a map
-func getMapKeys[K comparable, V any](m map[K]V) []K {
-	keys := make([]K, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+func TestGetRegionalSecretManagerClient(t *testing.T) {
+	endpointOptionTypeString := fmt.Sprintf("%T", option.WithEndpoint(""))
+	ctx := context.Background()
+	baseOpts := []option.ClientOption{option.WithoutAuthentication()}
+
+	tests := []struct {
+		name          string
+		region        string
+		clientOptions []option.ClientOption
+		wantNil       bool
+		wantEndpoint  string
+		newClientErr  error
+	}{
+		{
+			name:          "valid region",
+			region:        "us-central1",
+			clientOptions: baseOpts,
+			wantNil:       false,
+			wantEndpoint:  "secretmanager.us-central1.rep.googleapis.com:443",
+			newClientErr:  nil,
+		},
+		{
+			name:          "another valid region",
+			region:        "europe-west1",
+			clientOptions: baseOpts,
+			wantNil:       false,
+			wantEndpoint:  "secretmanager.europe-west1.rep.googleapis.com:443",
+			newClientErr:  nil,
+		},
+		{
+			name:          "new client returns error",
+			region:        "us-east1",
+			clientOptions: baseOpts,
+			wantNil:       true,
+			wantEndpoint:  "secretmanager.us-east1.rep.googleapis.com:443",
+			newClientErr:  fmt.Errorf("simulated NewClient error"),
+		},
 	}
-	return keys
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			originalNewSMClientFunc := newSMRegionalClientFunc
+			defer func() { newSMRegionalClientFunc = originalNewSMClientFunc }()
+
+			var capturedEndpoint string
+			newSMRegionalClientFunc = func(ctx context.Context, opts ...option.ClientOption) (*secretmanager.Client, error) {
+				if tt.newClientErr != nil {
+					return nil, tt.newClientErr
+				}
+				for _, opt := range opts {
+					if fmt.Sprintf("%T", opt) == endpointOptionTypeString {
+						capturedEndpoint = fmt.Sprintf("%v", opt)
+						break
+					}
+				}
+				return secretmanager.NewClient(ctx, option.WithoutAuthentication(), option.WithEndpoint("localhost:1"))
+			}
+
+			client := GetRegionalSecretManagerClient(ctx, tt.region, tt.clientOptions)
+			if tt.wantNil {
+				if client != nil {
+					t.Errorf("GetRegionalSecretManagerClient() with region '%s' = non-nil, want nil", tt.region)
+					client.Close() // Attempt to close if unexpectedly non-nil
+				}
+				// If newClientErr was set and wantNil is true, this is the expected path.
+				// No further checks on endpoint needed.
+				return
+			}
+
+			// If wantNil is false, we expect a non-nil client.
+			if client == nil {
+				t.Fatalf("GetRegionalSecretManagerClient() with region '%s' = nil, want non-nil client. Mock NewClient error: %v", tt.region, tt.newClientErr)
+			}
+
+			// Client is not nil here, so deferring Close is safe.
+			defer func() {
+				if err := client.Close(); err != nil {
+					t.Logf("Error closing client for region '%s': %v", tt.region, err)
+				}
+			}()
+
+			if capturedEndpoint != tt.wantEndpoint {
+				t.Errorf("GetRegionalSecretManagerClient() with region '%s' called NewClient with endpoint '%s', want '%s'", tt.region, capturedEndpoint, tt.wantEndpoint)
+			}
+		})
+	}
 }
 
-func TestInitializeSecretManagerRegionalMap(t *testing.T) {
-	opts := []option.ClientOption{option.WithoutAuthentication()}
+func TestGetRegionalParameterManagerClient(t *testing.T) {
+	// Determine the type string for an endpoint option.
+	endpointOptionTypeString := fmt.Sprintf("%T", option.WithEndpoint(""))
 	ctx := context.Background()
+	baseOpts := []option.ClientOption{option.WithoutAuthentication()}
 
-	smMap := InitializeSecretManagerRegionalMap(ctx, opts)
-
-	if len(smMap) != len(smRegions) {
-		t.Errorf("Expected map size %d, got %d", len(smRegions), len(smMap))
+	tests := []struct {
+		name          string
+		region        string
+		clientOptions []option.ClientOption
+		wantNil       bool
+		wantEndpoint  string
+		newClientErr  error
+	}{
+		{
+			name:          "valid region",
+			region:        "europe-west3",
+			clientOptions: baseOpts,
+			wantNil:       false,
+			wantEndpoint:  "parametermanager.europe-west3.rep.googleapis.com:443",
+			newClientErr:  nil,
+		},
+		{
+			name:          "another valid region",
+			region:        "us-east7",
+			clientOptions: baseOpts,
+			wantNil:       false,
+			wantEndpoint:  "parametermanager.us-east7.rep.googleapis.com:443",
+			newClientErr:  nil,
+		},
+		{
+			name:          "new client returns error",
+			region:        "asia-south1",
+			clientOptions: baseOpts,
+			wantNil:       true,
+			wantEndpoint:  "parametermanager.asia-south1.rep.googleapis.com:443",
+			newClientErr:  fmt.Errorf("simulated NewClient error for parameter manager"),
+		},
 	}
 
-	// Check if all expected regions are present as keys
-	// Make copies to avoid modifying the original sm_regions slice
-	expectedKeys := make([]string, len(smRegions))
-	copy(expectedKeys, smRegions)
-	actualKeys := getMapKeys(smMap)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			originalNewPMClientFunc := newPMRegionalClientFunc
+			defer func() { newPMRegionalClientFunc = originalNewPMClientFunc }()
 
-	// Sort slices for consistent comparison using sort.Strings
-	sort.Strings(expectedKeys)
-	sort.Strings(actualKeys)
+			var capturedEndpoint string
+			newPMRegionalClientFunc = func(ctx context.Context, opts ...option.ClientOption) (*parametermanager.Client, error) {
+				if tt.newClientErr != nil {
+					return nil, tt.newClientErr
+				}
+				for _, opt := range opts {
+					if fmt.Sprintf("%T", opt) == endpointOptionTypeString {
+						capturedEndpoint = fmt.Sprintf("%v", opt)
+						break
+					}
+				}
+				return parametermanager.NewClient(ctx, option.WithoutAuthentication(), option.WithEndpoint("localhost:1"))
+			}
 
-	if diff := cmp.Diff(expectedKeys, actualKeys); diff != "" {
-		t.Errorf("Map keys mismatch (-want +got):\n%s", diff)
-	}
+			client := GetRegionalParameterManagerClient(ctx, tt.region, tt.clientOptions)
 
-	for region, client := range smMap {
-		if client == nil {
-			t.Errorf("Client for region %s is nil", region)
-		}
-		if err := client.Close(); err != nil {
-			t.Fatalf("Warning: failed to close client for region %s: %v", region, err)
-		}
-	}
-}
+			if tt.wantNil {
+				if client != nil {
+					t.Errorf("GetRegionalParameterManagerClient() with region '%s' = non-nil, want nil", tt.region)
+					client.Close()
+				}
+				return
+			}
 
-func TestInitializeParameterManagerRegionalMap(t *testing.T) {
-	opts := []option.ClientOption{option.WithoutAuthentication()}
-	ctx := context.Background()
+			if client == nil {
+				t.Fatalf("GetRegionalParameterManagerClient() with region '%s' = nil, want non-nil client. Mock NewClient error: %v", tt.region, tt.newClientErr)
+			}
 
-	pmMap := InitializeParameterManagerRegionalMap(ctx, opts)
+			// Client is not nil here, so deferring Close is safe.
+			defer func() {
+				if err := client.Close(); err != nil {
+					t.Logf("Error closing client for region '%s': %v", tt.region, err)
+				}
+			}()
 
-	// Check map size
-	if len(pmMap) != len(pmRegions) {
-		t.Errorf("Expected map size %d, got %d", len(pmRegions), len(pmMap))
-	}
-
-	// Check keys
-	// Make copies to avoid modifying the original pm_regions slice
-	expectedKeys := make([]string, len(pmRegions))
-	copy(expectedKeys, pmRegions)
-	actualKeys := getMapKeys(pmMap)
-
-	// Sort slices for consistent comparison using sort.Strings
-	sort.Strings(expectedKeys)
-	sort.Strings(actualKeys)
-
-	if diff := cmp.Diff(expectedKeys, actualKeys); diff != "" {
-		t.Errorf("Map keys mismatch (-want +got):\n%s", diff)
-	}
-
-	for region, client := range pmMap {
-		if client == nil {
-			t.Errorf("Client for region %s is nil", region)
-		}
-		if err := client.Close(); err != nil {
-			t.Logf("Warning: failed to close client for region %s: %v", region, err)
-		}
+			if capturedEndpoint != tt.wantEndpoint {
+				t.Errorf("GetRegionalParameterManagerClient() with region '%s' called NewClient with endpoint '%s', want '%s'", tt.region, capturedEndpoint, tt.wantEndpoint)
+			}
+		})
 	}
 }
