@@ -20,9 +20,12 @@ package test
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -44,7 +47,6 @@ func setupPmTestSuite() {
 	f.pmReferenceRegionalSecret1 = fmt.Sprintf("pmReferenceRegionalSecret1-%d", rand.Int31())
 	f.pmReferenceRegionalSecret2 = fmt.Sprintf("pmReferenceRegionalSecret2-%d", rand.Int31())
 
-
 	// Create global test secrets to be referred for parametermanager
 	// Path where data-files for secrets are stored
 	globalSecretRef1 := filepath.Join(f.tempDir, "globalSecretRef1")
@@ -60,12 +62,11 @@ func setupPmTestSuite() {
 	), 0644))
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.pmReferenceGlobalSecret2, "--replication-policy", "automatic",
 		"--data-file", globalSecretRef2, "--project", f.testProjectID)))
-		
-		
+
 	// Create test parameter and parameter versions -> global region (both YAML and JSON)
 	parameterVersionFileYaml := filepath.Join(f.tempDir, "parameterValueYaml.yaml")
 	parameterVersionFileJson := filepath.Join(f.tempDir, "parameterValueJson.json")
-		
+
 	// Write the byte payload of the parameters into files similar to how secret manager is doing it.
 
 	check(os.WriteFile(parameterVersionFileYaml, []byte(
@@ -74,17 +75,17 @@ func setupPmTestSuite() {
 			user2: support
 			db_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1) 
 			backup_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)`,
-		f.testProjectID, f.pmReferenceGlobalSecret1, f.testProjectID, f.pmReferenceGlobalSecret2)), 0644))
-		
+			f.testProjectID, f.pmReferenceGlobalSecret1, f.testProjectID, f.pmReferenceGlobalSecret2)), 0644))
+
 	check(os.WriteFile(parameterVersionFileJson, []byte(
-	fmt.Sprintf(
-	`{
+		fmt.Sprintf(
+			`{
 		"user": "admin",
 		"user2": "support",
 		"db_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)",
 		"backup_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)"
-	}`, 
-	f.testProjectID, f.pmReferenceGlobalSecret1, f.testProjectID, f.pmReferenceGlobalSecret2)), 0644))
+	}`,
+			f.testProjectID, f.pmReferenceGlobalSecret1, f.testProjectID, f.pmReferenceGlobalSecret2)), 0644))
 
 	// Create Parameters first
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.parameterIdYaml,
@@ -92,7 +93,7 @@ func setupPmTestSuite() {
 
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.parameterIdJson,
 		"--location", "global", "--parameter-format", "JSON", "--project", f.testProjectID)))
-	
+
 	// Grant parameter principals access to the global secret
 	globalYamlPrincipal, err := getParameterPrincipalID(f.parameterIdYaml, "global", f.testProjectID)
 	check(err) // Use check(err) which panics on error
@@ -110,11 +111,11 @@ func setupPmTestSuite() {
 	check(execCmd(exec.Command("gcloud", "secrets", "add-iam-policy-binding", f.pmReferenceGlobalSecret1,
 		"--member", globalJsonPrincipal,
 		"--role", "roles/secretmanager.secretAccessor",
-		"--project", f.testProjectID)))	
+		"--project", f.testProjectID)))
 	check(execCmd(exec.Command("gcloud", "secrets", "add-iam-policy-binding", f.pmReferenceGlobalSecret2,
 		"--member", globalJsonPrincipal,
 		"--role", "roles/secretmanager.secretAccessor",
-		"--project", f.testProjectID)))	
+		"--project", f.testProjectID)))
 
 	// Now create the versions using the files you just wrote
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.parameterVersionIdYAML,
@@ -137,17 +138,17 @@ func setupPmTestSuite() {
 			user2: support
 			db_regional_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)
 			backup_regional_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)`,
-		f.testProjectID, f.location, f.pmReferenceRegionalSecret1, f.testProjectID, f.location, f.pmReferenceRegionalSecret2)), 0644))
-			
+			f.testProjectID, f.location, f.pmReferenceRegionalSecret1, f.testProjectID, f.location, f.pmReferenceRegionalSecret2)), 0644))
+
 	check(os.WriteFile(parameterVersionFileJsonRegional, []byte(
 		fmt.Sprintf(
-		`{
+			`{
 			"user": "admin",
 			"user2": "support",
 			"db_regional_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)",
 			"backup_regional_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)"
 		}`,
-		f.testProjectID, f.location, f.pmReferenceRegionalSecret1, f.testProjectID, f.location, f.pmReferenceRegionalSecret2)), 0644))
+			f.testProjectID, f.location, f.pmReferenceRegionalSecret1, f.testProjectID, f.location, f.pmReferenceRegionalSecret2)), 0644))
 
 	// Set regional endpoint
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
@@ -155,28 +156,26 @@ func setupPmTestSuite() {
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/parametermanager",
 		"https://parametermanager."+f.location+".rep.googleapis.com/")))
 
-
 	// Create regional secrets
 	// Path where data-files for regional-secrets are stored
 	regionalSecretRef1 := filepath.Join(f.tempDir, "regionalSecretRef1")
 	check(os.WriteFile(regionalSecretRef1, []byte(
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1")
+		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),
 	), 0644))
 
 	check(execCmd(
-		exec.Command("gcloud", "secrets", "create", f.pmReferenceRegionalSecret1, 
-		"--location", f.location, 
-		"--data-file", regionalSecretRef1, "--project", f.testProjectID)))
+		exec.Command("gcloud", "secrets", "create", f.pmReferenceRegionalSecret1,
+			"--location", f.location,
+			"--data-file", regionalSecretRef1, "--project", f.testProjectID)))
 
 	regionalSecretRef2 := filepath.Join(f.tempDir, "regionalSecretRef2")
 	check(os.WriteFile(regionalSecretRef2, []byte(
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2")
+		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),
 	), 0644))
 	check(execCmd(
-		exec.Command("gcloud", "secrets", "create", f.pmReferenceRegionalSecret2,  
-		"--location", f.location, 
-		"--data-file", regionalSecretRef2, "--project", f.testProjectID)))
-
+		exec.Command("gcloud", "secrets", "create", f.pmReferenceRegionalSecret2,
+			"--location", f.location,
+			"--data-file", regionalSecretRef2, "--project", f.testProjectID)))
 
 	// Create regional YAML and JSON parameters.
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.regionalParameterIdYAML,
@@ -407,9 +406,9 @@ func TestMountParameterVersion(t *testing.T) {
 			user2: support
 			db_pwd: %s 
 			backup_pwd: %s`,
-			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"), 
-			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2")
-	),// expected payload
+			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
+			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"),
+		), // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version: %v", err)
 	}
@@ -423,13 +422,13 @@ func TestMountParameterVersion(t *testing.T) {
 				"user2": "support",
 				"db_pwd": "%s",
 				"backup_pwd": "%s"
-			}`, 
-			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"), 
-			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2") // expected payload
+			}`,
+			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
+			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"), // expected payload
 		),
 	); err != nil {
 		t.Fatalf("Error while testing global json parameter version: %v", err)
-	}	
+	}
 
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-mounter", // podName
@@ -439,9 +438,9 @@ func TestMountParameterVersion(t *testing.T) {
 			user2: support
 			db_regional_pwd: %s
 			backup_regional_pwd: %s`,
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"), 
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2")
-	), // expected payload
+			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),
+			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),
+		), // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version: %v", err)
 	}
@@ -450,14 +449,15 @@ func TestMountParameterVersion(t *testing.T) {
 		"test-parameter-version-mounter", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
 		fmt.Sprintf(
-		`{
+			`{
 			"user": "admin",
 			"user2": "support",
 			"db_regional_pwd": "%s",
 			"backup_regional_pwd": "%s"
 		}`,
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"), 
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2")), // expected payload
+			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),
+			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),
+		), // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing regional json parameter version: %v", err)
 	}
@@ -491,9 +491,9 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 			user2: support
 			db_pwd: %s 
 			backup_pwd: %s`,
-			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"), 
-			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2")
-	),// expected payload
+			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
+			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"),
+		), // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version extracted key 'db_pwd': %v", err) // expected global secret
 	}
@@ -514,9 +514,9 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 			user2: support
 			db_regional_pwd: %s
 			backup_regional_pwd: %s`,
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"), 
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2")
-	), // expected payload
+			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),
+			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),
+		), // expected payload
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version extracted key 'user2': %v", err)
 	}
@@ -524,7 +524,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"), // expected payload (extractJSONKey used with key db_pwd used)
+		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),                                                                // expected payload (extractJSONKey used with key db_pwd used)
 	); err != nil {
 		t.Fatalf("Error while testing regional json parameter version extracted key 'db_pwd': %v", err) // expected regional secret
 	}
