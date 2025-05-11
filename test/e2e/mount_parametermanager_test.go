@@ -20,6 +20,7 @@ package test
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -48,14 +49,14 @@ func setupPmTestSuite() {
 	// Path where data-files for secrets are stored
 	globalSecretRef1 := filepath.Join(f.tempDir, "globalSecretRef1")
 	check(os.WriteFile(globalSecretRef1, []byte(
-		fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1")
+		fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
 	), 0644))
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.pmReferenceGlobalSecret1, "--replication-policy", "automatic",
 		"--data-file", globalSecretRef1, "--project", f.testProjectID)))
 
 	globalSecretRef2 := filepath.Join(f.tempDir, "globalSecretRef2")
 	check(os.WriteFile(globalSecretRef2, []byte(
-		fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2")
+		fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"),
 	), 0644))
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.pmReferenceGlobalSecret2, "--replication-policy", "automatic",
 		"--data-file", globalSecretRef2, "--project", f.testProjectID)))
