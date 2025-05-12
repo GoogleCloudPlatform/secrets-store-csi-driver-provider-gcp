@@ -523,10 +523,18 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-key-extraction", // podName
-		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
-		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),                                                                // expected payload (extractJSONKey used with key db_pwd used)
+		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s/db_regional_pwd", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
+		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),                                                                                // expected payload (extractJSONKey used with key db_regional_pwd used)
 	); err != nil {
-		t.Fatalf("Error while testing regional json parameter version extracted key 'db_pwd': %v", err) // expected regional secret
+		t.Fatalf("Error while testing regional json parameter version extracted key 'db_regional_pwd': %v", err) // expected regional secret
+	}
+
+	if err := checkMountedParameterVersion(
+		"test-parameter-version-key-extraction", // podName
+		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s/backup", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
+		fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),                                                                // expected payload (extractJSONKey used with key backup_regional_pwd used)
+	); err != nil {
+		t.Fatalf("Error while testing regional json parameter version extracted key 'backup_regional_pwd': %v", err) // expected regional secret
 	}
 }
 

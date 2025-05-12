@@ -32,8 +32,11 @@ spec:
       - resourceName: "projects/$PROJECT_ID/locations/$LOCATION_ID/parameters/$TEST_REGIONAL_PARAMETER_ID_YAML/versions/$TEST_REGIONAL_VERSION_ID_YAML"
         path: "$TEST_REGIONAL_PARAMETER_ID_YAML/$LOCATION_ID/$TEST_REGIONAL_VERSION_ID_YAML"
       - resourceName: "projects/$PROJECT_ID/locations/$LOCATION_ID/parameters/$TEST_REGIONAL_PARAMETER_ID_JSON/versions/$TEST_REGIONAL_VERSION_ID_JSON"
-        path: "$TEST_REGIONAL_PARAMETER_ID_JSON/$LOCATION_ID/$TEST_REGIONAL_VERSION_ID_JSON"
-        extractJSONKey: "db_pwd"
+        path: "$TEST_REGIONAL_PARAMETER_ID_JSON/$LOCATION_ID/$TEST_REGIONAL_VERSION_ID_JSON/db_regional_pwd"
+        extractJSONKey: "db_regional_pwd"
+      - resourceName: "projects/$PROJECT_ID/locations/$LOCATION_ID/parameters/$TEST_REGIONAL_PARAMETER_ID_JSON/versions/$TEST_REGIONAL_VERSION_ID_JSON"
+        path: "$TEST_REGIONAL_PARAMETER_ID_JSON/$LOCATION_ID/$TEST_REGIONAL_VERSION_ID_JSON/backup"
+        extractJSONKey: "backup_regional_pwd"
 ---
 apiVersion: v1
 kind: Pod
