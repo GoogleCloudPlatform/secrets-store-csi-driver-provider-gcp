@@ -18,7 +18,6 @@
 package test
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"math/rand"
@@ -78,46 +77,6 @@ func execCmd(command *exec.Cmd) error {
 	stdoutStderr, err := command.CombinedOutput()
 	fmt.Println(string(stdoutStderr))
 	return err
-}
-
-// Checks mounted secret content
-func checkMountedSecret(secretId string) error {
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-mounter",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"cat", fmt.Sprintf("/var/gcp-test-secrets/%s", secretId))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		return fmt.Errorf("Could not read secret from container: %v", err)
-	}
-	if !bytes.Equal(stdout.Bytes(), []byte(secretId)) {
-		return fmt.Errorf("Secret value is %v, want: %v", stdout.String(), secretId)
-	}
-	return nil
-}
-
-// Checks file mode of secrets
-func checkFileMode(secretId string) error {
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-mode",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"stat", "--printf", "%a", fmt.Sprintf("/var/gcp-test-secrets/..data/%s", secretId))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		return fmt.Errorf("Could not read secret from container: %v", err)
-	}
-	if !bytes.Equal(stdout.Bytes(), []byte("400")) {
-		return fmt.Errorf("Secret file mode is %v, want: %v", stdout.String(), "400")
-	}
-	return nil
 }
 
 // Replaces variables in an input template file and writes the result to an

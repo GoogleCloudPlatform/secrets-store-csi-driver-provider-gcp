@@ -29,18 +29,19 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			// In my opininon we should throw a default 500 error (rare case)
 			pmMetricRecorder(csrmetrics.OutboundRPCStatusOK)
 		}
-		resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
+		resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 		return
 	}
 	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(response.RenderedPayload, r.ExtractJSONKey)
 		if err != nil {
-			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
 		}
 		resultChan <- &Resource{
 			ID:       r.ResourceURI,
 			FileName: r.FileName,
+			Path:     r.Path,
 			Version:  response.GetParameterVersion(),
 			Payload:  content,
 			Err:      nil,
@@ -51,6 +52,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 	resultChan <- &Resource{
 		ID:       r.ResourceURI,
 		FileName: r.FileName,
+		Path:     r.Path,
 		Version:  response.GetParameterVersion(),
 		Payload:  response.RenderedPayload,
 		Err:      nil,
