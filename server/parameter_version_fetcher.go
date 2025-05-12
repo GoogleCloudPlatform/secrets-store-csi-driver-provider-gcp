@@ -56,7 +56,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			Payload:  content,
 			Err:      nil,
 		}
-	} else if len(r.ExtractYAMLKey) > 0 { // ExtractJSONKey populated
+	} else if len(r.ExtractYAMLKey) > 0 { // ExtractYAMLKey populated
 		content, err := util.ExtractContentUsingYAMLKey(response.RenderedPayload, r.ExtractYAMLKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)

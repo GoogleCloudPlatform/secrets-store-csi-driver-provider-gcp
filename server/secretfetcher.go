@@ -53,7 +53,7 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 			Payload:  content,
 			Err:      nil,
 		}
-	} else if len(r.ExtractYAMLKey) > 0 { // ExtractJSONKey populated
+	} else if len(r.ExtractYAMLKey) > 0 { // ExtractYAMLKey populated
 		content, err := util.ExtractContentUsingYAMLKey(response.Payload.Data, r.ExtractYAMLKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
