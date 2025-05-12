@@ -14,7 +14,7 @@
 
 module github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 
-go 1.23.0
+go 1.23.7
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0
@@ -37,7 +37,7 @@ require (
 	k8s.io/client-go v0.32.3
 	k8s.io/component-base v0.32.3
 	k8s.io/klog/v2 v2.130.1
-	sigs.k8s.io/secrets-store-csi-driver v1.4.8
+	sigs.k8s.io/secrets-store-csi-driver v1.5.0
 )
 
 require (
