@@ -444,12 +444,6 @@ func setupTestSuite(isTokenPassed bool) {
 		"--payload-data-from-file", parameterVersionFileJsonRegional, // And here
 		"--project", f.testProjectID)))
 
-	// Add a delay to allow IAM changes for Parameter Manager service identities to propagate.
-	// This is to mitigate potential 'context deadline exceeded' errors during parameter version rendering
-	// if the Parameter's service identity doesn't yet have permissions to access referenced secrets.
-	log.Println("Waiting 90s for IAM policy propagation for Parameter Manager service identities...")
-	time.Sleep(90 * time.Second)
-
 	// Setting endpoints back to the global defaults
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/parametermanager")))
