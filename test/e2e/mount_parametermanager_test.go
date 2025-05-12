@@ -73,7 +73,7 @@ func setupPmTestSuite() {
 		fmt.Sprintf(
 			`user: admin
 user2: support
-db_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1) 
+db_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)
 backup_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)`,
 			f.testProjectID, f.pmReferenceGlobalSecret1, f.testProjectID, f.pmReferenceGlobalSecret2)), 0644))
 
@@ -404,7 +404,7 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf(
 			`user: admin
 user2: support
-db_pwd: %s 
+db_pwd: %s
 backup_pwd: %s`,
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"),
@@ -489,7 +489,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 		fmt.Sprintf(
 			`user: admin
 user2: support
-db_pwd: %s 
+db_pwd: %s
 backup_pwd: %s`,
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"),
