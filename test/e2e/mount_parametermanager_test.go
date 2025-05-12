@@ -486,7 +486,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
-		fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),, // expected payload (extractYAMLKey with key db_pwd used)
+		fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),                                            // expected payload (extractYAMLKey with key db_pwd used)
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version extracted key 'db_pwd': %v", err) // expected global secret
 	}
