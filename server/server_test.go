@@ -643,6 +643,48 @@ func TestHandleMountEventForExtractJSONKey(t *testing.T) {
 	}
 }
 
+func TestHandleMountEventForExtractJSONKeyNestedFormatError(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   "projects/project/secrets/test/versions/latest",
+				FileName:       "good.txt",
+				ExtractJSONKey: "devEnv",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/test/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte(`{"devEnv": {"user": "admin", "password": "password@1234"}}`),
+				},
+			}, nil
+		},
+	})
+
+	regionalClients := make(map[string]*secretmanager.Client)
+	server := &Server{
+		SecretClient:          client,
+		RegionalSecretClients: regionalClients,
+		ServerClientOptions:   []option.ClientOption{},
+	}
+	_, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+	if err == nil {
+		t.Errorf("expected invalid value type error, received error nil")
+	}
+	if !strings.Contains(err.Error(), "unsupported value type for key") {
+		t.Errorf("expected unsupported value type error, received %v", err)
+	}
+}
+
 func TestHandleMountEventForRegionalSecretExtractJSONKey(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
