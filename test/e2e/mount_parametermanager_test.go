@@ -403,9 +403,9 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
 		fmt.Sprintf(
 			`user: admin
-			user2: support
-			db_pwd: %s 
-			backup_pwd: %s`,
+user2: support
+db_pwd: %s 
+backup_pwd: %s`,
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"),
 		), // expected payload
@@ -418,11 +418,11 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/global/%s", f.parameterIdJson, f.parameterVersionIdJSON), // mounted filepath
 		fmt.Sprintf(
 			`{
-				"user": "admin",
-				"user2": "support",
-				"db_pwd": "%s",
-				"backup_pwd": "%s"
-			}`,
+	"user": "admin",
+	"user2": "support",
+	"db_pwd": "%s",
+	"backup_pwd": "%s"
+}`,
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"), // expected payload
 		),
@@ -435,9 +435,9 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
 		fmt.Sprintf(
 			`user: admin
-			user2: support
-			db_regional_pwd: %s
-			backup_regional_pwd: %s`,
+user2: support
+db_regional_pwd: %s
+backup_regional_pwd: %s`,
 			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),
 			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),
 		), // expected payload
@@ -450,11 +450,11 @@ func TestMountParameterVersion(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version/%s/%s/%s", f.regionalParameterIdJSON, f.location, f.regionalParameterVersionIdJSON), // filepath
 		fmt.Sprintf(
 			`{
-			"user": "admin",
-			"user2": "support",
-			"db_regional_pwd": "%s",
-			"backup_regional_pwd": "%s"
-		}`,
+	"user": "admin",
+	"user2": "support",
+	"db_regional_pwd": "%s",
+	"backup_regional_pwd": "%s"
+}`,
 			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),
 			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),
 		), // expected payload
@@ -488,9 +488,9 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
 		fmt.Sprintf(
 			`user: admin
-			user2: support
-			db_pwd: %s 
-			backup_pwd: %s`,
+user2: support
+db_pwd: %s 
+backup_pwd: %s`,
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
 			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"),
 		), // expected payload
@@ -511,9 +511,9 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
 		fmt.Sprintf(
 			`user: admin
-			user2: support
-			db_regional_pwd: %s
-			backup_regional_pwd: %s`,
+user2: support
+db_regional_pwd: %s
+backup_regional_pwd: %s`,
 			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),
 			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),
 		), // expected payload
