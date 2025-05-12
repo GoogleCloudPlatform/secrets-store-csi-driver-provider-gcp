@@ -72,19 +72,19 @@ func setupPmTestSuite() {
 	check(os.WriteFile(parameterVersionFileYaml, []byte(
 		fmt.Sprintf(
 			`user: admin
-			user2: support
-			db_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1) 
-			backup_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)`,
+user2: support
+db_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1) 
+backup_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)`,
 			f.testProjectID, f.pmReferenceGlobalSecret1, f.testProjectID, f.pmReferenceGlobalSecret2)), 0644))
 
 	check(os.WriteFile(parameterVersionFileJson, []byte(
 		fmt.Sprintf(
 			`{
-		"user": "admin",
-		"user2": "support",
-		"db_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)",
-		"backup_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)"
-	}`,
+	"user": "admin",
+	"user2": "support",
+	"db_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)",
+	"backup_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versions/1)"
+}`,
 			f.testProjectID, f.pmReferenceGlobalSecret1, f.testProjectID, f.pmReferenceGlobalSecret2)), 0644))
 
 	// Create Parameters first
@@ -135,19 +135,19 @@ func setupPmTestSuite() {
 	check(os.WriteFile(parameterVersionFileYamlRegional, []byte(
 		fmt.Sprintf(
 			`user: admin
-			user2: support
-			db_regional_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)
-			backup_regional_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)`,
+user2: support
+db_regional_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)
+backup_regional_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)`,
 			f.testProjectID, f.location, f.pmReferenceRegionalSecret1, f.testProjectID, f.location, f.pmReferenceRegionalSecret2)), 0644))
 
 	check(os.WriteFile(parameterVersionFileJsonRegional, []byte(
 		fmt.Sprintf(
 			`{
-			"user": "admin",
-			"user2": "support",
-			"db_regional_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)",
-			"backup_regional_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)"
-		}`,
+	"user": "admin",
+	"user2": "support",
+	"db_regional_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)",
+	"backup_regional_pwd": "__REF__(//secretmanager.googleapis.com/projects/%s/locations/%s/secrets/%s/versions/1)"
+}`,
 			f.testProjectID, f.location, f.pmReferenceRegionalSecret1, f.testProjectID, f.location, f.pmReferenceRegionalSecret2)), 0644))
 
 	// Set regional endpoint
