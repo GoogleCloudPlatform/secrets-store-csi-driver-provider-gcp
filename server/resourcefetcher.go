@@ -28,6 +28,7 @@ type resourceFetcher struct {
 	TypeOfResource ResourceType
 	ResourceURI    string
 	FileName       string
+	Path           string
 	MetricName     string
 	Mode           *int32
 	ExtractJSONKey string
@@ -38,6 +39,7 @@ type resourceFetcher struct {
 type Resource struct {
 	ID       string
 	FileName string
+	Path     string
 	Version  string
 	Payload  []byte
 	Err      error
@@ -49,7 +51,7 @@ func (r *resourceFetcher) Orchestrator(ctx context.Context, s *Server, authOptio
 		r.TypeOfResource = SecretRef
 		location, err := util.ExtractLocationFromSecretResource(r.ResourceURI)
 		if err != nil {
-			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
 		}
 		var smClient *secretmanager.Client
@@ -64,7 +66,7 @@ func (r *resourceFetcher) Orchestrator(ctx context.Context, s *Server, authOptio
 		r.TypeOfResource = ParameterVersion
 		location, err := util.ExtractLocationFromParameterManagerResource(r.ResourceURI)
 		if err != nil {
-			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
 		}
 		var pmClient *parametermanager.Client
@@ -79,15 +81,17 @@ func (r *resourceFetcher) Orchestrator(ctx context.Context, s *Server, authOptio
 		resultChan <- getErrorResource(
 			r.ResourceURI,
 			r.FileName,
+			r.Path,
 			fmt.Errorf("unknown resource type"),
 		)
 	}
 }
 
-func getErrorResource(resourceURI, fileName string, err error) *Resource {
+func getErrorResource(resourceURI, fileName, path string, err error) *Resource {
 	return &Resource{
 		ID:       resourceURI,
 		FileName: fileName,
+		Path:     path,
 		Payload:  nil,
 		Err:      err,
 	}
