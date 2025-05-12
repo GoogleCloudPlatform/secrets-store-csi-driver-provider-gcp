@@ -250,7 +250,7 @@ func TestHandleMountBothSMKeyJSONYAMLKeyProvided(t *testing.T) {
 	}
 	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
 
-	if !strings.Contains(got.Error(), "FailedPrecondition") {
+	if !strings.Contains(got.Error(), "Internal") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 	if !strings.Contains(got.Error(), "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings") {
@@ -295,7 +295,7 @@ func TestHandleMountBothPMKeyJSONYAMLKeyProvided(t *testing.T) {
 	}
 	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
 
-	if !strings.Contains(got.Error(), "FailedPrecondition") {
+	if !strings.Contains(got.Error(), "Internal") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 	if !strings.Contains(got.Error(), "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings") {
@@ -350,7 +350,7 @@ func TestHandleMountEventSMErrorPMVersionOK(t *testing.T) {
 		ServerClientOptions:             []option.ClientOption{},
 	}
 	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
-	if !strings.Contains(got.Error(), "FailedPrecondition") {
+	if !strings.Contains(got.Error(), "Internal") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 }
@@ -402,7 +402,7 @@ func TestHandleMountEventPMErrorSMVersionOK(t *testing.T) {
 		ServerClientOptions:             []option.ClientOption{},
 	}
 	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
-	if !strings.Contains(got.Error(), "FailedPrecondition") {
+	if !strings.Contains(got.Error(), "Internal") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
 }
@@ -528,6 +528,9 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 		ServerClientOptions:   []option.ClientOption{},
 	}
 	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+	if !strings.Contains(got.Error(), "Internal") { // outermost level error
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
@@ -591,6 +594,9 @@ func TestHandleMountEventPMMultipleErrors(t *testing.T) {
 		ServerClientOptions:             []option.ClientOption{},
 	}
 	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+	if !strings.Contains(got.Error(), "Internal") { // Outermost level error
+		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
+	}
 	if !strings.Contains(got.Error(), "FailedPrecondition") {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", got)
 	}
