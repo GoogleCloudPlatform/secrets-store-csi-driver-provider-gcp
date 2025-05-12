@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ type credentialsFile struct {
 // TokenSource returns the correct oauth2.TokenSource depending on the auth
 // configuration of the MountConfig.
 func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oauth2.TokenSource, error) {
-	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
+	allowSecretRef, err := vars.AllowNodepublishSecretRef.GetBooleanValue()
 	if err != nil {
 		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")

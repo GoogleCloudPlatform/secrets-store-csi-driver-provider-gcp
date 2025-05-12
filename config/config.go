@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -130,7 +130,7 @@ func Parse(in *MountParams) (*MountConfig, error) {
 
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
-	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
+	allowSecretRef, err := vars.AllowNodepublishSecretRef.GetBooleanValue()
 	if err != nil {
 		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")
