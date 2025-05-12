@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -62,8 +63,7 @@ var (
 	_                     = flag.Bool("write_secrets", false, "[unused]")
 	smConnectionPoolSize  = flag.Int("sm_connection_pool_size", 5, "size of the connection pool for the secret manager API client")
 	iamConnectionPoolSize = flag.Int("iam_connection_pool_size", 5, "size of the connection pool for the IAM API client")
-
-	version = "dev"
+	version               = "dev"
 )
 
 func main() {
@@ -104,6 +104,24 @@ func main() {
 		klog.Fatal("failed to read kubeconfig")
 	}
 	rc.ContentType = runtime.ContentTypeProtobuf
+	// If QPS and Burst are provided by environment variables, configure QPS and Burst capacity for SA token retrieval to support higher request rates.
+	if os.Getenv("K8S_CLIENT_QPS") != "" && os.Getenv("K8S_CLIENT_BURST") != "" {
+		qps, err := strconv.ParseFloat(os.Getenv("K8S_CLIENT_QPS"), 32)
+		if err != nil {
+			klog.ErrorS(err, "failed to convert qps from string to float")
+			return
+		}
+		rc.QPS = float32(qps)
+		klog.InfoS("Setting QPS value for k8s client configuration", "K8S_CLIENT_QPS", qps)
+
+		burst, err := strconv.Atoi(os.Getenv("K8S_CLIENT_BURST"))
+		if err != nil {
+			klog.ErrorS(err, "failed to convert burst from string to integer")
+			return
+		}
+		rc.Burst = burst
+		klog.InfoS("Setting Burst capacity for k8s client configuration", "K8S_CLIENT_BURST", burst)
+	}
 
 	clientset, err := kubernetes.NewForConfig(rc)
 	if err != nil {
