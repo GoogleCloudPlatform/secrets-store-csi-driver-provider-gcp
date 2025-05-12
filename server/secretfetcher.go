@@ -39,6 +39,7 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 			r.Path,
 			fmt.Errorf(r.ResourceURI, "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
 		)
+		return
 	} else if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(response.Payload.Data, r.ExtractJSONKey)
 		if err != nil {

@@ -42,6 +42,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			r.Path,
 			fmt.Errorf("both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
 		)
+		return
 	} else if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(response.RenderedPayload, r.ExtractJSONKey)
 		if err != nil {
