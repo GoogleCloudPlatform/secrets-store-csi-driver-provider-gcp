@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	"cloud.google.com/go/parametermanager/apiv1/parametermanagerpb"
@@ -32,7 +33,17 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 		return
 	}
-	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
+
+	// Both simultaneously can't be populated.
+	if len(r.ExtractJSONKey) > 0 && len(r.ExtractYAMLKey) > 0 {
+		resultChan <- getErrorResource(
+			r.ResourceURI,
+			r.FileName,
+			r.Path,
+			fmt.Errorf("both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
+		)
+		return
+	} else if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(response.RenderedPayload, r.ExtractJSONKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
@@ -46,15 +57,28 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			Payload:  content,
 			Err:      nil,
 		}
-		return
-	}
-
-	resultChan <- &Resource{
-		ID:       r.ResourceURI,
-		FileName: r.FileName,
-		Path:     r.Path,
-		Version:  response.GetParameterVersion(),
-		Payload:  response.RenderedPayload,
-		Err:      nil,
+	} else if len(r.ExtractYAMLKey) > 0 { // ExtractJSONKey populated
+		content, err := util.ExtractContentUsingYAMLKey(response.RenderedPayload, r.ExtractYAMLKey)
+		if err != nil {
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
+			return
+		}
+		resultChan <- &Resource{
+			ID:       r.ResourceURI,
+			FileName: r.FileName,
+			Path:     r.Path,
+			Version:  response.GetParameterVersion(),
+			Payload:  content,
+			Err:      nil,
+		}
+	} else {
+		resultChan <- &Resource{
+			ID:       r.ResourceURI,
+			FileName: r.FileName,
+			Path:     r.Path,
+			Version:  response.GetParameterVersion(),
+			Payload:  response.RenderedPayload,
+			Err:      nil,
+		}
 	}
 }

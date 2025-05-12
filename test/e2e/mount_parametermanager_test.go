@@ -486,14 +486,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
-		fmt.Sprintf(
-			`user: admin
-user2: support
-db_pwd: %s
-backup_pwd: %s`,
-			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),
-			fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret2, "global-s3cr3tReplica2"),
-		), // expected payload
+		fmt.Sprintf("%s-%s", f.pmReferenceGlobalSecret1, "global-s3cr3t1"),, // expected payload (extractYAMLKey with key db_pwd used)
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version extracted key 'db_pwd': %v", err) // expected global secret
 	}
@@ -509,14 +502,7 @@ backup_pwd: %s`,
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
-		fmt.Sprintf(
-			`user: admin
-user2: support
-db_regional_pwd: %s
-backup_regional_pwd: %s`,
-			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret1, "regional-s3cr3t1"),
-			fmt.Sprintf("%s-%s", f.pmReferenceRegionalSecret2, "regional-s3cr3tReplica2"),
-		), // expected payload
+		"support", // expected payload (extractYAMLKey with key user2 used)
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version extracted key 'user2': %v", err)
 	}
