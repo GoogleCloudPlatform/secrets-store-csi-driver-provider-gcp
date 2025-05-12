@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -227,7 +227,7 @@ func buildErr(resultMap map[resourceIdentity]*Resource) error {
 	msgs := make([]string, 0, len(resultMap))
 	hasErr := false
 	s := &spb.Status{
-		Code:    int32(codes.FailedPrecondition),
+		Code:    int32(codes.Internal),
 		Details: make([]*anypb.Any, 0),
 	}
 	for name, resource := range resultMap {
