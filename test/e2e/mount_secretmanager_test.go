@@ -395,11 +395,6 @@ func TestMountRotateSecret(t *testing.T) {
 		"--namespace", "default",
 		"--timeout", "5m",
 	)); err != nil {
-		execCmd(exec.Command(
-			"kubectl", "describe", "pods",
-			"--namespace", "default",
-			"--kubeconfig", f.kubeconfigFile,
-		))
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
