@@ -36,28 +36,11 @@ func ExtractContentUsingJSONKey(payload []byte, key string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("key '%s' not found in JSON", key)
 	}
-	switch v := value.(type) {
-	case string:
-		return []byte(value.(string)), nil
-	case map[string]any:
-		return json.Marshal(v)
-	case []any:
-		return json.Marshal(v)
-	case int:
-		return anyToBytesConvertInt(int64(v))
-	case float64:
-		return anyToBytesFloat64(v)
-	case bool:
-		return anyToBytesBool(value.(bool))
-	case nil:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("unsupported value type for key '%s'", key)
-	}
+	return getValue(key, value, false)
 }
 
 func ExtractContentUsingYAMLKey(payload []byte, key string) ([]byte, error) {
-	var data map[any]any
+	var data map[string]any
 	err := yaml.Unmarshal(payload, &data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal YAML: %v. Invalid YAML format for key extraction", err)
@@ -66,15 +49,28 @@ func ExtractContentUsingYAMLKey(payload []byte, key string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("key '%s' not found in YAML", key)
 	}
+	return getValue(key, value, true)
+}
+
+func getValue(key string, value any, isYaml bool) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
 		return []byte(v), nil
 	case map[string]any:
-		return yaml.Marshal(v)
+		if isYaml {
+			return yaml.Marshal(v)
+		}
+		return json.Marshal(v)
 	case map[any]any:
-		return yaml.Marshal(v)
+		if isYaml {
+			return yaml.Marshal(v)
+		}
+		return nil, fmt.Errorf("unsupported value type for json key '%s'", key)
 	case []any:
-		return yaml.Marshal(v)
+		if isYaml {
+			return yaml.Marshal(v)
+		}
+		return json.Marshal(v)
 	case int:
 		return anyToBytesConvertInt(int64(v))
 	case float64:
