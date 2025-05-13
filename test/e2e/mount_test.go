@@ -379,6 +379,10 @@ func setupTestSuite(isTokenPassed bool) {
 		"--role", "roles/secretmanager.secretAccessor",
 		"--project", f.testProjectID)))
 
+	// Add a delay to allow IAM permissions for parameter principals to access secrets.
+	fmt.Println("Waiting 120s for regional IAM permissions (parameter principal -> secret) to propagate...")
+	time.Sleep(120 * time.Second)
+
 	// Now create the versions using the files you just wrote
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.parameterVersionIdYAML,
 		"--parameter", f.parameterIdYaml, "--location", "global",
