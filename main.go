@@ -129,14 +129,15 @@ func main() {
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
 	}
-
-	sc, err := secretmanager.NewClient(ctx, clientOptions...)
+	smClientOptions := append(clientOptions, option.WithEndpoint("dns:///secretmanager.googleapis.com:443"))
+	sc, err := secretmanager.NewClient(ctx, smClientOptions...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
 	}
 
-	pmClient, err := parametermanager.NewClient(ctx, clientOptions...)
+	pmClientOptions := append(clientOptions, option.WithEndpoint("dns:///parametermanager.googleapis.com:443"))
+	pmClient, err := parametermanager.NewClient(ctx, pmClientOptions...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create parametermanager client")
 		klog.Fatal("failed to create parametermanager client")

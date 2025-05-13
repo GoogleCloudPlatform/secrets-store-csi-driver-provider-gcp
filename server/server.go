@@ -200,7 +200,13 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		if secret.Mode != nil {
 			mode = *secret.Mode
 		}
-		resource := resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}]
+		resourceKey := resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}
+		resource, ok := resultMap[resourceKey]
+		if !ok || resource == nil {
+			// This indicates a goroutine panicked without sending to outputChannel,
+			// and no pre-existing error was recorded in resultMap during client/location checks.
+			return nil, status.Error(codes.Internal, fmt.Sprintf("internal error: result missing for secret %v (file: %v, path: %v)", secret.ResourceName, secret.FileName, secret.Path))
+		}
 
 		out.Files = append(out.Files, &v1alpha1.File{
 			Path:     secret.PathString(),

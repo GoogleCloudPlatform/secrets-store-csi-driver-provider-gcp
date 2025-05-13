@@ -68,7 +68,7 @@ func ExtractContentUsingYAMLKey(payload []byte, key string) ([]byte, error) {
 	}
 	switch v := value.(type) {
 	case string:
-		return []byte(value.(string)), nil
+		return []byte(v), nil
 	case map[string]any:
 		return yaml.Marshal(v)
 	case map[any]any:
@@ -80,7 +80,7 @@ func ExtractContentUsingYAMLKey(payload []byte, key string) ([]byte, error) {
 	case float64:
 		return anyToBytesFloat64(v)
 	case bool:
-		return anyToBytesBool(value.(bool))
+		return anyToBytesBool(v)
 	case nil:
 		return nil, nil
 	default:
