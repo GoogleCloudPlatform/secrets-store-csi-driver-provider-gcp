@@ -2,11 +2,16 @@ package util
 
 import (
 	"bytes"
+<<<<<<< HEAD
 	"encoding/json"
 	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
+=======
+	"strings"
+	"testing"
+>>>>>>> main
 )
 
 func TestExtractContentUsingJSONKey(t *testing.T) {
@@ -40,6 +45,7 @@ func TestExtractContentUsingJSONKey(t *testing.T) {
 			wantErr: false,
 		},
 		{
+<<<<<<< HEAD
 			name:    "valid_json_key_exists_value_is_number",
 			payload: []byte(`{"count": 123}`),
 			key:     "count",
@@ -76,6 +82,46 @@ func TestExtractContentUsingJSONKey(t *testing.T) {
 				return b
 			}(),
 			wantErr: false,
+=======
+			name:          "valid_json_key_exists_value_is_number",
+			payload:       []byte(`{"count": 123}`),
+			key:           "count",
+			want:          nil,
+			wantErr:       true,
+			wantErrSubstr: "unsupported value type for key 'count'",
+		},
+		{
+			name:          "valid_json_key_exists_value_is_boolean",
+			payload:       []byte(`{"active": true}`),
+			key:           "active",
+			want:          nil,
+			wantErr:       true,
+			wantErrSubstr: "unsupported value type for key 'active'",
+		},
+		{
+			name:          "valid_json_key_exists_value_is_null",
+			payload:       []byte(`{"nullable_field": null}`),
+			key:           "nullable_field",
+			want:          nil,
+			wantErr:       true,
+			wantErrSubstr: "unsupported value type for key 'nullable_field'",
+		},
+		{
+			name:          "valid_json_key_exists_value_is_object",
+			payload:       []byte(`{"nested": {"a": "b"}}`),
+			key:           "nested",
+			want:          nil,
+			wantErr:       true,
+			wantErrSubstr: "unsupported value type for key 'nested'",
+		},
+		{
+			name:          "valid_json_key_exists_value_is_array",
+			payload:       []byte(`{"list": [1, 2, "item"]}`),
+			key:           "list",
+			want:          nil,
+			wantErr:       true,
+			wantErrSubstr: "unsupported value type for key 'list'",
+>>>>>>> main
 		},
 		{
 			name:          "valid_json_key_does_not_exist",
@@ -173,6 +219,7 @@ func TestExtractContentUsingJSONKey(t *testing.T) {
 		})
 	}
 }
+<<<<<<< HEAD
 
 func TestExtractContentUsingYAMLKey(t *testing.T) {
 	tests := []struct {
@@ -306,3 +353,5 @@ func TestExtractContentUsingYAMLKey(t *testing.T) {
 		})
 	}
 }
+=======
+>>>>>>> main

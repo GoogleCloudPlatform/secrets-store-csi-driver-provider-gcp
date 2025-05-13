@@ -1,4 +1,5 @@
 // Copyright 2025 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +17,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -36,6 +38,8 @@ import (
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	"cloud.google.com/go/parametermanager/apiv1/parametermanagerpb"
+	parametermanager "cloud.google.com/go/parametermanager/apiv1"
+	"cloud.google.com/go/parametermanager/apiv1/parametermanagerpb"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 )
@@ -44,7 +48,13 @@ const regionalParameterVersion = "projects/project/locations/us-central1/paramet
 const globalParameterVersion = "projects/project/locations/global/parameters/parameterIdGlobal/versions/versionId"
 const globalParameterVersion2 = "projects/project/locations/global/parameters/parameterIdGlobal/versions/versionId2"
 
+const regionalParameterVersion = "projects/project/locations/us-central1/parameters/parameterIdRegional/versions/versionId"
+const globalParameterVersion = "projects/project/locations/global/parameters/parameterIdGlobal/versions/versionId"
+const globalParameterVersion2 = "projects/project/locations/global/parameters/parameterIdGlobal/versions/versionId2"
+
 func TestHandleMountEvent(t *testing.T) {
+	parameterManagerFileMode := int32(0500) // decimal 320
+	secretFileMode := int32(0600)           // decimal 384
 	parameterManagerFileMode := int32(0500) // decimal 320
 	secretFileMode := int32(0600)           // decimal 384
 
@@ -123,6 +133,7 @@ func TestHandleMountEvent(t *testing.T) {
 			{
 				Path:     "good2.txt",
 				Mode:     384, // octal 0600 as 6*64 = 384
+				Mode:     384, // octal 0600 as 6*64 = 384
 				Contents: []byte("My Secret"),
 			},
 			{
@@ -158,6 +169,15 @@ func TestHandleMountEvent(t *testing.T) {
 					},
 				}, nil
 			}
+		accessFn: func(ctx context.Context, req *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			if req.Name == "projects/project/secrets/secretId/versions/latest" {
+				return &secretmanagerpb.AccessSecretVersionResponse{
+					Name: "projects/project/secrets/secretId/versions/1",
+					Payload: &secretmanagerpb.SecretPayload{
+						Data: []byte("password: password@1234"),
+					},
+				}, nil
+			}
 			return &secretmanagerpb.AccessSecretVersionResponse{
 				Name: "projects/project/secrets/test/versions/2",
 				Payload: &secretmanagerpb.SecretPayload{
@@ -167,6 +187,45 @@ func TestHandleMountEvent(t *testing.T) {
 		},
 	})
 
+	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
+		renderFn: func(ctx context.Context, req *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
+			if req.Name == globalParameterVersion {
+				data := []byte("{\"user\":\"admin\", \"password\":\"password@1234\"}")
+				return &parametermanagerpb.RenderParameterVersionResponse{
+					ParameterVersion: globalParameterVersion,
+					RenderedPayload:  data,
+				}, nil
+			}
+			data := []byte("user: admin\npassword: password@1234")
+			return &parametermanagerpb.RenderParameterVersionResponse{
+				ParameterVersion: globalParameterVersion2,
+				RenderedPayload:  data,
+			}, nil
+		},
+	})
+
+	regionalPmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
+		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
+			data := []byte("user: admin\npassword: password@1234")
+			return &parametermanagerpb.RenderParameterVersionResponse{
+				ParameterVersion: regionalParameterVersion,
+				RenderedPayload:  data,
+			}, nil
+		},
+	})
+
+	regionalSmClients := make(map[string]*secretmanager.Client)
+	regionalPmClients := make(map[string]*parametermanager.Client)
+	regionalPmClients["us-central1"] = regionalPmClient
+
+	server := &Server{
+		SecretClient:                    client,
+		ParameterManagerClient:          pmClient,
+		RegionalSecretClients:           regionalSmClients,
+		ServerClientOptions:             []option.ClientOption{},
+		RegionalParameterManagerClients: regionalPmClients,
+	}
+	got, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
 	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
 		renderFn: func(ctx context.Context, req *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
 			if req.Name == globalParameterVersion {
@@ -310,6 +369,10 @@ func TestHandleMountEventSMErrorPMVersionOK(t *testing.T) {
 			{
 				ResourceName: "projects/project/secrets/test/versions/latest",
 				FileName:     "good1.txt",
+			},
+			{
+				ResourceName: globalParameterVersion,
+				FileName:     "pm_good1.txt",
 			},
 			{
 				ResourceName: globalParameterVersion,
@@ -516,6 +579,7 @@ func TestHandleMountEventSMMultipleErrors(t *testing.T) {
 				return nil, status.Error(codes.PermissionDenied, "User does not have permission on secret")
 			default:
 				return nil, status.Error(codes.NotFound, "Secret not found")
+				return nil, status.Error(codes.NotFound, "Secret not found")
 			}
 		},
 	})
@@ -689,6 +753,12 @@ func TestHandleMountEventForRegionalSecret(t *testing.T) {
 		ServerClientOptions:   []option.ClientOption{},
 	}
 	got, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+	server := &Server{
+		SecretClient:          client,
+		RegionalSecretClients: regionalClients,
+		ServerClientOptions:   []option.ClientOption{},
+	}
+	got, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
 	if err != nil {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
 	}
@@ -754,6 +824,12 @@ func TestHandleMountEventForExtractJSONKey(t *testing.T) {
 	})
 
 	regionalClients := make(map[string]*secretmanager.Client)
+	server := &Server{
+		SecretClient:          client,
+		RegionalSecretClients: regionalClients,
+		ServerClientOptions:   []option.ClientOption{},
+	}
+	got, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
 	server := &Server{
 		SecretClient:          client,
 		RegionalSecretClients: regionalClients,
@@ -897,6 +973,13 @@ func TestHandleMountEventForRegionalSecretExtractJSONKey(t *testing.T) {
 	}
 
 	got, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+	server := &Server{
+		SecretClient:          regionalClient,
+		RegionalSecretClients: regionalClients,
+		ServerClientOptions:   []option.ClientOption{},
+	}
+
+	got, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
 	if err != nil {
 		t.Errorf("handleMountEvent() got err = %v, want err = nil", err)
 	}
@@ -976,6 +1059,13 @@ func TestHandleMountEventForMultipleSecretsExtractJSONKey(t *testing.T) {
 	regionalClients := make(map[string]*secretmanager.Client)
 	regionalClients["us-central1"] = client
 
+	server := &Server{
+		SecretClient:          client,
+		RegionalSecretClients: regionalClients,
+		ServerClientOptions:   []option.ClientOption{},
+	}
+
+	got, err := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
 	server := &Server{
 		SecretClient:          client,
 		RegionalSecretClients: regionalClients,
@@ -1069,6 +1159,45 @@ func mockParameterManagerClient(t testing.TB, m *mockParameterManagerServer) *pa
 	return client
 }
 
+// mockParameterManagerClient builds a parametermanager.Client talking to a real in-memory parametermanager
+// GRPC server of the *mockParameterManagerServer.
+func mockParameterManagerClient(t testing.TB, m *mockParameterManagerServer) *parametermanager.Client {
+	t.Helper()
+	l := bufconn.Listen(1024 * 1024)
+	s := grpc.NewServer()
+	parametermanagerpb.RegisterParameterManagerServer(s, m)
+
+	go func() {
+		if err := s.Serve(l); err != nil {
+			t.Errorf("server error: %v", err)
+		}
+	}()
+
+	conn, err := grpc.NewClient("passthrough:whatever", grpc.WithContextDialer(
+		func(context.Context, string) (net.Conn, error) {
+			return l.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("failed to dial: %v", err)
+	}
+
+	client, err := parametermanager.NewClient(context.Background(), option.WithoutAuthentication(), option.WithGRPCConn(conn))
+	shutdown := func() {
+		t.Log("shutdown called")
+		conn.Close()
+		s.GracefulStop()
+		l.Close()
+	}
+	if err != nil {
+		shutdown()
+		t.Fatal(err)
+	}
+
+	t.Cleanup(shutdown)
+	return client
+}
+
 // mockSecretServer matches the secremanagerpb.SecretManagerServiceServer
 // interface and allows the AccessSecretVersion implementation to be stubbed
 // with the accessFn function.
@@ -1082,6 +1211,21 @@ func (s *mockSecretServer) AccessSecretVersion(ctx context.Context, req *secretm
 		return nil, status.Error(codes.Unimplemented, "mock does not implement accessFn")
 	}
 	return s.accessFn(ctx, req)
+}
+
+// mockParameterManagerServer matches the parametermanagerpb.ParameterManagerServiceServer
+// interface and allows the RenderParameterVersion implementation to be stubbed
+// with the renderFn function.
+type mockParameterManagerServer struct {
+	parametermanagerpb.UnimplementedParameterManagerServer
+	renderFn func(context.Context, *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error)
+}
+
+func (pm *mockParameterManagerServer) RenderParameterVersion(ctx context.Context, req *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
+	if pm.renderFn == nil {
+		return nil, status.Error(codes.Unimplemented, "mock does not implement renderFn")
+	}
+	return pm.renderFn(ctx, req)
 }
 
 // mockParameterManagerServer matches the parametermanagerpb.ParameterManagerServiceServer

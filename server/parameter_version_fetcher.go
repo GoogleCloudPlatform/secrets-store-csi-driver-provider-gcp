@@ -20,6 +20,9 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		Name: r.ResourceURI,
 	}
 	response, err := pmClient.RenderParameterVersion(ctx, request, *authOption)
+	fmt.Printf("\n\n***Request is %v\n\n", request);
+	fmt.Printf("\n\n***Response is %v\n\n", response);
+	fmt.Printf("\n\n***Error is %v\n\n", err);
 
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
