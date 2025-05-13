@@ -33,7 +33,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 		return
 	}
-
+	pmMetricRecorder(csrmetrics.OutboundRPCStatusOK)
 	// Both simultaneously can't be populated.
 	if len(r.ExtractJSONKey) > 0 && len(r.ExtractYAMLKey) > 0 {
 		resultChan <- getErrorResource(
@@ -43,7 +43,8 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			fmt.Errorf("both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
 		)
 		return
-	} else if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
+	}
+	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(response.RenderedPayload, r.ExtractJSONKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
@@ -57,7 +58,9 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			Payload:  content,
 			Err:      nil,
 		}
-	} else if len(r.ExtractYAMLKey) > 0 { // ExtractYAMLKey populated
+		return
+	}
+	if len(r.ExtractYAMLKey) > 0 { // ExtractYAMLKey populated
 		content, err := util.ExtractContentUsingYAMLKey(response.RenderedPayload, r.ExtractYAMLKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
@@ -70,14 +73,14 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 			Payload:  content,
 			Err:      nil,
 		}
-	} else {
-		resultChan <- &Resource{
-			ID:       r.ResourceURI,
-			FileName: r.FileName,
-			Path:     r.Path,
-			Version:  response.GetParameterVersion(),
-			Payload:  response.RenderedPayload,
-			Err:      nil,
-		}
+		return
+	}
+	resultChan <- &Resource{
+		ID:       r.ResourceURI,
+		FileName: r.FileName,
+		Path:     r.Path,
+		Version:  response.GetParameterVersion(),
+		Payload:  response.RenderedPayload,
+		Err:      nil,
 	}
 }
