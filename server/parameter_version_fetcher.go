@@ -20,9 +20,6 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		Name: r.ResourceURI,
 	}
 	response, err := pmClient.RenderParameterVersion(ctx, request, *authOption)
-	fmt.Printf("\n\nRequest is %v\n\n", request)
-	fmt.Printf("\n\nResponse is %v\n\n", response)
-	fmt.Printf("\n\nError is %v\n\n", err)
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
 			pmMetricRecorder(csrmetrics.OutboundRPCStatus(e.Code().String()))
@@ -64,8 +61,6 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 	}
 	if len(r.ExtractYAMLKey) > 0 { // ExtractYAMLKey populated
 		content, err := util.ExtractContentUsingYAMLKey(response.RenderedPayload, r.ExtractYAMLKey)
-		fmt.Printf("**\n\nReceivedResponse is %v\n\n**", response)
-		fmt.Printf("**\nContent is %v\n\n", string(content))
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
@@ -73,6 +68,7 @@ func (r *resourceFetcher) FetchParameterVersions(ctx context.Context, authOption
 		resultChan <- &Resource{
 			ID:       r.ResourceURI,
 			FileName: r.FileName,
+			Path:     r.Path,
 			Version:  response.GetParameterVersion(),
 			Payload:  content,
 			Err:      nil,

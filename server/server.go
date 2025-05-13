@@ -202,6 +202,8 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		}
 		resourceKey := resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}
 		resource, ok := resultMap[resourceKey]
+
+		// Should ideally never hit this if block
 		if !ok || resource == nil {
 			// This indicates a goroutine panicked without sending to outputChannel,
 			// and no pre-existing error was recorded in resultMap during client/location checks.

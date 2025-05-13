@@ -67,6 +67,7 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 		resultChan <- &Resource{
 			ID:       r.ResourceURI,
 			FileName: r.FileName,
+			Path:     r.Path,
 			Version:  response.GetName(),
 			Payload:  content,
 			Err:      nil,
