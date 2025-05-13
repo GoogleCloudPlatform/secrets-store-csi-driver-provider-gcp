@@ -1121,7 +1121,7 @@ func TestMountParameterVersion(t *testing.T) {
 }
 
 // mounts global and regional parameter versions and applies extractYAMLKey and extractJSONKey whenever applicable
-func TestMountParameterVersionExtractKeys(t *testing.T) {
+func TestKeyExtractionLogicMountParameterVersion(t *testing.T) {
 	podFile := filepath.Join(f.tempDir, "test-parameter-version-extract-keys.yaml")
 	if err := replaceTemplate("templates/test-parameter-version-extract-keys.yaml.tmpl", podFile); err != nil {
 		t.Fatalf("Error replacing pod template: %v", err)
