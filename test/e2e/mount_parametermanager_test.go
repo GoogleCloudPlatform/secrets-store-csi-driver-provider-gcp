@@ -233,32 +233,32 @@ backup_regional_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/location
 
 func teardownPmTestSuite() {
 	// Execute gcloud delete parameter version and delete parameter -> Both YAML and JSON
-	check(execCmd(exec.Command(
+	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "versions", "delete", f.parameterVersionIdYAML,
 		"--parameter", f.parameterIdYaml,
 		"--location", "global",
 		"--project", f.testProjectID,
 		"--quiet",
-	)))
-	check(execCmd(exec.Command(
+	))
+	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "versions", "delete", f.parameterVersionIdJSON,
 		"--parameter", f.parameterIdJson,
 		"--location", "global",
 		"--project", f.testProjectID,
 		"--quiet",
-	)))
-	check(execCmd(exec.Command(
+	))
+	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "delete", f.parameterIdYaml,
 		"--location", "global",
 		"--project", f.testProjectID,
 		"--quiet",
-	)))
-	check(execCmd(exec.Command(
+	))
+	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "delete", f.parameterIdJson,
 		"--location", "global",
 		"--project", f.testProjectID,
 		"--quiet",
-	)))
+	))
 
 	// Delete pm referred global secrets
 	execCmd(exec.Command(
@@ -279,33 +279,33 @@ func teardownPmTestSuite() {
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
 		"https://secretmanager."+f.location+".rep.googleapis.com/")))
 
-	check(execCmd(exec.Command(
+	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "versions", "delete", f.regionalParameterVersionIdYAML,
 		"--parameter", f.regionalParameterIdYAML,
 		"--location", f.location,
 		"--project", f.testProjectID,
 		"--quiet",
-	)))
-	check(execCmd(exec.Command(
+	))
+	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "versions", "delete", f.regionalParameterVersionIdJSON,
 		"--parameter", f.regionalParameterIdJSON,
 		"--location", f.location,
 		"--project", f.testProjectID,
 		"--quiet",
-	)))
+	))
 
-	check(execCmd(exec.Command(
+	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "delete", f.regionalParameterIdYAML,
 		"--location", f.location,
 		"--project", f.testProjectID,
 		"--quiet",
-	)))
-	check(execCmd(exec.Command(
+	))
+	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "delete", f.regionalParameterIdJSON,
 		"--location", f.location,
 		"--project", f.testProjectID,
 		"--quiet",
-	)))
+	))
 
 	execCmd(exec.Command(
 		"gcloud", "secrets", "delete", f.pmReferenceRegionalSecret1,

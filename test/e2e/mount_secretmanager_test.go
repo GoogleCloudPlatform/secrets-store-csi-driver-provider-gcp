@@ -165,10 +165,10 @@ func teardownSmTestSuite() {
 	// Cleanup regional secret
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
 		"https://secretmanager."+f.location+".rep.googleapis.com/")))
-	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--location", f.location,
-		"--project", f.testProjectID, "--quiet")))
-	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testRotateSecretID, "--location", f.location,
-		"--project", f.testProjectID, "--quiet")))
+	execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--location", f.location,
+		"--project", f.testProjectID, "--quiet"))
+	execCmd(exec.Command("gcloud", "secrets", "delete", f.testRotateSecretID, "--location", f.location,
+		"--project", f.testProjectID, "--quiet"))
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 }
 
