@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -378,6 +378,10 @@ func setupTestSuite(isTokenPassed bool) {
 		"--member", globalJsonPrincipal,
 		"--role", "roles/secretmanager.secretAccessor",
 		"--project", f.testProjectID)))
+
+	// Add a delay to allow IAM permissions for parameter principals to access secrets.
+	fmt.Println("Waiting 120s for regional IAM permissions (parameter principal -> secret) to propagate...")
+	time.Sleep(120 * time.Second)
 
 	// Now create the versions using the files you just wrote
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.parameterVersionIdYAML,
@@ -1050,8 +1054,8 @@ func TestMountParameterVersion(t *testing.T) {
 	}
 }
 
-// mounts global and regional parameter versions and applies extractJSONKey whenever applicable
-func TestMountParameterVersionExtractKeys(t *testing.T) {
+// mounts global and regional parameter versions and applies extractYAMLKey and extractJSONKey whenever applicable
+func TestKeyExtractionLogicMountParameterVersion(t *testing.T) {
 	podFile := filepath.Join(f.tempDir, "test-parameter-version-extract-keys.yaml")
 	if err := replaceTemplate("templates/test-parameter-version-extract-keys.yaml.tmpl", podFile); err != nil {
 		t.Fatalf("Error replacing pod template: %v", err)
@@ -1073,7 +1077,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/global/%s", f.parameterIdYaml, f.parameterVersionIdYAML), // mounted file path
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s\n", f.testSecretID),                                      // expected payload
+		f.testSecretID, // expected payload (extractYAMLKey used with key db_pwd used)
 	); err != nil {
 		t.Fatalf("Error while testing global yaml parameter version extracted key 'db_pwd': %v", err) // expected global secret
 	}
@@ -1089,7 +1093,7 @@ func TestMountParameterVersionExtractKeys(t *testing.T) {
 	if err := checkMountedParameterVersion(
 		"test-parameter-version-key-extraction", // podName
 		fmt.Sprintf("/var/gcp-test-parameter-version-keys/%s/%s/%s", f.regionalParameterIdYAML, f.location, f.regionalParameterVersionIdYAML), // mounted filepath
-		fmt.Sprintf("user: admin\nuser2: support\ndb_pwd: %s-regional\n", f.testSecretID),                                                     // expected payload
+		"support", // expected payload (extractYAMLKey used with key user2 used)
 	); err != nil {
 		t.Fatalf("Error while testing regional yaml parameter version extracted key 'user2': %v", err)
 	}

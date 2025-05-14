@@ -58,6 +58,7 @@ type Server struct {
 type resourceIdentity struct {
 	ResourceName string
 	FileName     string
+	Path         string
 }
 
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
@@ -123,7 +124,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		if util.IsSecretResource(secret.ResourceName) {
 			location, err := util.ExtractLocationFromSecretResource(secret.ResourceName)
 			if err != nil {
-				resultMap[resourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, err)
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
 				continue
 			}
 			_, ok := s.RegionalSecretClients[location]
@@ -133,7 +134,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		} else if util.IsParameterManagerResource(secret.ResourceName) {
 			location, err := util.ExtractLocationFromParameterManagerResource(secret.ResourceName)
 			if err != nil {
-				resultMap[resourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, err)
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
 				continue
 			}
 			_, ok := s.RegionalParameterManagerClients[location]
@@ -141,14 +142,14 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 				s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
 			}
 		} else {
-			resultMap[resourceIdentity{secret.ResourceName, secret.FileName}] = getErrorResource(secret.ResourceName, secret.FileName, fmt.Errorf("unknown resource type"))
+			resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, fmt.Errorf("unknown resource type"))
 		}
 	}
 	// In parallel fetch all secrets needed for the mount
 	wg := sync.WaitGroup{}
 	outputChannel := make(chan *Resource, len(cfg.Secrets))
 	for _, secret := range cfg.Secrets {
-		if val, ok := resultMap[resourceIdentity{secret.ResourceName, secret.FileName}]; ok && val.Err != nil {
+		if val, ok := resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}]; ok && val.Err != nil {
 			klog.ErrorS(val.Err, "error for resourceName: ", secret.ResourceName, val.Err)
 			continue
 		}
@@ -156,7 +157,9 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		resourceFetcher := &resourceFetcher{
 			ResourceURI:    secret.ResourceName,
 			FileName:       secret.FileName,
+			Path:           secret.Path,
 			ExtractJSONKey: secret.ExtractJSONKey,
+			ExtractYAMLKey: secret.ExtractYAMLKey,
 		}
 		go resourceFetcher.Orchestrator(ctx, s, &callAuth, outputChannel, &wg)
 	}
@@ -166,7 +169,7 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		if item.Err != nil {
 			klog.ErrorS(item.Err, "failed to fetch secret", "resource_name", item.ID)
 		}
-		resultMap[resourceIdentity{item.ID, item.FileName}] = item
+		resultMap[resourceIdentity{item.ID, item.FileName, item.Path}] = item
 
 	}
 	// If any access failed, return a grpc status error that includes each
@@ -197,7 +200,15 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 		if secret.Mode != nil {
 			mode = *secret.Mode
 		}
-		resource := resultMap[resourceIdentity{secret.ResourceName, secret.FileName}]
+		resourceKey := resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}
+		resource, ok := resultMap[resourceKey]
+
+		// Should ideally never hit this if block
+		if !ok || resource == nil {
+			// This indicates a goroutine panicked without sending to outputChannel,
+			// and no pre-existing error was recorded in resultMap during client/location checks.
+			return nil, status.Error(codes.Internal, fmt.Sprintf("internal error: result missing for secret %v (file: %v, path: %v)", secret.ResourceName, secret.FileName, secret.Path))
+		}
 
 		out.Files = append(out.Files, &v1alpha1.File{
 			Path:     secret.PathString(),

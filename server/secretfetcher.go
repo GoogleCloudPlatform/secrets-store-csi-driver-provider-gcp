@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
@@ -27,18 +28,46 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 			// In my opininon we should throw a default 500 error (rare case)
 			smMetricRecorder(csrmetrics.OutboundRPCStatusOK)
 		}
-		resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
+		resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
+		return
+	}
+	smMetricRecorder(csrmetrics.OutboundRPCStatusOK)
+	// Both simultaneously can't be populated.
+	if len(r.ExtractJSONKey) > 0 && len(r.ExtractYAMLKey) > 0 {
+		resultChan <- getErrorResource(
+			r.ResourceURI,
+			r.FileName,
+			r.Path,
+			fmt.Errorf(r.ResourceURI, "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
+		)
 		return
 	}
 	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
 		content, err := util.ExtractContentUsingJSONKey(response.Payload.Data, r.ExtractJSONKey)
 		if err != nil {
-			resultChan <- getErrorResource(r.ResourceURI, r.FileName, err)
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
 		}
 		resultChan <- &Resource{
 			ID:       r.ResourceURI,
 			FileName: r.FileName,
+			Path:     r.Path,
+			Version:  response.GetName(),
+			Payload:  content,
+			Err:      nil,
+		}
+		return
+	}
+	if len(r.ExtractYAMLKey) > 0 { // ExtractYAMLKey populated
+		content, err := util.ExtractContentUsingYAMLKey(response.Payload.Data, r.ExtractYAMLKey)
+		if err != nil {
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
+			return
+		}
+		resultChan <- &Resource{
+			ID:       r.ResourceURI,
+			FileName: r.FileName,
+			Path:     r.Path,
 			Version:  response.GetName(),
 			Payload:  content,
 			Err:      nil,
@@ -48,6 +77,7 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 	resultChan <- &Resource{
 		ID:       r.ResourceURI,
 		FileName: r.FileName,
+		Path:     r.Path,
 		Version:  response.GetName(),
 		Payload:  response.Payload.Data,
 		Err:      nil,
