@@ -16,7 +16,6 @@ package server
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -278,11 +277,9 @@ func TestHandleMountBothPMKeyJSONYAMLKeyProvided(t *testing.T) {
 	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
 		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
 			data := []byte("user: admin\npassword: password@1234")
-			encodedBytes := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
-			base64.StdEncoding.Encode(encodedBytes, data)
 			return &parametermanagerpb.RenderParameterVersionResponse{
 				ParameterVersion: globalParameterVersion2,
-				RenderedPayload:  encodedBytes,
+				RenderedPayload:  data,
 			}, nil
 		},
 	})
@@ -331,7 +328,8 @@ func TestHandleMountEventSMErrorPMVersionOK(t *testing.T) {
 
 	pmClient := mockParameterManagerClient(t, &mockParameterManagerServer{
 		renderFn: func(ctx context.Context, _ *parametermanagerpb.RenderParameterVersionRequest) (*parametermanagerpb.RenderParameterVersionResponse, error) {
-			data := []byte("user: admin\npassword: password@1234")
+			data := []byte(`user: admin
+password: password@1234`)
 			return &parametermanagerpb.RenderParameterVersionResponse{
 				ParameterVersion: globalParameterVersion2,
 				RenderedPayload:  data,
