@@ -24,15 +24,20 @@ jobs:
 
       - name: Extract latest version
         run: |
-          # Extract the version from the branch name (e.g., release-1.2.3)
-          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | sed -E 's/^release-([0-9]+\.[0-9]+\.[0-9]+)$/\1/')
+          # Extract the version from the branch name (e.g., release-1.2 or release-1.2.3)
+          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | sed -E 's/^release-([0-9]+\.[0-9]+(\.[0-9]+)?)$/\1/')
           
           # Check if the version matches the expected format
-          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
             echo "The PR was merged from a release branch with version: $VERSION"
+            # Ensure the version follows x.x.x format for binary release
+            if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+              VERSION="${VERSION}.0"
+            fi
             echo "VERSION=$VERSION" >> $GITHUB_ENV
+            echo $VERSION
           else
-            echo "Invalid branch name format. The release branch must match 'release-X.X.X'."
+            echo "Invalid branch name format. The release branch must match 'release-X.X' or 'release-X.X.X'."
             exit 1
           fi
 
