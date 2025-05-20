@@ -87,42 +87,87 @@ setup_job_watch "${JOB_NAME_PM}" "PM_TEST"
 SM_JOB_STATUS=-1 # -1: running, 0: success, 1: failed
 PM_JOB_STATUS=-1 # -1: running, 0: success, 1: failed
 
+# Helper function to get detailed info about a job and its pods on failure or timeout
+get_job_info_on_failure() {
+    local job_name=$1
+    local namespace="e2e-test" # Assuming fixed namespace from context
+    echo "---"
+    echo "Gathering diagnostic information for job '$job_name' in namespace '$namespace'..."
+    echo "---"
+
+    echo "Describing job '$job_name':"
+    kubectl describe job "$job_name" -n "$namespace"
+    echo "---"
+
+    echo "Getting pods for job '$job_name':"
+    # Using jsonpath to get .metadata.name directly, handles multiple pods
+    pod_names=$(kubectl get pods -n "$namespace" -l "job-name=$job_name" -o jsonpath='{.items[*].metadata.name}')
+
+    if [ -z "$pod_names" ]; then
+        echo "No pods found for job '$job_name'."
+    else
+        for pod_name in $pod_names; do
+            echo "" # Add a newline for better separation before each pod's info
+            echo "Describing pod '$pod_name':"
+            kubectl describe pod "$pod_name" -n "$namespace"
+            echo "---"
+            echo "Logs for pod '$pod_name' (last 200 lines, with prefix):"
+            # --prefix is useful if the pod has multiple containers or if you're aggregating logs
+            kubectl logs "$pod_name" -n "$namespace" --tail=200 --prefix
+            echo "---"
+        done
+    fi
+    echo "Finished gathering diagnostic information for job '$job_name'."
+    echo "---"
+}
+
 # Function to check job status
 # Arguments: $1=job_name
+# Returns 0 for success, 1 for failure.
+# This function will block until the job completes, fails, or the primary timeout is reached.
 check_job_status() {
     local job_name="$1"
-    if kubectl wait --for=condition=complete "job/${job_name}" -n e2e-test --timeout 45m > /dev/null 2>&1; then
+    local namespace="e2e-test" # Assuming fixed namespace
+    local completion_timeout="45m"
+    local final_status=1 # Default to failure, assuming the worst
+
+    echo "Monitoring job '$job_name' in namespace '$namespace' for completion (timeout: $completion_timeout)..."
+
+
+    if kubectl wait --for=condition=Complete "job/$job_name" -n "$namespace" --timeout="$completion_timeout" > /dev/null 2>&1; then
         echo "Job ${job_name} completed successfully."
-        kubectl delete job "${job_name}" -n e2e-test --ignore-not-found=true
-        return 0
-    elif kubectl wait --for=condition=failed "job/${job_name}" -n e2e-test --timeout 45m > /dev/null 2>&1; then
-        echo "Job ${job_name} failed."
-        kubectl delete job "${job_name}" -n e2e-test --ignore-not-found=true
-        return 1
-    elif ! kubectl get job "${job_name}" -n e2e-test > /dev/null 2>&1; then
-        # If job object is gone and we didn't mark it complete/failed yet, it's an issue.
-        echo "Job ${job_name} no longer exists and was not marked complete/failed. Assuming failure."
-        return 1
+        final_status=0
+    else
+        echo "Job ${job_name} did NOT complete within $completion_timeout."
+        echo "Gathering diagnostic info for ${job_name}..."
+        get_job_info_on_failure "$job_name" "$namespace"
+
+        # Check if it's explicitly marked as Failed using a non-blocking get
+        if kubectl get job "$job_name" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null | grep -q "True"; then
+            echo "Job ${job_name} is marked as FAILED."
+        elif ! kubectl get job "${job_name}" -n "${namespace}" > /dev/null 2>&1; then
+            echo "Job ${job_name} no longer exists and was not marked complete. Assuming failure."
+        else
+            echo "Job ${job_name} timed out without explicit completion or failure condition. Assuming failure."
+        fi
+        # final_status remains 1 (failure)
     fi
-    return 255 # Still running or unknown
+
+    echo "Deleting job ${job_name} from namespace ${namespace}..."
+    kubectl delete job "${job_name}" -n "${namespace}" --ignore-not-found=true
+    return $final_status
 }
 
 echo "Monitoring job statuses..."
 while [ "${SM_JOB_STATUS}" -eq -1 ] || [ "${PM_JOB_STATUS}" -eq -1 ]; do
     if [ "${SM_JOB_STATUS}" -eq -1 ]; then
         check_job_status "${JOB_NAME_SM}"
-        ret=$?
-        if [ $ret -ne 255 ]; then
-            SM_JOB_STATUS=$ret
-        fi
+        SM_JOB_STATUS=$?
     fi
 
     if [ "${PM_JOB_STATUS}" -eq -1 ]; then
         check_job_status "${JOB_NAME_PM}"
-        ret=$?
-        if [ $ret -ne 255 ]; then
-            PM_JOB_STATUS=$ret
-        fi
+        PM_JOB_STATUS=$?
     fi
 
     # If both are not equal to -1, both jobs have stopped now.
