@@ -75,7 +75,11 @@ func check(err error) {
 func execCmd(command *exec.Cmd) error {
 	fmt.Println("+", command)
 	stdoutStderr, err := command.CombinedOutput()
-	fmt.Println(string(stdoutStderr))
+	outputStr := string(stdoutStderr)
+	fmt.Println(outputStr) // Always print output for visibility
+	if err != nil {
+		log.Printf("Command failed: %v\nOutput:\n%s", err, outputStr) // Log error and output on failure
+	}
 	return err
 }
 
