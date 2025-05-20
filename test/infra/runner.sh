@@ -162,18 +162,12 @@ echo "Monitoring job statuses..."
 while [ "${SM_JOB_STATUS}" -eq -1 ] || [ "${PM_JOB_STATUS}" -eq -1 ]; do
     if [ "${SM_JOB_STATUS}" -eq -1 ]; then
         check_job_status "${JOB_NAME_SM}"
-        ret=$?
-        if [ $ret -ne 255 ]; then
-            SM_JOB_STATUS=$ret
-        fi
+        SM_JOB_STATUS=$?
     fi
 
     if [ "${PM_JOB_STATUS}" -eq -1 ]; then
         check_job_status "${JOB_NAME_PM}"
-        ret=$?
-        if [ $ret -ne 255 ]; then
-            PM_JOB_STATUS=$ret
-        fi
+        PM_JOB_STATUS=$?
     fi
 
     # If both are not equal to -1, both jobs have stopped now.
