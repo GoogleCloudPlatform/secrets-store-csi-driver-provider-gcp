@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ type credentialsFile struct {
 // TokenSource returns the correct oauth2.TokenSource depending on the auth
 // configuration of the MountConfig.
 func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oauth2.TokenSource, error) {
-	allowSecretRef, err := vars.AllowNodepublishSeretRef.GetBooleanValue()
+	allowSecretRef, err := vars.AllowNodepublishSecretRef.GetBooleanValue()
 	if err != nil {
 		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")
@@ -248,19 +248,38 @@ func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig
 
 func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, error) {
 	// Determine Workload ID parameters from the GCE instance metadata.
-	projectID, err := c.MetadataClient.ProjectIDWithContext(ctx)
+	projectID, err := vars.Project.GetValue()
 	if err != nil {
-		return "", "", fmt.Errorf("unable to get project id: %w", err)
+		return "", "", fmt.Errorf("unable to read project name from environment: %w", err)
+	}
+	if projectID == "" {
+		projectID, err = c.MetadataClient.ProjectIDWithContext(ctx)
+		if err != nil {
+			return "", "", fmt.Errorf("unable to get project id: %w", err)
+		}
 	}
 	idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
 
-	clusterLocation, err := c.MetadataClient.InstanceAttributeValueWithContext(ctx, "cluster-location")
+	clusterLocation, err := vars.ClusterLocation.GetValue()
 	if err != nil {
-		return "", "", fmt.Errorf("unable to determine cluster location: %w", err)
+		return "", "", fmt.Errorf("unable to read cluster location from environment: %w", err)
 	}
-	clusterName, err := c.MetadataClient.InstanceAttributeValueWithContext(ctx, "cluster-name")
+	if clusterLocation == "" {
+		clusterLocation, err = c.MetadataClient.InstanceAttributeValueWithContext(ctx, "cluster-location")
+		if err != nil {
+			return "", "", fmt.Errorf("unable to determine cluster location: %w", err)
+		}
+	}
+
+	clusterName, err := vars.ClusterName.GetValue()
 	if err != nil {
-		return "", "", fmt.Errorf("unable to determine cluster name: %w", err)
+		return "", "", fmt.Errorf("unable to read cluster name from environment: %w", err)
+	}
+	if clusterName == "" {
+		clusterName, err = c.MetadataClient.InstanceAttributeValueWithContext(ctx, "cluster-name")
+		if err != nil {
+			return "", "", fmt.Errorf("unable to determine cluster name: %w", err)
+		}
 	}
 
 	gkeWorkloadIdentityProviderEndpoint, err := vars.GkeWorkloadIdentityEndPoint.GetValue()

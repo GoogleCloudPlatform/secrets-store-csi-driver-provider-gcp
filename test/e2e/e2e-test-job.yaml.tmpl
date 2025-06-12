@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: $JOB_NAME
+  name: $JOB_NAME # This will be the unique job name like e2e-test-job-xxxx-sm
   namespace: e2e-test
 spec:
   backoffLimit: 0
@@ -28,6 +28,8 @@ spec:
         - name: e2e-test
           image: gcr.io/$PROJECT_ID/e2e-test:$GCP_PROVIDER_SHA
           imagePullPolicy: Always
+          command: ["/bin/bash", "-c"]
+          args: ["./run_tests.sh"]
           env:
           - name: GCP_PROVIDER_SHA
             value: "$GCP_PROVIDER_SHA"
@@ -39,3 +41,5 @@ spec:
             value: "$GKE_VERSION"
           - name: LOCATION_ID
             value: "$LOCATION_ID"
+          - name: E2E_TEST_SUITE # To be used by the test runner in the container
+            value: $TEST_SUITE_NAME

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,22 +17,20 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
-	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/csrmetrics"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/util"
 	"github.com/googleapis/gax-go/v2"
 
+	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"google.golang.org/api/option"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
@@ -46,14 +44,25 @@ import (
 )
 
 type Server struct {
-	RuntimeVersion        string
-	AuthClient            *auth.Client
-	SecretClient          *secretmanager.Client
-	RegionalSecretClients map[string]*secretmanager.Client
-	SmOpts                []option.ClientOption
+	RuntimeVersion                  string
+	AuthClient                      *auth.Client
+	SecretClient                    *secretmanager.Client
+	ParameterManagerClient          *parametermanager.Client
+	RegionalSecretClients           map[string]*secretmanager.Client
+	RegionalParameterManagerClients map[string]*parametermanager.Client
+	ServerClientOptions             []option.ClientOption
+}
+
+// Keeping it separate as same resource name can be used to
+// mount at 2 different locations (maybe in different modes for different permissions)
+type resourceIdentity struct {
+	ResourceName string
+	FileName     string
+	Path         string
 }
 
 var _ v1alpha1.CSIDriverProviderServer = &Server{}
+var _ resourceFetcherInterface = &resourceFetcher{}
 
 // Mount implements provider csi-provider method
 func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alpha1.MountResponse, error) {
@@ -88,7 +97,7 @@ func (s *Server) Mount(ctx context.Context, req *v1alpha1.MountRequest) (*v1alph
 
 	// Fetch the secrets from the secretmanager API based on the
 	// SecretProviderClass configuration.
-	return handleMountEvent(ctx, s.SecretClient, gts, cfg, s.RegionalSecretClients, s.SmOpts)
+	return handleMountEvent(ctx, gts, cfg, s)
 }
 
 // Version implements provider csi-provider method
@@ -103,64 +112,66 @@ func (s *Server) Version(ctx context.Context, req *v1alpha1.VersionRequest) (*v1
 // handleMountEvent fetches the secrets from the secretmanager API and
 // include them in the MountResponse based on the SecretProviderClass
 // configuration.
-func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds credentials.PerRPCCredentials, cfg *config.MountConfig, regionalClients map[string]*secretmanager.Client, smOpts []option.ClientOption) (*v1alpha1.MountResponse, error) {
-	results := make([]*secretmanagerpb.AccessSecretVersionResponse, len(cfg.Secrets))
-	errs := make([]error, len(cfg.Secrets))
-
+func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, cfg *config.MountConfig, s *Server) (*v1alpha1.MountResponse, error) {
 	// need to build a per-rpc call option based of the tokensource
 	callAuth := gax.WithGRPCOptions(grpc.PerRPCCredentials(creds))
 
+	// Storing it as a resultMap to have 1 API call for each resource instead
+	// of de-duplicating API calls for duplicate resources
+	resultMap := make(map[resourceIdentity]*Resource)
+
+	for _, secret := range cfg.Secrets {
+		if util.IsSecretResource(secret.ResourceName) {
+			location, err := util.ExtractLocationFromSecretResource(secret.ResourceName)
+			if err != nil {
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
+				continue
+			}
+			_, ok := s.RegionalSecretClients[location]
+			if !ok {
+				s.RegionalSecretClients[location] = util.GetRegionalSecretManagerClient(ctx, location, s.ServerClientOptions)
+			}
+		} else if util.IsParameterManagerResource(secret.ResourceName) {
+			location, err := util.ExtractLocationFromParameterManagerResource(secret.ResourceName)
+			if err != nil {
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
+				continue
+			}
+			_, ok := s.RegionalParameterManagerClients[location]
+			if !ok {
+				s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
+			}
+		} else {
+			resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, fmt.Errorf("unknown resource type"))
+		}
+	}
 	// In parallel fetch all secrets needed for the mount
 	wg := sync.WaitGroup{}
-	for i, secret := range cfg.Secrets {
-		loc, err := locationFromSecretResource(secret.ResourceName)
-		if err != nil {
-			errs[i] = err
+	outputChannel := make(chan *Resource, len(cfg.Secrets))
+	for _, secret := range cfg.Secrets {
+		if val, ok := resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}]; ok && val.Err != nil {
+			klog.ErrorS(val.Err, "error for resourceName: ", secret.ResourceName, val.Err)
 			continue
-		}
-
-		if len(loc) > locationLengthLimit {
-			errs[i] = fmt.Errorf("invalid location string, please check the location")
-			continue
-		}
-		var secretClient *secretmanager.Client
-		if loc == "" {
-			secretClient = client
-		} else {
-			if _, ok := regionalClients[loc]; !ok {
-				ep := option.WithEndpoint(fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", loc))
-				regionalClient, err := secretmanager.NewClient(ctx, append(smOpts, ep)...)
-				if err != nil {
-					errs[i] = err
-					continue
-				}
-				regionalClients[loc] = regionalClient
-			}
-			secretClient = regionalClients[loc]
 		}
 		wg.Add(1)
-		i, secret := i, secret
-		go func() {
-			defer wg.Done()
-			req := &secretmanagerpb.AccessSecretVersionRequest{
-				Name: secret.ResourceName,
-			}
-			smMetricRecorder := csrmetrics.OutboundRPCStartRecorder("secretmanager_access_secret_version_requests")
-
-			resp, err := secretClient.AccessSecretVersion(ctx, req, callAuth)
-			if err != nil {
-				if e, ok := status.FromError(err); ok {
-					smMetricRecorder(csrmetrics.OutboundRPCStatus(e.Code().String()))
-				}
-			} else {
-				smMetricRecorder(csrmetrics.OutboundRPCStatusOK)
-			}
-			results[i] = resp
-			errs[i] = err
-		}()
+		resourceFetcher := &resourceFetcher{
+			ResourceURI:    secret.ResourceName,
+			FileName:       secret.FileName,
+			Path:           secret.Path,
+			ExtractJSONKey: secret.ExtractJSONKey,
+			ExtractYAMLKey: secret.ExtractYAMLKey,
+		}
+		go resourceFetcher.Orchestrator(ctx, s, &callAuth, outputChannel, &wg)
 	}
 	wg.Wait()
+	close(outputChannel)
+	for item := range outputChannel {
+		if item.Err != nil {
+			klog.ErrorS(item.Err, "failed to fetch secret", "resource_name", item.ID)
+		}
+		resultMap[resourceIdentity{item.ID, item.FileName, item.Path}] = item
 
+	}
 	// If any access failed, return a grpc status error that includes each
 	// individual status error in the Details field.
 	//
@@ -170,7 +181,8 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 	// By erroring out on any failures we prevent partial rotations (i.e. the
 	// username file was updated to a new value but the corresponding password
 	// field was not).
-	if err := buildErr(errs); err != nil {
+
+	if err := buildErr(resultMap); err != nil {
 		return nil, err
 	}
 
@@ -178,101 +190,68 @@ func handleMountEvent(ctx context.Context, client *secretmanager.Client, creds c
 
 	// Add secrets to response.
 	ovs := make([]*v1alpha1.ObjectVersion, len(cfg.Secrets))
+
+	if cfg.Permissions > math.MaxInt32 {
+		return nil, fmt.Errorf("invalid file permission %d", cfg.Permissions)
+	}
 	for i, secret := range cfg.Secrets {
-		if cfg.Permissions > math.MaxInt32 {
-			return nil, fmt.Errorf("invalid file permission %d", cfg.Permissions)
-		}
 		// #nosec G115 Checking limit
 		mode := int32(cfg.Permissions)
 		if secret.Mode != nil {
 			mode = *secret.Mode
 		}
+		resourceKey := resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}
+		resource, ok := resultMap[resourceKey]
 
-		result := results[i]
-		extractJSONKey := secret.ExtractJSONKey
-		var content []byte
-
-		// If extractJSONKey is null, then set the entire data
-		if extractJSONKey == "" {
-			content = result.Payload.Data
-		} else {
-			var data map[string]interface{}
-			err := json.Unmarshal(result.Payload.Data, &data)
-			if err != nil {
-				return nil, fmt.Errorf("secret data not in JSON format")
-			}
-
-			value, ok := data[extractJSONKey]
-
-			// If the key is not present, an error will be raised
-			if !ok {
-				return nil, fmt.Errorf("key %v does not exist at the secret path", extractJSONKey)
-			} else {
-				dataContent, ok := value.(string)
-
-				// If there is a type conversion error
-				if !ok {
-					return nil, fmt.Errorf("wrong type for content, expected string")
-				}
-				content = []byte(dataContent)
-			}
+		// Should ideally never hit this if block
+		if !ok || resource == nil {
+			// This indicates a goroutine panicked without sending to outputChannel,
+			// and no pre-existing error was recorded in resultMap during client/location checks.
+			return nil, status.Error(codes.Internal, fmt.Sprintf("internal error: result missing for secret %v (file: %v, path: %v)", secret.ResourceName, secret.FileName, secret.Path))
 		}
 
 		out.Files = append(out.Files, &v1alpha1.File{
 			Path:     secret.PathString(),
 			Mode:     mode,
-			Contents: content,
+			Contents: resource.Payload,
 		})
 		klog.V(5).InfoS("added secret to response", "resource_name", secret.ResourceName, "file_name", secret.FileName, "pod", klog.ObjectRef{Namespace: cfg.PodInfo.Namespace, Name: cfg.PodInfo.Name})
 
+		// Id:      "projects/project/secrets/test/versions/latest",
+		// Version: "projects/project/secrets/test/versions/2",
+		// Id and Version will differ only for secret manager results.
+		// They will be the same for parameter manager
 		ovs[i] = &v1alpha1.ObjectVersion{
 			Id:      secret.ResourceName,
-			Version: result.GetName(),
+			Version: resource.Version,
 		}
 	}
 	out.ObjectVersion = ovs
-
 	return out, nil
 }
 
 // buildErr consolidates many errors into a single Status protobuf error message
 // with each individual error included into the status Details any proto. The
 // consolidated proto is converted to a general error.
-func buildErr(errs []error) error {
-	msgs := make([]string, 0, len(errs))
+func buildErr(resultMap map[resourceIdentity]*Resource) error {
+	msgs := make([]string, 0, len(resultMap))
 	hasErr := false
 	s := &spb.Status{
 		Code:    int32(codes.Internal),
 		Details: make([]*anypb.Any, 0),
 	}
+	for name, resource := range resultMap {
+		if resource.Err != nil {
+			hasErr = true
+			msgs = append(msgs, fmt.Sprintf("%s: %s", name, resource.Err.Error()))
 
-	for i := range errs {
-		if errs[i] == nil {
-			continue
+			any, _ := anypb.New(status.Convert(resource.Err).Proto())
+			s.Details = append(s.Details, any)
 		}
-		hasErr = true
-		msgs = append(msgs, errs[i].Error())
-
-		any, _ := anypb.New(status.Convert(errs[i]).Proto())
-		s.Details = append(s.Details, any)
 	}
 	if !hasErr {
 		return nil
 	}
 	s.Message = strings.Join(msgs, ",")
 	return status.FromProto(s).Err()
-}
-
-// locationFromSecretResource returns location from the secret resource if the resource is in format "projects/<project_id>/locations/<location_id>/..."
-// returns "" for global secret resource.
-func locationFromSecretResource(resource string) (string, error) {
-	globalSecretRegexp := regexp.MustCompile(globalSecretRegex)
-	if m := globalSecretRegexp.FindStringSubmatch(resource); m != nil {
-		return "", nil
-	}
-	regionalSecretRegexp := regexp.MustCompile(regionalSecretRegex)
-	if m := regionalSecretRegexp.FindStringSubmatch(resource); m != nil {
-		return m[2], nil
-	}
-	return "", status.Errorf(codes.InvalidArgument, "Invalid secret resource name: %s", resource)
 }

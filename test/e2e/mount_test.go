@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,10 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build secretmanager_e2e || parametermanager_e2e || all_e2e
+// +build secretmanager_e2e parametermanager_e2e all_e2e
+
 package test
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"math/rand"
@@ -43,6 +46,20 @@ type testFixture struct {
 	secretStoreVersion  string
 	gkeVersion          string
 	location            string
+
+	// below fields explicitly used for parameter manager
+	pmReferenceGlobalSecret1       string
+	pmReferenceGlobalSecret2       string
+	pmReferenceRegionalSecret1     string
+	pmReferenceRegionalSecret2     string
+	parameterIdYaml                string
+	parameterIdJson                string
+	parameterVersionIdYAML         string
+	parameterVersionIdJSON         string
+	regionalParameterIdYAML        string
+	regionalParameterIdJSON        string
+	regionalParameterVersionIdYAML string
+	regionalParameterVersionIdJSON string
 }
 
 var f testFixture
@@ -58,48 +75,12 @@ func check(err error) {
 func execCmd(command *exec.Cmd) error {
 	fmt.Println("+", command)
 	stdoutStderr, err := command.CombinedOutput()
-	fmt.Println(string(stdoutStderr))
+	outputStr := string(stdoutStderr)
+	fmt.Println(outputStr) // Always print output for visibility
+	if err != nil {
+		log.Printf("Command failed: %v\nOutput:\n%s", err, outputStr) // Log error and output on failure
+	}
 	return err
-}
-
-// Checks mounted secret content
-func checkMountedSecret(secretId string) error {
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-mounter",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"cat", fmt.Sprintf("/var/gcp-test-secrets/%s", secretId))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		return fmt.Errorf("Could not read secret from container: %v", err)
-	}
-	if !bytes.Equal(stdout.Bytes(), []byte(secretId)) {
-		return fmt.Errorf("Secret value is %v, want: %v", stdout.String(), secretId)
-	}
-	return nil
-}
-
-// Checks file mode of secrets
-func checkFileMode(secretId string) error {
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-mode",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"stat", "--printf", "%a", fmt.Sprintf("/var/gcp-test-secrets/..data/%s", secretId))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		return fmt.Errorf("Could not read secret from container: %v", err)
-	}
-	if !bytes.Equal(stdout.Bytes(), []byte("400")) {
-		return fmt.Errorf("Secret file mode is %v, want: %v", stdout.String(), "400")
-	}
-	return nil
 }
 
 // Replaces variables in an input template file and writes the result to an
@@ -122,12 +103,19 @@ func replaceTemplate(templateFile string, destFile string) error {
 	template = strings.ReplaceAll(template, "$GKE_VERSION", f.gkeVersion)
 	template = strings.ReplaceAll(template, "$LOCATION_ID", f.location)
 
+	template = strings.ReplaceAll(template, "$TEST_PARAMETER_ID_YAML", f.parameterIdYaml)
+	template = strings.ReplaceAll(template, "$TEST_PARAMETER_ID_JSON", f.parameterIdJson)
+	template = strings.ReplaceAll(template, "$TEST_VERSION_ID_YAML", f.parameterVersionIdYAML)
+	template = strings.ReplaceAll(template, "$TEST_VERSION_ID_JSON", f.parameterVersionIdJSON)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_PARAMETER_ID_YAML", f.regionalParameterIdYAML)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_PARAMETER_ID_JSON", f.regionalParameterIdJSON)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_VERSION_ID_YAML", f.regionalParameterVersionIdYAML)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_VERSION_ID_JSON", f.regionalParameterVersionIdJSON)
 	return os.WriteFile(destFile, []byte(template), 0644)
-
 }
 
 // Executed before any tests are run. Setup is only run once for all tests in the suite.
-func setupTestSuite(isTokenPassed bool) {
+func setupTestSuite(isTokenPassed bool, suiteType string) {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -140,7 +128,7 @@ func setupTestSuite(isTokenPassed bool) {
 		log.Fatal("PROJECT_ID is empty")
 	}
 	f.location = os.Getenv("LOCATION_ID")
-	if len(f.testProjectID) == 0 {
+	if len(f.location) == 0 {
 		log.Fatal("LOCATION_ID is empty")
 	}
 	f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
@@ -166,9 +154,6 @@ func setupTestSuite(isTokenPassed bool) {
 	check(err)
 	f.tempDir = tempDir
 	f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
-	f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
-	f.testRotateSecretID = f.testSecretID + "-rotate"
-	f.testExtractSecretID = f.testSecretID + "-extract"
 
 	// Build the plugin deploy yaml
 	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
@@ -202,20 +187,15 @@ func setupTestSuite(isTokenPassed bool) {
 	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
 		"-f", pluginFile)))
 
-	// Create test secret
-	secretFile := filepath.Join(f.tempDir, "secretValue")
-	check(os.WriteFile(secretFile, []byte(f.testSecretID), 0644))
-	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
-		"--data-file", secretFile, "--project", f.testProjectID)))
+	// Create f.testSecretID (for direct SM tests) if secretmanager or all suite is run
+	if suiteType == "secretmanager" || suiteType == "all" {
+		setupSmTestSuite()
+	}
 
-	// Create regional secret
-	secretFile = filepath.Join(f.tempDir, "regionalSecretValue")
-	check(os.WriteFile(secretFile, []byte(f.testSecretID+"-regional"), 0644))
-	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
-		"https://secretmanager."+f.location+".rep.googleapis.com/")))
-	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--location", f.location,
-		"--data-file", secretFile, "--project", f.testProjectID)))
-	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
+	if suiteType == "parametermanager" || suiteType == "all" {
+		setupPmTestSuite()
+	}
+
 	if isTokenPassed {
 		type metadataStruct struct {
 			Name string `yaml:"name"`
@@ -273,13 +253,13 @@ func setupTestSuite(isTokenPassed bool) {
 
 		// set tokenRequests in driver spec and reinstall driver to perform E2E testing when token is received by provider from driver
 		check(execCmd(exec.Command("kubectl", "apply",
-			"-f", fmt.Sprintf("./csidriver.yaml"),
+			"-f", fileName,
 		)))
 	}
 }
 
 // Executed after tests are run. Teardown is only run once for all tests in the suite.
-func teardownTestSuite() {
+func teardownTestSuite(suiteType string) {
 	// print cluster information, useful when debugging
 	execCmd(exec.Command(
 		"kubectl", "describe", "pods",
@@ -302,399 +282,65 @@ func teardownTestSuite() {
 	// Cleanup
 	os.RemoveAll(f.tempDir)
 	execCmd(exec.Command("kubectl", "delete", "containercluster", f.testClusterName))
-	execCmd(exec.Command(
-		"gcloud", "secrets", "delete", f.testSecretID,
-		"--project", f.testProjectID,
-		"--quiet",
-	))
-	execCmd(exec.Command(
-		"gcloud", "secrets", "delete", f.testRotateSecretID,
-		"--project", f.testProjectID,
-		"--quiet",
-	))
-	execCmd(exec.Command(
-		"gcloud", "secrets", "delete", f.testExtractSecretID,
-		"--project", f.testProjectID,
-		"--quiet",
-	))
 
-	// Cleanup regional secret
-	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
-		"https://secretmanager."+f.location+".rep.googleapis.com/")))
-	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--location", f.location,
-		"--project", f.testProjectID, "--quiet")))
-	check(execCmd(exec.Command("gcloud", "secrets", "delete", f.testRotateSecretID, "--location", f.location,
-		"--project", f.testProjectID, "--quiet")))
-	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
+	if suiteType == "secretmanager" || suiteType == "all" {
+		teardownSmTestSuite()
+	}
+
+	if suiteType == "parametermanager" || suiteType == "all" {
+		teardownPmTestSuite()
+	}
 }
 
 // Entry point for go test.
 func TestMain(m *testing.M) {
-	withoutTokenStatus := runTest(m, false)
-	withTokenStatus := runTest(m, true)
-	fmt.Printf("Exit Code when token is not passed from driver to provder is: %v\n", withoutTokenStatus)
-	fmt.Printf("Exit Code when token is passed from driver to provder is: %v\n", withTokenStatus)
-	os.Exit(withoutTokenStatus | withTokenStatus)
+	envSuiteType := os.Getenv("E2E_TEST_SUITE")
+	if envSuiteType == "" {
+		log.Println("E2E_TEST_SUITE environment variable not set, defaulting to 'all'.")
+		envSuiteType = "all"
+	}
+	log.Printf("E2E_TEST_SUITE is '%s'. This will determine which test sequences (setup/teardown pairs) are run.\n", envSuiteType)
+	log.Println("The actual tests executed by m.Run() within each sequence are determined by build tags.")
+
+	var exitCode int
+
+	if envSuiteType == "secretmanager" || envSuiteType == "all" {
+		log.Println("Executing Secret Manager test runs...")
+		// Pass "secretmanager" to runTest, which setupTestSuite/teardownTestSuite will use.
+		smWithoutTokenStatus := runTest(m, false, "secretmanager")
+		smWithTokenStatus := runTest(m, true, "secretmanager")
+		fmt.Printf("Secret Manager Tests -> No Token Exit Code: %v, With Token Exit Code: %v\n", smWithoutTokenStatus, smWithTokenStatus)
+		exitCode |= smWithoutTokenStatus | smWithTokenStatus
+	}
+
+	if envSuiteType == "parametermanager" || envSuiteType == "all" {
+		log.Println("Executing Parameter Manager test runs...")
+		// Pass "parametermanager" to runTest.
+		pmWithoutTokenStatus := runTest(m, false, "parametermanager")
+		pmWithTokenStatus := runTest(m, true, "parametermanager")
+		fmt.Printf("Parameter Manager Tests -> No Token Exit Code: %v, With Token Exit Code: %v\n", pmWithoutTokenStatus, pmWithTokenStatus)
+		exitCode |= pmWithoutTokenStatus | pmWithTokenStatus
+	}
+
+	if envSuiteType != "secretmanager" && envSuiteType != "parametermanager" && envSuiteType != "all" {
+		log.Printf("Error: Invalid E2E_TEST_SUITE value: '%s'. Must be 'secretmanager', 'parametermanager', or 'all'.", envSuiteType)
+		if exitCode == 0 {
+			exitCode = 1
+		} // Ensure non-zero exit if invalid suite and no tests ran.
+	}
+	os.Exit(exitCode)
 }
 
 // Handles setup/teardown test suite and runs test. Returns exit code.
-func runTest(m *testing.M, isTokenPassed bool) (code int) {
+func runTest(m *testing.M, isTokenPassed bool, suiteType string) (code int) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("Test execution panic:", r)
 			code = 1
 		}
-		teardownTestSuite()
+		teardownTestSuite(suiteType)
 	}()
 
-	setupTestSuite(isTokenPassed)
+	setupTestSuite(isTokenPassed, suiteType)
 	return m.Run()
-}
-
-// Execute a test job that mounts a secret and checks that the value is correct.
-func TestMountSecret(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-pod.yaml")
-	if err := replaceTemplate("templates/test-pod.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter", "--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	if err := checkMountedSecret(f.testSecretID); err != nil {
-		t.Fatalf("Error while testing global secret: %v", err)
-	}
-	if err := checkMountedSecret(f.testSecretID + "-regional"); err != nil {
-		t.Fatalf("Error while testing regional secret: %v", err)
-	}
-}
-
-func TestMountSecretFileMode(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-mode.yaml")
-	if err := replaceTemplate("templates/test-mode.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing mode template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mode", "--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	// stat the file in the symlinked '..data' directory, symlink will always return 777 otherwise
-	if err := checkFileMode(f.testSecretID); err != nil {
-		t.Fatalf("Error while testing global secret: %v", err)
-	}
-	if err := checkFileMode(f.testSecretID + "-regional"); err != nil {
-		t.Fatalf("Error while testing regional secret: %v", err)
-	}
-}
-
-func TestMountNestedPath(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-nested.yaml")
-	if err := replaceTemplate("templates/test-nested.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-nested", "--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-nested",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"cat", fmt.Sprintf("/var/gcp-test-secrets/my/nested/path/%s", f.testSecretID))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if !bytes.Equal(stdout.Bytes(), []byte(f.testSecretID)) {
-		t.Fatalf("Secret value is %v, want: %v", stdout.String(), f.testSecretID)
-	}
-}
-
-func TestMountInvalidPath(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-invalid.yaml")
-	if err := replaceTemplate("templates/test-invalid.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// We cannot use a 'wait for condition' since we are expecting a failure (that gets retried indefinitely).
-	// Instead wait for enough time to give the kubelet a chance to attempt the mount and have it fail.
-	time.Sleep(15 * time.Second)
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "get", "events", "--field-selector", "involvedObject.name=test-secret-invalid",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default")
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if !strings.Contains(stdout.String(), "invalid path") {
-		t.Fatalf("Unable to find 'invalid path' error: %v", stdout.String())
-	}
-}
-
-func TestMountSyncSecret(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-sync.yaml")
-	if err := replaceTemplate("templates/test-sync.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command(
-		"kubectl", "apply", "-f", podFile,
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-	)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command(
-		"kubectl", "wait", "pod/test-secret-mounter-sync",
-		"--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--timeout", "5m",
-	)); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command(
-		"kubectl", "exec", "test-secret-mounter-sync",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"printenv",
-	)
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if got := stdout.Bytes(); !bytes.Contains(got, []byte(f.testSecretID)) {
-		t.Fatalf("pod env value is %s, does not contain: %s", string(got), f.testSecretID)
-	}
-
-	// TODO: Add checks for regional secret
-}
-
-func TestMountRotateSecret(t *testing.T) {
-	secretA := []byte("secreta")
-	secretB := []byte("secretb")
-
-	// Enable rotation.
-	check(execCmd(exec.Command("enable-rotation.sh", f.kubeconfigFile)))
-
-	// Wait for deployment to finish.
-	time.Sleep(45 * time.Second)
-
-	// Create test secret.
-	secretFileA := filepath.Join(f.tempDir, "secretValue-A")
-	check(os.WriteFile(secretFileA, secretA, 0644))
-	check(execCmd(exec.Command(
-		"gcloud", "secrets", "create", f.testRotateSecretID,
-		"--replication-policy", "automatic",
-		"--data-file", secretFileA,
-		"--project", f.testProjectID,
-	)))
-
-	// create a regional test secret
-	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
-		"https://secretmanager."+f.location+".rep.googleapis.com/")))
-
-	check(execCmd(exec.Command(
-		"gcloud", "secrets", "create", f.testRotateSecretID,
-		"--location", f.location,
-		"--data-file", secretFileA,
-		"--project", f.testProjectID,
-	)))
-	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
-
-	// Deploy the test pod.
-	podFile := filepath.Join(f.tempDir, "test-rotate.yaml")
-	if err := replaceTemplate("templates/test-rotate.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command(
-		"kubectl", "wait", "pod/test-secret-mounter-rotate",
-		"--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--timeout", "5m",
-	)); err != nil {
-		execCmd(exec.Command(
-			"kubectl", "describe", "pods",
-			"--namespace", "default",
-			"--kubeconfig", f.kubeconfigFile,
-		))
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command(
-		"kubectl", "exec", "test-secret-mounter-rotate",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--",
-		"cat", "/var/gcp-test-secrets/rotate")
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if got := stdout.Bytes(); !bytes.Equal(got, secretA) {
-		t.Fatalf("Secret value is %v, want: %v", got, secretA)
-	}
-
-	// Rotate the secret.
-	secretFileB := filepath.Join(f.tempDir, "secretValue-B")
-	check(os.WriteFile(secretFileB, secretB, 0644))
-	check(execCmd(exec.Command(
-		"gcloud", "secrets", "versions", "add", f.testRotateSecretID,
-		"--data-file", secretFileB,
-		"--project", f.testProjectID,
-	)))
-
-	// Rotate regional secret
-	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
-		"https://secretmanager."+f.location+".rep.googleapis.com/")))
-	check(execCmd(exec.Command(
-		"gcloud", "secrets", "versions", "add", f.testRotateSecretID,
-		"--data-file", secretFileB,
-		"--project", f.testProjectID,
-		"--location", f.location,
-	)))
-
-	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
-
-	// Wait for update. Keep in sync with driver's --rotation-poll-interval to
-	// ensure enough time.
-	time.Sleep(60 * time.Second)
-
-	// Verify update.
-	stdout.Reset()
-	stderr.Reset()
-	command = exec.Command(
-		"kubectl", "exec", "test-secret-mounter-rotate",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--",
-		"cat", "/var/gcp-test-secrets/rotate",
-	)
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if got := stdout.Bytes(); !bytes.Equal(got, secretB) {
-		t.Fatalf("Secret value is %v, want: %v", got, secretB)
-	}
-
-	// TODO: Add checks for regional secret
-}
-
-// Execute a test job that mounts a extract secret and checks that the value is correct.
-func TestMountExtractSecret(t *testing.T) {
-	secretData := []byte(`{"user":"admin", "password":"password@1234"}`)
-
-	// Create test secret
-	secretFile := filepath.Join(f.tempDir, "secretExtractValue")
-	check(os.WriteFile(secretFile, secretData, 0644))
-	check(execCmd(exec.Command(
-		"gcloud", "secrets", "create", f.testExtractSecretID,
-		"--replication-policy", "automatic",
-		"--data-file", secretFile,
-		"--project", f.testProjectID,
-	)))
-
-	podFile := filepath.Join(f.tempDir, "test-extract-key.yaml")
-	if err := replaceTemplate("templates/test-extract-key.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter-extract", "--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-	testExtractSecret := []byte("admin")
-
-	// Check Mounted Secrets
-	var stdout, stderr bytes.Buffer
-	command := exec.Command(
-		"kubectl", "exec", "test-secret-mounter-extract",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--",
-		"cat", "/var/gcp-test-secrets/extract")
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if got := stdout.Bytes(); !bytes.Equal(got, testExtractSecret) {
-		t.Fatalf("Secret value is %v, want: %v", got, testExtractSecret)
-	}
 }
