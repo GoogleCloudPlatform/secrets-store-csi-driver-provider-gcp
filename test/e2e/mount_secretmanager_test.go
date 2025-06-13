@@ -440,8 +440,10 @@ func TestMountRotateSecret(t *testing.T) {
 	// Wait for the global secret to have 2 versions.
 	waitForMinVersions(t, f.testRotateSecretID, f.testProjectID, "" /* global */, 2, 180*time.Second)
 
+	fmt.Println("Before sleep ", time.Now())
 	time.Sleep(150 * time.Second)
 
+	fmt.Println("After sleep ", time.Now())
 	// Verify update.
 	stdout.Reset()
 	stderr.Reset()
@@ -461,6 +463,18 @@ func TestMountRotateSecret(t *testing.T) {
 	}
 	if got := stdout.Bytes(); !bytes.Equal(got, secretB) {
 		t.Fatalf("Secret value is %v, want: %v", got, secretB)
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
+		execCmd(exec.Command(
+			"kubectl", "logs", "-l", "app=csi-secrets-store-provider-gcp",
+			"--tail", "-1",
+			"-n", "kube-system",
+			"--kubeconfig", f.kubeconfigFile,
+		))
 	}
 }
 
