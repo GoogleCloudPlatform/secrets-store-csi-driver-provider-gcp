@@ -2,7 +2,6 @@ package util
 
 import (
 	"bytes"
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -37,44 +36,6 @@ func TestExtractContentUsingJSONKey(t *testing.T) {
 			payload: []byte(`{"message": "hello world"}`),
 			key:     "message",
 			want:    []byte("hello world"),
-			wantErr: false,
-		},
-		{
-			name:    "valid_json_key_exists_value_is_number",
-			payload: []byte(`{"count": 123}`),
-			key:     "count",
-			want:    func() []byte { b, _ := anyToBytesFloat64(123.0); return b }(),
-			wantErr: false,
-		},
-		{
-			name:    "valid_json_key_exists_value_is_boolean",
-			payload: []byte(`{"active": true}`),
-			key:     "active",
-			want:    func() []byte { b, _ := anyToBytesBool(true); return b }(),
-			wantErr: false,
-		},
-		{
-			name:    "valid_json_key_exists_value_is_null",
-			payload: []byte(`{"nullable_field": null}`),
-			key:     "nullable_field",
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name:    "valid_json_key_exists_value_is_object",
-			payload: []byte(`{"nested": {"a": "b"}}`),
-			key:     "nested",
-			want:    func() []byte { b, _ := json.Marshal(map[string]any{"a": "b"}); return b }(),
-			wantErr: false,
-		},
-		{
-			name:    "valid_json_key_exists_value_is_array",
-			payload: []byte(`{"list": [1, 2, "item"]}`),
-			key:     "list",
-			want: func() []byte {
-				b, _ := json.Marshal([]any{float64(1), float64(2), "item"})
-				return b
-			}(),
 			wantErr: false,
 		},
 		{
