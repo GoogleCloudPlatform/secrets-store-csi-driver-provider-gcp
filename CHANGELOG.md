@@ -6,6 +6,23 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.9.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+
+Digest: `sha256:0020a10a9434d49897ba24608c9cd0018f646043c064db4fa587da6784809a3d`
+
+### Changes & Security Fixes
+
+* Support for ParameterManager versions [548](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/548)
+* Update go dependencies [565](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/565)
+* Support for the YAML [555](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/555)
+* Added better log visibility [561](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/561)
+
 ## v1.8.0
 
 Images:
