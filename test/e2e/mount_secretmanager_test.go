@@ -352,6 +352,15 @@ func TestMountRotateSecret(t *testing.T) {
 	// Wait for deployment to finish.
 	time.Sleep(45 * time.Second)
 
+	var stdout, stderr bytes.Buffer
+	err := execCmd(exec.Command("kubectl", "rollout", "status", "daemonset/csi-secrets-store",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "kube-system"))
+	if err != nil {
+		t.Logf("Could not read secret from container: %v", err)
+	} else {
+		t.Logf("Unable to find 'invalid path' error: %v", stdout.String())
+	}
+
 	// Create test secret.
 	secretFileA := filepath.Join(f.tempDir, "secretValue-A")
 	check(os.WriteFile(secretFileA, secretA, 0644))
@@ -398,7 +407,8 @@ func TestMountRotateSecret(t *testing.T) {
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
-	var stdout, stderr bytes.Buffer
+	stdout.Reset()
+	stderr.Reset()
 	command := exec.Command(
 		"kubectl", "exec", "test-secret-mounter-rotate",
 		"--kubeconfig", f.kubeconfigFile,
@@ -440,7 +450,10 @@ func TestMountRotateSecret(t *testing.T) {
 	// Wait for the global secret to have 2 versions.
 	waitForMinVersions(t, f.testRotateSecretID, f.testProjectID, "" /* global */, 2, 180*time.Second)
 
+	t.Logf("waiting for rotation to happen %s", time.Now())
 	time.Sleep(150 * time.Second)
+	check(execCmd(exec.Command("sleep", "180")))
+	t.Logf("Waited for 3 mins %s", time.Now())
 
 	// Verify update.
 	stdout.Reset()
