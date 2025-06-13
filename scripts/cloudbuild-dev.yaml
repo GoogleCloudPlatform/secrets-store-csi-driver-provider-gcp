@@ -23,7 +23,7 @@ steps:
   args: ['buildx', 'create', '--use']
 - name: 'gcr.io/cloud-builders/docker'
   args: ['buildx', 'build',
-         '--platform=linux/amd64,linux/arm64',
+         '--platform=linux/amd64',
          '--build-arg',
          'VERSION=$TAG_NAME',
          '-t',
