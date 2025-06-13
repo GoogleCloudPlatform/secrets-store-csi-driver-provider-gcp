@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"strings"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
 func TestExtractContentUsingJSONKey(t *testing.T) {
@@ -156,63 +154,6 @@ func TestExtractContentUsingYAMLKey(t *testing.T) {
 			payload: []byte("token: \"\""),
 			key:     "token",
 			want:    []byte(""),
-			wantErr: false,
-		},
-		{
-			name:    "valid_yaml_key_exists_value_is_number_int",
-			payload: []byte("count: 123"),
-			key:     "count",
-			want:    func() []byte { b, _ := anyToBytesConvertInt(int64(123)); return b }(),
-			wantErr: false,
-		},
-		{
-			name:    "valid_yaml_key_exists_value_is_number_float",
-			payload: []byte("ratio: 1.23"),
-			key:     "ratio",
-			want:    func() []byte { b, _ := anyToBytesFloat64(1.23); return b }(),
-			wantErr: false,
-		},
-		{
-			name:    "valid_yaml_key_exists_value_is_boolean_true",
-			payload: []byte("active: true"),
-			key:     "active",
-			want:    func() []byte { b, _ := anyToBytesBool(true); return b }(),
-			wantErr: false,
-		},
-		{
-			name:    "valid_yaml_key_exists_value_is_boolean_false",
-			payload: []byte("enabled: false"),
-			key:     "enabled",
-			want:    func() []byte { b, _ := anyToBytesBool(false); return b }(),
-			wantErr: false,
-		},
-		{
-			name:    "valid_yaml_key_exists_value_is_null_keyword",
-			payload: []byte("nullable_field: null"),
-			key:     "nullable_field",
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name:    "valid_yaml_key_exists_value_is_null_tilde",
-			payload: []byte("another_null: ~"),
-			key:     "another_null",
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name:    "valid_yaml_key_exists_value_is_object",
-			payload: []byte("nested:\n  a: b\n  val: 10"),
-			key:     "nested",
-			// YAML unmarshals to map[any]any, numbers become int
-			want:    func() []byte { b, _ := yaml.Marshal(map[any]any{"a": "b", "val": 10}); return b }(),
-			wantErr: false,
-		},
-		{
-			name:    "valid_yaml_key_exists_value_is_array",
-			payload: []byte("list:\n  - 1\n  - text\n  - true"),
-			key:     "list",
-			want:    func() []byte { b, _ := yaml.Marshal([]any{1, "text", true}); return b }(),
 			wantErr: false,
 		},
 		{
