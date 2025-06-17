@@ -14,7 +14,7 @@ Images:
 * `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
 * `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
 
-Digest: `sha256:0020a10a9434d49897ba24608c9cd0018f646043c064db4fa587da6784809a3d`
+Digest: `sha256:183c92fbe7905ebe09ccec6496e91b7b615b1e88096576bc100d46fe97fe9770`
 
 ### Changes & Security Fixes
 
