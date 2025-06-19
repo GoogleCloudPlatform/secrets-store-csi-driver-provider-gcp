@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,19 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-apiVersion: container.cnrm.cloud.google.com/v1beta1
-kind: ContainerCluster
-metadata:
-  annotations:
-    cnrm.cloud.google.com/project-id: $PROJECT_ID
-    cnrm.cloud.google.com/remove-default-node-pool: "false"
-  name: $CLUSTER_NAME
-spec:
-  location: $ZONE
-  initialNodeCount: 1
-  loggingService: logging.googleapis.com/kubernetes
-  monitoringService: monitoring.googleapis.com/kubernetes
-  workloadIdentityConfig:
-    identityNamespace: $PROJECT_ID.svc.id.goog
-  releaseChannel:
-    channel: $GKE_VERSION
+
+set -o errexit  # Exit with error on non-zero exit codes
+set -o pipefail # Check the exit code of *all* commands in a pipeline
+set -o nounset  # Error if accessing an unbound variable
+set -x          # Print each command as it is run
+
+sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$LOCATION_ID/${LOCATION_ID}/g" examples/app-parameters.yaml.tmpl | kubectl apply -f -
+sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/app-secrets/app-parameters/g" examples/mypod.yaml.tmpl | kubectl apply -f -
