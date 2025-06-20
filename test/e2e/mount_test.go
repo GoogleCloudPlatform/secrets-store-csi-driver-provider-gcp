@@ -164,7 +164,7 @@ func setupTestSuite(isTokenPassed bool, suiteType string) {
 	check(replaceTemplate("templates/test-cluster.yaml.tmpl", clusterFile))
 	check(execCmd(exec.Command("kubectl", "apply", "-f", clusterFile)))
 	check(execCmd(exec.Command("kubectl", "wait", "containercluster/"+f.testClusterName,
-		"--for=condition=Ready", "--timeout", "30m")))
+		"--for=condition=Ready", "--timeout", "25m")))
 
 	// Get kubeconfig to use to authenticate to test cluster
 	f.kubeconfigFile = filepath.Join(f.tempDir, "test-cluster-kubeconfig")

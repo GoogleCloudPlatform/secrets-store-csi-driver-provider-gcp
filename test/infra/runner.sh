@@ -25,7 +25,7 @@ export SECRET_STORE_VERSION=${SECRET_STORE_VERSION:-v1.0.0}
 export GKE_VERSION=${GKE_VERSION:-STABLE}
 export GCP_PROVIDER_SHA=${GITHUB_SHA:-main}
 export USE_GKE_GCLOUD_AUTH_PLUGIN=True
-export LOCATION_ID=us-central1
+export LOCATION_ID=us-east4
 
 # Build the driver image
 gcloud builds submit --config scripts/cloudbuild-dev.yaml --substitutions=TAG_NAME=${GCP_PROVIDER_SHA} --project $PROJECT_ID --timeout 2400
