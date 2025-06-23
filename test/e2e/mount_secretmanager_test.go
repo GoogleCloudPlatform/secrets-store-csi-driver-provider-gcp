@@ -350,7 +350,16 @@ func TestMountRotateSecret(t *testing.T) {
 	check(execCmd(exec.Command("enable-rotation.sh", f.kubeconfigFile)))
 
 	// Wait for deployment to finish.
-	time.Sleep(45 * time.Second)
+	time.Sleep(3 * time.Minute)
+
+	var stdout, stderr bytes.Buffer
+	err := execCmd(exec.Command("kubectl", "get", "daemonset", "csi-secrets-store",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "kube-system"))
+	if err != nil {
+		t.Logf("Could not get daemonset status: %v", err)
+	} else {
+		t.Logf("Daemonset status after editing: %v", stdout.String())
+	}
 
 	// Create test secret.
 	secretFileA := filepath.Join(f.tempDir, "secretValue-A")
@@ -398,7 +407,8 @@ func TestMountRotateSecret(t *testing.T) {
 		t.Fatalf("Error waiting for job: %v", err)
 	}
 
-	var stdout, stderr bytes.Buffer
+	stdout.Reset()
+	stderr.Reset()
 	command := exec.Command(
 		"kubectl", "exec", "test-secret-mounter-rotate",
 		"--kubeconfig", f.kubeconfigFile,
