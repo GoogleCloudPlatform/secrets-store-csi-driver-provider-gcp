@@ -114,4 +114,4 @@ and if your issue isn't already represented please
 [open a new one](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/issues/new/choose).
 Pull requests and issues will be triaged weekly.
 
-We close issues after 30 days if there's been no response or action taken.
+We close issues after 30 days if there's been no response or action taken. .
