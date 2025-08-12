@@ -32,7 +32,7 @@ jobs:
       name: e2e-test
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       # TODO: replace with https://github.com/google-github-actions/auth and
       # workload identity instead of an exported SA credential.
       - name: "Auth to GCP exist env"
