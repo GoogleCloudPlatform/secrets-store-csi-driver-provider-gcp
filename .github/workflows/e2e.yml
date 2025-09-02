@@ -36,7 +36,7 @@ jobs:
       # TODO: replace with https://github.com/google-github-actions/auth and
       # workload identity instead of an exported SA credential.
       - name: "Auth to GCP exist env"
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
       - uses: google-github-actions/setup-gcloud@v1
