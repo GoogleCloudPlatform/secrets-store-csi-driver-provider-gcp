@@ -146,7 +146,7 @@ func Parse(in *MountParams) (*MountConfig, error) {
 			out.AuthKubeSecret = []byte(secret["key.json"])
 		}
 	} else {
-		klog.Infoln("Authentication using nodepublishsecret ref is disabled")
+		klog.V(5).InfoS("Authentication using nodepublishsecret ref is disabled")
 	}
 
 	switch attrib["auth"] {
