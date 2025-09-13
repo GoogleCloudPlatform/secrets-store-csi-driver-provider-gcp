@@ -40,14 +40,7 @@ must be applied.
 ```shell
 $ export PROJECT_ID=<your gcp project>
 $ gcloud config set project $PROJECT_ID
-# Create a service account for workload identity
-$ gcloud iam service-accounts create gke-workload
-
-# Allow "default/mypod" to act as the new service account
-$ gcloud iam service-accounts add-iam-policy-binding \
-    --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:$PROJECT_ID.svc.id.goog[default/mypodserviceaccount]" \
-    gke-workload@$PROJECT_ID.iam.gserviceaccount.com
+$ export PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
 ```
 
 * Create a secret that the workload identity service account can access
@@ -60,8 +53,8 @@ $ rm secret.data
 
 # grant the new service account permission to access the secret
 $ gcloud secrets add-iam-policy-binding testsecret \
-    --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
-    --role=roles/secretmanager.secretAccessor
+    --role=roles/secretmanager.secretAccessor \
+    --member=principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/default/sa/mypodserviceaccount
 ```
 
 * Note: Regional secrets are also supported from v1.6.0, Please see [Regional Secret Documentation](https://cloud.google.com/secret-manager/regional-secrets/config-sm-rs).
@@ -86,14 +79,7 @@ Parameter Manager is an extension to the Secret Manager service and provides a c
 ```shell
 $ export PROJECT_ID=<your gcp project>
 $ gcloud config set project $PROJECT_ID
-# Create a service account for workload identity
-$ gcloud iam service-accounts create gke-workload
-
-# Allow "default/mypod" to act as the new service account
-$ gcloud iam service-accounts add-iam-policy-binding \
-    --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:$PROJECT_ID.svc.id.goog[default/mypodserviceaccount]" \
-    gke-workload@$PROJECT_ID.iam.gserviceaccount.com
+$ export PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
 ```
 
 * Create a parameter that the workload identity service account can access in the supported [location](https://cloud.google.com/secret-manager/docs/locations#parameter_manager_locations).
@@ -109,8 +95,8 @@ $ rm parameter.data
 
 # grant the new service account permission to access the secret
 $ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
-    --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
-    --role=roles/parametermanager.parameterAccessor
+    --role=roles/parametermanager.parameterAccessor \
+    --member=principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/default/sa/mypodserviceaccount
 ```
 
 * Try it out the [example](./examples) which attempts to mount the parameterversions
