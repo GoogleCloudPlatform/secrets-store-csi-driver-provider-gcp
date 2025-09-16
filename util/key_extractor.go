@@ -17,6 +17,7 @@
 package util
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
@@ -56,4 +57,12 @@ func getValue(key string, value any) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("unsupported value type for key '%s'", key)
 	}
+}
+
+func DecodeBase64Content(payload []byte) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(string(payload))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 content: %v", err)
+	}
+	return decoded, nil
 }
