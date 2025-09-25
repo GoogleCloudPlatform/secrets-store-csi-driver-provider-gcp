@@ -10,13 +10,13 @@ import (
 // TestBase64ProcessingLogic tests the base64 processing logic that would be used in secret fetching
 func TestBase64ProcessingLogic(t *testing.T) {
 	tests := []struct {
-		name               string
-		secretData         string
-		extractJSONKey     string
-		decodeBase64       bool
-		expectedPayload    []byte
-		expectError        bool
-		expectedErrSubstr  string
+		name              string
+		secretData        string
+		extractJSONKey    string
+		decodeBase64      bool
+		expectedPayload   []byte
+		expectError       bool
+		expectedErrSubstr string
 	}{
 		{
 			name:            "decode base64 simple text",
@@ -104,4 +104,3 @@ func TestBase64ProcessingLogic(t *testing.T) {
 		})
 	}
 }
-
