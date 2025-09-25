@@ -1,6 +1,7 @@
 package server
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/util"
@@ -65,7 +66,7 @@ func TestBase64ProcessingLogic(t *testing.T) {
 				content, err = util.ExtractContentUsingJSONKey([]byte(tt.secretData), tt.extractJSONKey)
 				if err != nil {
 					if tt.expectError && tt.expectedErrSubstr != "" {
-						if !containsSubstring(err.Error(), tt.expectedErrSubstr) {
+						if !strings.Contains(err.Error(), tt.expectedErrSubstr) {
 							t.Errorf("expected error to contain %q, got %q", tt.expectedErrSubstr, err.Error())
 						}
 					} else if !tt.expectError {
@@ -82,7 +83,7 @@ func TestBase64ProcessingLogic(t *testing.T) {
 				decoded, err := util.DecodeBase64Content(content)
 				if err != nil {
 					if tt.expectError && tt.expectedErrSubstr != "" {
-						if !containsSubstring(err.Error(), tt.expectedErrSubstr) {
+						if !strings.Contains(err.Error(), tt.expectedErrSubstr) {
 							t.Errorf("expected error to contain %q, got %q", tt.expectedErrSubstr, err.Error())
 						}
 					} else if !tt.expectError {
@@ -104,12 +105,3 @@ func TestBase64ProcessingLogic(t *testing.T) {
 	}
 }
 
-// containsSubstring checks if a string contains a substring
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

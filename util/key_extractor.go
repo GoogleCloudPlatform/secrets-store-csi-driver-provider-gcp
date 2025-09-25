@@ -62,7 +62,7 @@ func getValue(key string, value any) ([]byte, error) {
 func DecodeBase64Content(payload []byte) ([]byte, error) {
 	decoded, err := base64.StdEncoding.DecodeString(string(payload))
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode base64 content: %v", err)
+		return nil, fmt.Errorf("failed to decode base64 content")
 	}
 	return decoded, nil
 }
