@@ -123,11 +123,13 @@ func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oaut
 func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.Token, error) {
 
 	var audience string
-	idPool, idProvider, err := c.gkeWorkloadIdentity(ctx, cfg)
-	if err != nil {
-		klog.ErrorS(err, "failed to get gke workload identity")
+	var err error
+	idPool, idProvider, gkeWorkloadIdentityErr := c.gkeWorkloadIdentity(ctx, cfg)
+	if gkeWorkloadIdentityErr != nil {
 		idPool, idProvider, audience, err = c.fleetWorkloadIdentity(ctx, cfg)
 		if err != nil {
+			klog.ErrorS(gkeWorkloadIdentityErr, "failed to get gke workload identity")
+			klog.ErrorS(err, "failed to get fleet workload identity")
 			return nil, err
 		}
 	}
