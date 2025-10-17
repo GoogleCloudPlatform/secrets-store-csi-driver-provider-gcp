@@ -125,6 +125,7 @@ func (c *Client) Token(ctx context.Context, cfg *config.MountConfig) (*oauth2.To
 	var audience string
 	idPool, idProvider, err := c.gkeWorkloadIdentity(ctx, cfg)
 	if err != nil {
+		klog.ErrorS(err, "failed to get gke workload identity")
 		idPool, idProvider, audience, err = c.fleetWorkloadIdentity(ctx, cfg)
 		if err != nil {
 			return nil, err
