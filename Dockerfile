@@ -1,12 +1,14 @@
-FROM golang:1.23 AS build-env
+FROM golang:1.24 AS build-env
 
 ARG TARGETARCH
 ARG VERSION=dev
+ARG GOPROXY=https://proxy.golang.org
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=$TARGETARCH
+    GOARCH=$TARGETARCH \
+    GOPROXY=${GOPROXY}
 
 WORKDIR /tmp/secrets-store-csi-driver-provider-gcp
 COPY . ./
