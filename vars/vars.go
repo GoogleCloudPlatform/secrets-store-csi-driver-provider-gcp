@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,8 +88,26 @@ var UserAgentIdentifier = EnvVar{
 	isRequired:   false,
 }
 
-var AllowNodepublishSeretRef = EnvVar{
+var AllowNodepublishSecretRef = EnvVar{
 	envVarName:   "ALLOW_NODE_PUBLISH_SECRET",
 	defaultValue: "false",
+	isRequired:   false,
+}
+
+var Project = EnvVar{
+	envVarName:   "PROJECT",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var ClusterName = EnvVar{
+	envVarName:   "CLUSTER_NAME",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var ClusterLocation = EnvVar{
+	envVarName:   "CLUSTER_LOCATION",
+	defaultValue: "",
 	isRequired:   false,
 }

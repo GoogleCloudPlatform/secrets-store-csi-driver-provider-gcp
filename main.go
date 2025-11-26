@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import (
 
 	"cloud.google.com/go/compute/metadata"
 	iam "cloud.google.com/go/iam/credentials/apiv1"
+	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
@@ -132,7 +133,7 @@ func main() {
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
 	// basis for each mount
-	smOpts := []option.ClientOption{
+	clientOptions := []option.ClientOption{
 		option.WithUserAgent(ua),
 		// tell the secretmanager library to not add transport-level ADC since
 		// we need to override on a per call basis
@@ -146,16 +147,25 @@ func main() {
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
 	}
-
-	sc, err := secretmanager.NewClient(ctx, smOpts...)
+	smClientOptions := append(clientOptions, option.WithEndpoint("dns:///secretmanager.googleapis.com:443"))
+	sc, err := secretmanager.NewClient(ctx, smClientOptions...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
 	}
 
-	// To cache the clients for regional endpoints.
-	m := make(map[string]*secretmanager.Client)
+	pmClientOptions := append(clientOptions, option.WithEndpoint("dns:///parametermanager.googleapis.com:443"))
+	pmClient, err := parametermanager.NewClient(ctx, pmClientOptions...)
+	if err != nil {
+		klog.ErrorS(err, "failed to create parametermanager client")
+		klog.Fatal("failed to create parametermanager client")
+	}
 
+	// Used to store regional clients inside map
+	regionalSmClientMap := make(map[string]*secretmanager.Client)
+
+	// To cache the clients for parameter manager regional endpoints
+	regionalPmClientMap := make(map[string]*parametermanager.Client)
 	// IAM client
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
@@ -201,10 +211,12 @@ func main() {
 
 	// setup provider grpc server
 	s := &server.Server{
-		SecretClient:          sc,
-		AuthClient:            c,
-		RegionalSecretClients: m,
-		SmOpts:                smOpts,
+		SecretClient:                    sc,
+		ParameterManagerClient:          pmClient,
+		AuthClient:                      c,
+		RegionalSecretClients:           regionalSmClientMap,
+		RegionalParameterManagerClients: regionalPmClientMap,
+		ServerClientOptions:             clientOptions,
 	}
 
 	p, err := vars.ProviderName.GetValue()

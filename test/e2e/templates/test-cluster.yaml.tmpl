@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,10 +20,12 @@ metadata:
   name: $CLUSTER_NAME
 spec:
   location: $ZONE
-  initialNodeCount: 3
+  initialNodeCount: 1
   loggingService: logging.googleapis.com/kubernetes
   monitoringService: monitoring.googleapis.com/kubernetes
   workloadIdentityConfig:
     identityNamespace: $PROJECT_ID.svc.id.goog
   releaseChannel:
     channel: $GKE_VERSION
+  nodeConfig:
+    machineType: n1-standard-8

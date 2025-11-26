@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ steps:
   args: ['buildx', 'create', '--use']
 - name: 'gcr.io/cloud-builders/docker'
   args: ['buildx', 'build',
-         '--platform=linux/amd64,linux/arm64',
+         '--platform=linux/amd64',
          '--build-arg',
          'VERSION=$TAG_NAME',
          '-t',
