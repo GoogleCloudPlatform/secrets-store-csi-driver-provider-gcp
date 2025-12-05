@@ -18,9 +18,10 @@ Digest: `sha256:05bea4c2732eeba048278e6ea89e16cbb45f260f88b2ccb79f91ba189acfde51
 
 ### Changes & Security Fixes
 
-* Fix e2e Tests [586](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/568)
+* Fix e2e Tests [568](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/568)
+* Add support to add custom go proxy [583](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/583)
 * Reduce logs noise if fleetWorkloadIdentity is used  [602](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/602)
-* Update Go dependency for gRPC bug fix [608](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/608)
+* Update Go Dependencies for gRPC bugfix [608](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/608)
 * Update go dependencies [610](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/610)
 
 ## v1.9.0
