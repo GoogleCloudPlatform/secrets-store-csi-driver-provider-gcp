@@ -129,3 +129,48 @@ func TestGetBooleanValue(t *testing.T) {
 		})
 	}
 }
+
+func TestHasProxyConfigured(t *testing.T) {
+	tests := []struct {
+		name    string
+		envVars map[string]string
+		want    bool
+	}{
+		{
+			name: "no proxy env vars",
+			envVars: map[string]string{
+				"UNRELATED_VAR": "value",
+			},
+			want: false,
+		},
+		{
+			name:    "HTTPS_PROXY set",
+			envVars: map[string]string{"HTTPS_PROXY": "proxy.example.com"},
+			want:    true,
+		},
+		{
+			name:    "https_proxy set",
+			envVars: map[string]string{"https_proxy": "proxy.example.com"},
+			want:    true,
+		},
+		{
+			name:    "HTTP_PROXY set",
+			envVars: map[string]string{"HTTP_PROXY": "proxy.example.com"},
+			want:    true,
+		},
+		{
+			name:    "http_proxy set",
+			envVars: map[string]string{"http_proxy": "proxy.example.com"},
+			want:    true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setTestEnvVars(t, tc.envVars)
+			got := HasProxyConfigured()
+			if got != tc.want {
+				t.Errorf("HasProxyConfigured() = %v, want: %v", got, tc.want)
+			}
+		})
+	}
+}
