@@ -6,6 +6,20 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.11.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+
+Digest: `sha256:c506476df12f50d6749167562cfb18af935ce8dd7a5b1006a313519dd021ecfd`
+
+### Changes & Security Fixes
+
+* Add support for connection through proxy [603](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/603)
+
 ## v1.10.0
 
 Images:
