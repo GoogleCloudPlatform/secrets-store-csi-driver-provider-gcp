@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,6 +35,9 @@ spec:
     - members:
         - serviceAccount:gh-e2e-runner@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/viewer
+    - members:
+        - serviceAccount:service-735463103342@gcp-sa-artifactregistry.iam.gserviceaccount.com
+      role: roles/storage.objectViewer
     # cnrm controller permissions (manage all test/infra/managed resources)
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
@@ -56,10 +59,19 @@ spec:
       role: roles/secretmanager.admin
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/parametermanager.admin
+    - members:
+        - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/iam.securityAdmin
     - members:
         - serviceAccount:cnrm-system@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/monitoring.metricWriter
+    - members:
+        - serviceAccount:735463103342-compute@developer.gserviceaccount.com
+      role: roles/artifactregistry.reader
+    - members:
+        - serviceAccount:service-735463103342@compute-system.iam.gserviceaccount.com
+      role: roles/artifactregistry.writer
     # for e2e tests to manage test clusters and administer secrets
     - members:
         - serviceAccount:e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
@@ -67,10 +79,19 @@ spec:
     - members:
         - serviceAccount:e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
       role: roles/secretmanager.admin
+    - members:
+        - serviceAccount:e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/parametermanager.parameterVersionManager
+    - members:
+        - serviceAccount:e2e-test-sa@secretmanager-csi-build.iam.gserviceaccount.com
+      role: roles/parametermanager.admin
     # for test cluster to access secrets
     - members:
         - serviceAccount:secretmanager-csi-build.svc.id.goog[default/test-cluster-sa]
       role: roles/secretmanager.secretAccessor
+    - members:
+        - serviceAccount:secretmanager-csi-build.svc.id.goog[default/test-cluster-sa]
+      role: roles/parametermanager.parameterAccessor
     # service account agent bindings
     - members:
         - serviceAccount:service-735463103342@compute-system.iam.gserviceaccount.com
@@ -92,4 +113,6 @@ spec:
         - user:amitmodak@google.com
         - user:anujsg@google.com
         - user:namandave@google.com
+        - user:arpangoswami@google.com
+        - user:suyogjain@google.com
       role: roles/owner

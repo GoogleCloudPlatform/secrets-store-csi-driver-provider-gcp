@@ -1,12 +1,14 @@
-FROM golang:1.21 as build-env
+FROM golang:1.25 AS build-env
 
 ARG TARGETARCH
 ARG VERSION=dev
+ARG GOPROXY=https://proxy.golang.org
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=$TARGETARCH
+    GOARCH=$TARGETARCH \
+    GOPROXY=${GOPROXY}
 
 WORKDIR /tmp/secrets-store-csi-driver-provider-gcp
 COPY . ./
@@ -17,7 +19,7 @@ RUN go install \
     -ldflags "-s -w -extldflags '-static' -X 'main.version=${VERSION}'" \
     github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp
 
-FROM gcr.io/distroless/static-debian10
+FROM gcr.io/distroless/static-debian12
 COPY --from=build-env /tmp/secrets-store-csi-driver-provider-gcp/licenses /licenses
 COPY --from=build-env /go/bin/secrets-store-csi-driver-provider-gcp /bin/
 ENTRYPOINT ["/bin/secrets-store-csi-driver-provider-gcp"]

@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,17 +41,17 @@ staticcheck:
 .PHONY: staticcheck
 
 licensescsv:
-	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
+	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses@latest && cd ..)
 	@go-licenses csv . | sort > licenses.csv
 .PHONY: licensescsv
 
 licensescheck:
-	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
+	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses@latest && cd ..)
 	@go-licenses check . 
 .PHONY: licensescheck
 
 licensessave:
-	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses && cd ..)
+	@command -v go-licenses > /dev/null 2>&1 || (cd tools && go install github.com/google/go-licenses@latest && cd ..)
 	@go-licenses save . --save_path=licenses
 .PHONY: licensessave
 

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
@@ -47,6 +48,9 @@ type Secret struct {
 
 	// Path is the relative path where the contents of the secret are written.
 	Path string `json:"path" yaml:"path"`
+
+	ExtractJSONKey string `json:"extractJSONKey" yaml:"extractJSONKey"`
+	ExtractYAMLKey string `json:"extractYAMLKey" yaml:"extractYAMLKey"`
 
 	// Mode is the optional file mode for the file containing the secret. Must be
 	// an octal value between 0000 and 0777 or a decimal value between 0 and 511
@@ -127,12 +131,22 @@ func Parse(in *MountParams) (*MountConfig, error) {
 
 	// The secrets here are the relevant CSI driver (k8s) secrets. See
 	// https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html
-	if err := json.Unmarshal([]byte(in.KubeSecrets), &secret); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal secrets: %v", err)
+	allowSecretRef, err := vars.AllowNodepublishSecretRef.GetBooleanValue()
+	if err != nil {
+		klog.ErrorS(err, "failed to get ALLOW_NODE_PUBLISH_SECRET flag")
+		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 	}
-	if _, ok := secret["key.json"]; ok {
-		out.AuthNodePublishSecret = true
-		out.AuthKubeSecret = []byte(secret["key.json"])
+
+	if allowSecretRef {
+		if err := json.Unmarshal([]byte(in.KubeSecrets), &secret); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal secrets: %v", err)
+		}
+		if _, ok := secret["key.json"]; ok {
+			out.AuthNodePublishSecret = true
+			out.AuthKubeSecret = []byte(secret["key.json"])
+		}
+	} else {
+		klog.V(5).InfoS("Authentication using nodepublishsecret ref is disabled")
 	}
 
 	switch attrib["auth"] {

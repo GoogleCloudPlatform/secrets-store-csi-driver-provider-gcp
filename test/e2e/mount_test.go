@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,10 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build secretmanager_e2e || parametermanager_e2e || all_e2e
+// +build secretmanager_e2e parametermanager_e2e all_e2e
+
 package test
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"math/rand"
@@ -32,15 +35,31 @@ import (
 const zone = "us-central1-c"
 
 type testFixture struct {
-	tempDir            string
-	gcpProviderBranch  string
-	testClusterName    string
-	testSecretID       string
-	testRotateSecretID string
-	kubeconfigFile     string
-	testProjectID      string
-	secretStoreVersion string
-	gkeVersion         string
+	tempDir             string
+	gcpProviderBranch   string
+	testClusterName     string
+	testSecretID        string
+	testRotateSecretID  string
+	testExtractSecretID string
+	kubeconfigFile      string
+	testProjectID       string
+	secretStoreVersion  string
+	gkeVersion          string
+	location            string
+
+	// below fields explicitly used for parameter manager
+	pmReferenceGlobalSecret1       string
+	pmReferenceGlobalSecret2       string
+	pmReferenceRegionalSecret1     string
+	pmReferenceRegionalSecret2     string
+	parameterIdYaml                string
+	parameterIdJson                string
+	parameterVersionIdYAML         string
+	parameterVersionIdJSON         string
+	regionalParameterIdYAML        string
+	regionalParameterIdJSON        string
+	regionalParameterVersionIdYAML string
+	regionalParameterVersionIdJSON string
 }
 
 var f testFixture
@@ -56,7 +75,11 @@ func check(err error) {
 func execCmd(command *exec.Cmd) error {
 	fmt.Println("+", command)
 	stdoutStderr, err := command.CombinedOutput()
-	fmt.Println(string(stdoutStderr))
+	outputStr := string(stdoutStderr)
+	fmt.Println(outputStr) // Always print output for visibility
+	if err != nil {
+		log.Printf("Command failed: %v\nOutput:\n%s", err, outputStr) // Log error and output on failure
+	}
 	return err
 }
 
@@ -78,125 +101,141 @@ func replaceTemplate(templateFile string, destFile string) error {
 	template = strings.ReplaceAll(template, "$GCP_PROVIDER_SHA", f.gcpProviderBranch)
 	template = strings.ReplaceAll(template, "$ZONE", zone)
 	template = strings.ReplaceAll(template, "$GKE_VERSION", f.gkeVersion)
+	template = strings.ReplaceAll(template, "$LOCATION_ID", f.location)
 
+	template = strings.ReplaceAll(template, "$TEST_PARAMETER_ID_YAML", f.parameterIdYaml)
+	template = strings.ReplaceAll(template, "$TEST_PARAMETER_ID_JSON", f.parameterIdJson)
+	template = strings.ReplaceAll(template, "$TEST_VERSION_ID_YAML", f.parameterVersionIdYAML)
+	template = strings.ReplaceAll(template, "$TEST_VERSION_ID_JSON", f.parameterVersionIdJSON)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_PARAMETER_ID_YAML", f.regionalParameterIdYAML)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_PARAMETER_ID_JSON", f.regionalParameterIdJSON)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_VERSION_ID_YAML", f.regionalParameterVersionIdYAML)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_VERSION_ID_JSON", f.regionalParameterVersionIdJSON)
 	return os.WriteFile(destFile, []byte(template), 0644)
-
 }
 
 // Executed before any tests are run. Setup is only run once for all tests in the suite.
-func setupTestSuite(isTokenPassed bool) {
-	if !isTokenPassed {
-		rand.Seed(time.Now().UTC().UnixNano())
+func setupTestSuite(isTokenPassed bool, suiteType string) {
 
-		f.gcpProviderBranch = os.Getenv("GCP_PROVIDER_SHA")
-		if len(f.gcpProviderBranch) == 0 {
-			log.Fatal("GCP_PROVIDER_SHA is empty")
-		}
-		f.testProjectID = os.Getenv("PROJECT_ID")
-		if len(f.testProjectID) == 0 {
-			log.Fatal("PROJECT_ID is empty")
-		}
-		f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
-		if len(f.secretStoreVersion) == 0 {
-			log.Println("SECRET_STORE_VERSION is empty, defaulting to 'main'")
-			f.secretStoreVersion = "main"
-		}
-		// Version of the GKE cluster to run the tests on
-		// spec.releaseChannel.channel from:
-		// https://cloud.google.com/config-connector/docs/reference/resource-docs/container/containercluster
-		f.gkeVersion = os.Getenv("GKE_VERSION")
-		switch f.gkeVersion {
-		case "STABLE":
-		case "REGULAR":
-		case "RAPID":
-			break
-		default:
-			log.Printf("GKE_VERSION is invalid (%q), defaulting to 'STABLE'", f.gkeVersion)
-			f.gkeVersion = "STABLE"
-		}
+	rand.Seed(time.Now().UTC().UnixNano())
 
-		tempDir, err := os.MkdirTemp("", "csi-tests")
-		check(err)
-		f.tempDir = tempDir
-		f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
-		f.testSecretID = fmt.Sprintf("testsecret-%d", rand.Int31())
-		f.testRotateSecretID = f.testSecretID + "-rotate"
+	f.gcpProviderBranch = os.Getenv("GCP_PROVIDER_SHA")
+	if len(f.gcpProviderBranch) == 0 {
+		log.Fatal("GCP_PROVIDER_SHA is empty")
+	}
+	f.testProjectID = os.Getenv("PROJECT_ID")
+	if len(f.testProjectID) == 0 {
+		log.Fatal("PROJECT_ID is empty")
+	}
+	f.location = os.Getenv("LOCATION_ID")
+	if len(f.location) == 0 {
+		log.Fatal("LOCATION_ID is empty")
+	}
+	f.secretStoreVersion = os.Getenv("SECRET_STORE_VERSION")
+	if len(f.secretStoreVersion) == 0 {
+		log.Println("SECRET_STORE_VERSION is empty, defaulting to 'main'")
+		f.secretStoreVersion = "main"
+	}
+	// Version of the GKE cluster to run the tests on
+	// spec.releaseChannel.channel from:
+	// https://cloud.google.com/config-connector/docs/reference/resource-docs/container/containercluster
+	f.gkeVersion = os.Getenv("GKE_VERSION")
+	switch f.gkeVersion {
+	case "STABLE":
+	case "REGULAR":
+	case "RAPID":
+		break
+	default:
+		log.Printf("GKE_VERSION is invalid (%q), defaulting to 'STABLE'", f.gkeVersion)
+		f.gkeVersion = "STABLE"
+	}
 
-		// Build the plugin deploy yaml
-		pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
-		check(replaceTemplate("templates/provider-gcp-plugin.yaml.tmpl", pluginFile))
+	tempDir, err := os.MkdirTemp("", "csi-tests")
+	check(err)
+	f.tempDir = tempDir
+	f.testClusterName = fmt.Sprintf("testcluster-%d", rand.Int31())
 
-		// Create test cluster
-		clusterFile := filepath.Join(tempDir, "test-cluster.yaml")
-		check(replaceTemplate("templates/test-cluster.yaml.tmpl", clusterFile))
-		check(execCmd(exec.Command("kubectl", "apply", "-f", clusterFile)))
-		check(execCmd(exec.Command("kubectl", "wait", "containercluster/"+f.testClusterName,
-			"--for=condition=Ready", "--timeout", "15m")))
+	// Build the plugin deploy yaml
+	pluginFile := filepath.Join(tempDir, "provider-gcp-plugin.yaml")
+	check(replaceTemplate("templates/provider-gcp-plugin.yaml.tmpl", pluginFile))
 
-		// Get kubeconfig to use to authenticate to test cluster
-		f.kubeconfigFile = filepath.Join(f.tempDir, "test-cluster-kubeconfig")
-		gcloudCmd := exec.Command("gcloud", "container", "clusters", "get-credentials", f.testClusterName,
-			"--zone", zone, "--project", f.testProjectID)
-		gcloudCmd.Env = append(os.Environ(), "KUBECONFIG="+f.kubeconfigFile)
-		check(execCmd(gcloudCmd))
+	// Create test cluster
+	clusterFile := filepath.Join(tempDir, "test-cluster.yaml")
+	check(replaceTemplate("templates/test-cluster.yaml.tmpl", clusterFile))
+	check(execCmd(exec.Command("kubectl", "apply", "-f", clusterFile)))
+	check(execCmd(exec.Command("kubectl", "wait", "containercluster/"+f.testClusterName,
+		"--for=condition=Ready", "--timeout", "30m")))
 
-		// Install Secret Store
-		check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretproviderclass.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretprovidersyncing.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/csidriver.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml", f.secretStoreVersion),
-			"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store-csi-driver.yaml", f.secretStoreVersion),
-		)))
+	// Get kubeconfig to use to authenticate to test cluster
+	f.kubeconfigFile = filepath.Join(f.tempDir, "test-cluster-kubeconfig")
+	gcloudCmd := exec.Command("gcloud", "container", "clusters", "get-credentials", f.testClusterName,
+		"--zone", zone, "--project", f.testProjectID)
+	gcloudCmd.Env = append(os.Environ(), "KUBECONFIG="+f.kubeconfigFile)
+	check(execCmd(gcloudCmd))
 
-		// Install GCP Plugin and Workload Identity bindings
-		check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-			"-f", pluginFile)))
+	// Install Secret Store
+	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretproviderclass.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/rbac-secretprovidersyncing.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/csidriver.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml", f.secretStoreVersion),
+		"-f", fmt.Sprintf("https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/%s/deploy/secrets-store-csi-driver.yaml", f.secretStoreVersion),
+	)))
 
-		// Create test secret
-		secretFile := filepath.Join(f.tempDir, "secretValue")
-		check(os.WriteFile(secretFile, []byte(f.testSecretID), 0644))
-		check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
-			"--data-file", secretFile, "--project", f.testProjectID)))
-	} else {
+	// Install GCP Plugin and Workload Identity bindings
+	check(execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"-f", pluginFile)))
+
+	// Create f.testSecretID (for direct SM tests) if secretmanager or all suite is run
+	if suiteType == "secretmanager" || suiteType == "all" {
+		setupSmTestSuite()
+	}
+
+	if suiteType == "parametermanager" || suiteType == "all" {
+		setupPmTestSuite()
+	}
+
+	if isTokenPassed {
 		type metadataStruct struct {
-			name string `yaml:"name"`
+			Name string `yaml:"name"`
 		}
 
 		type audienceStruct struct {
-			audience string `yaml:"audience"`
+			Audience string `yaml:"audience"`
 		}
 
 		type specStruct struct {
-			podInfoOnMount       bool             `yaml:"podInfoOnMount"`
-			attachRequired       bool             `yaml:"attachRequired"`
-			volumeLifecycleModes []string         `yaml:"volumeLifecycleModes"`
-			tokenRequests        []audienceStruct `yaml:"tokenRequests"`
+			PodInfoOnMount       bool             `yaml:"podInfoOnMount"`
+			AttachRequired       bool             `yaml:"attachRequired"`
+			VolumeLifecycleModes []string         `yaml:"volumeLifecycleModes"`
+			TokenRequests        []audienceStruct `yaml:"tokenRequests"`
+			RequiredRepublish    bool             `yaml:"requiresRepublish"`
 		}
 
 		type driver struct {
-			apiVersion string         `yaml:"apiVersion"`
-			kind       string         `yaml:"kind"`
-			metadata   metadataStruct `yaml:"metadata"`
-			spec       specStruct     `yaml:"spec"`
+			ApiVersion string         `yaml:"apiVersion"`
+			Kind       string         `yaml:"kind"`
+			Metadata   metadataStruct `yaml:"metadata"`
+			Spec       specStruct     `yaml:"spec"`
 		}
 
 		aud := audienceStruct{
-			audience: "secretmanager-csi-build.svc.id.goog", //	audience value is set as idPool for GCP project secretmanager-csi-build
+			Audience: "secretmanager-csi-build.svc.id.goog", //	audience value is set as idPool for GCP project secretmanager-csi-build
 		}
 
 		csiDriver := driver{
-			apiVersion: "storage.k8s.io/v1",
-			kind:       "CSIDriver",
-			metadata: metadataStruct{
-				name: "secrets-store.csi.k8s.io",
+			ApiVersion: "storage.k8s.io/v1",
+			Kind:       "CSIDriver",
+			Metadata: metadataStruct{
+				Name: "secrets-store.csi.k8s.io",
 			},
-			spec: specStruct{
-				podInfoOnMount:       true,
-				attachRequired:       false,
-				volumeLifecycleModes: []string{"Ephemeral"},
-				tokenRequests:        []audienceStruct{aud},
+			Spec: specStruct{
+				PodInfoOnMount:       true,
+				AttachRequired:       false,
+				VolumeLifecycleModes: []string{"Ephemeral"},
+				TokenRequests:        []audienceStruct{aud},
+				RequiredRepublish:    true,
 			},
 		}
 
@@ -214,13 +253,13 @@ func setupTestSuite(isTokenPassed bool) {
 
 		// set tokenRequests in driver spec and reinstall driver to perform E2E testing when token is received by provider from driver
 		check(execCmd(exec.Command("kubectl", "apply",
-			"-f", fmt.Sprintf("./csidriver.yaml"),
+			"-f", fileName,
 		)))
 	}
 }
 
 // Executed after tests are run. Teardown is only run once for all tests in the suite.
-func teardownTestSuite() {
+func teardownTestSuite(suiteType string) {
 	// print cluster information, useful when debugging
 	execCmd(exec.Command(
 		"kubectl", "describe", "pods",
@@ -240,323 +279,68 @@ func teardownTestSuite() {
 		"--kubeconfig", f.kubeconfigFile,
 	))
 
-	// cleanup
+	// Cleanup
 	os.RemoveAll(f.tempDir)
 	execCmd(exec.Command("kubectl", "delete", "containercluster", f.testClusterName))
-	execCmd(exec.Command(
-		"gcloud", "secrets", "delete", f.testSecretID,
-		"--project", f.testProjectID,
-		"--quiet",
-	))
-	execCmd(exec.Command(
-		"gcloud", "secrets", "delete", f.testRotateSecretID,
-		"--project", f.testProjectID,
-		"--quiet",
-	))
+
+	if suiteType == "secretmanager" || suiteType == "all" {
+		teardownSmTestSuite()
+	}
+
+	if suiteType == "parametermanager" || suiteType == "all" {
+		teardownPmTestSuite()
+	}
 }
 
 // Entry point for go test.
 func TestMain(m *testing.M) {
-	withoutTokenStatus := runTest(m, false)
-	withTokenStatus := runTest(m, true)
-	fmt.Printf("Exit Code when token is not passed from driver to provder is: %v", withoutTokenStatus)
-	fmt.Printf("Exit Code when token is passed from driver to provder is: %v", withTokenStatus)
-	os.Exit(withoutTokenStatus & withTokenStatus)
+	envSuiteType := os.Getenv("E2E_TEST_SUITE")
+	if envSuiteType == "" {
+		log.Println("E2E_TEST_SUITE environment variable not set, defaulting to 'all'.")
+		envSuiteType = "all"
+	}
+	log.Printf("E2E_TEST_SUITE is '%s'. This will determine which test sequences (setup/teardown pairs) are run.\n", envSuiteType)
+	log.Println("The actual tests executed by m.Run() within each sequence are determined by build tags.")
+
+	var exitCode int
+
+	if envSuiteType == "secretmanager" || envSuiteType == "all" {
+		log.Println("Executing Secret Manager test runs...")
+		// Pass "secretmanager" to runTest, which setupTestSuite/teardownTestSuite will use.
+		smWithoutTokenStatus := runTest(m, false, "secretmanager")
+		smWithTokenStatus := runTest(m, true, "secretmanager")
+		fmt.Printf("Secret Manager Tests -> No Token Exit Code: %v, With Token Exit Code: %v\n", smWithoutTokenStatus, smWithTokenStatus)
+		exitCode |= smWithoutTokenStatus | smWithTokenStatus
+	}
+
+	if envSuiteType == "parametermanager" || envSuiteType == "all" {
+		log.Println("Executing Parameter Manager test runs...")
+		// Pass "parametermanager" to runTest.
+		pmWithoutTokenStatus := runTest(m, false, "parametermanager")
+		pmWithTokenStatus := runTest(m, true, "parametermanager")
+		fmt.Printf("Parameter Manager Tests -> No Token Exit Code: %v, With Token Exit Code: %v\n", pmWithoutTokenStatus, pmWithTokenStatus)
+		exitCode |= pmWithoutTokenStatus | pmWithTokenStatus
+	}
+
+	if envSuiteType != "secretmanager" && envSuiteType != "parametermanager" && envSuiteType != "all" {
+		log.Printf("Error: Invalid E2E_TEST_SUITE value: '%s'. Must be 'secretmanager', 'parametermanager', or 'all'.", envSuiteType)
+		if exitCode == 0 {
+			exitCode = 1
+		} // Ensure non-zero exit if invalid suite and no tests ran.
+	}
+	os.Exit(exitCode)
 }
 
 // Handles setup/teardown test suite and runs test. Returns exit code.
-func runTest(m *testing.M, isTokenPassed bool) (code int) {
+func runTest(m *testing.M, isTokenPassed bool, suiteType string) (code int) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("Test execution panic:", r)
 			code = 1
 		}
-		teardownTestSuite()
+		teardownTestSuite(suiteType)
 	}()
 
-	setupTestSuite(isTokenPassed)
+	setupTestSuite(isTokenPassed, suiteType)
 	return m.Run()
-}
-
-// Execute a test job that mounts a secret and checks that the value is correct.
-func TestMountSecret(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-pod.yaml")
-	if err := replaceTemplate("templates/test-pod.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter", "--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-mounter",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"cat", fmt.Sprintf("/var/gcp-test-secrets/%s", f.testSecretID))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if !bytes.Equal(stdout.Bytes(), []byte(f.testSecretID)) {
-		t.Fatalf("Secret value is %v, want: %v", stdout.String(), f.testSecretID)
-	}
-}
-
-func TestMountSecretFileMode(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-mode.yaml")
-	if err := replaceTemplate("templates/test-mode.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing mode template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mode", "--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	// stat the file in the symlinked '..data' directory, symlink will always return 777 otherwise
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-mode",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"stat", "--printf", "%a", fmt.Sprintf("/var/gcp-test-secrets/..data/%s", f.testSecretID))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if !bytes.Equal(stdout.Bytes(), []byte("400")) {
-		t.Fatalf("Secret file mode is %v, want: %v", stdout.String(), "400")
-	}
-}
-
-func TestMountNestedPath(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-nested.yaml")
-	if err := replaceTemplate("templates/test-nested.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-nested", "--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "exec", "test-secret-nested",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"cat", fmt.Sprintf("/var/gcp-test-secrets/my/nested/path/%s", f.testSecretID))
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if !bytes.Equal(stdout.Bytes(), []byte(f.testSecretID)) {
-		t.Fatalf("Secret value is %v, want: %v", stdout.String(), f.testSecretID)
-	}
-}
-
-func TestMountInvalidPath(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-invalid.yaml")
-	if err := replaceTemplate("templates/test-invalid.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// We cannot use a 'wait for condition' since we are expecting a failure (that gets retried indefinitely).
-	// Instead wait for enough time to give the kubelet a chance to attempt the mount and have it fail.
-	time.Sleep(15 * time.Second)
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("kubectl", "get", "events", "--field-selector", "involvedObject.name=test-secret-invalid",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default")
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if !strings.Contains(stdout.String(), "invalid path") {
-		t.Fatalf("Unable to find 'invalid path' error: %v", stdout.String())
-	}
-}
-
-func TestMountSyncSecret(t *testing.T) {
-	podFile := filepath.Join(f.tempDir, "test-sync.yaml")
-	if err := replaceTemplate("templates/test-sync.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command(
-		"kubectl", "apply", "-f", podFile,
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-	)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command(
-		"kubectl", "wait", "pod/test-secret-mounter-sync",
-		"--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--timeout", "5m",
-	)); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command(
-		"kubectl", "exec", "test-secret-mounter-sync",
-		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
-		"--",
-		"printenv",
-	)
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if got := stdout.Bytes(); !bytes.Contains(got, []byte(f.testSecretID)) {
-		t.Fatalf("pod env value is %s, does not contain: %s", string(got), f.testSecretID)
-	}
-}
-
-func TestMountRotateSecret(t *testing.T) {
-	secretA := []byte("secreta")
-	secretB := []byte("secretb")
-
-	// Enable rotation.
-	check(execCmd(exec.Command("enable-rotation.sh", f.kubeconfigFile)))
-
-	// Wait for deployment to finish.
-	time.Sleep(45 * time.Second)
-
-	// Create test secret.
-	secretFileA := filepath.Join(f.tempDir, "secretValue-A")
-	check(os.WriteFile(secretFileA, secretA, 0644))
-	check(execCmd(exec.Command(
-		"gcloud", "secrets", "create", f.testRotateSecretID,
-		"--replication-policy", "automatic",
-		"--data-file", secretFileA,
-		"--project", f.testProjectID,
-	)))
-
-	// Deploy the test pod.
-	podFile := filepath.Join(f.tempDir, "test-rotate.yaml")
-	if err := replaceTemplate("templates/test-rotate.yaml.tmpl", podFile); err != nil {
-		t.Fatalf("Error replacing pod template: %v", err)
-	}
-
-	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default", "-f", podFile)); err != nil {
-		t.Fatalf("Error creating job: %v", err)
-	}
-
-	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
-	// ensure that the job resources exists before attempting to wait for it.
-	time.Sleep(5 * time.Second)
-	if err := execCmd(exec.Command(
-		"kubectl", "wait", "pod/test-secret-mounter-rotate",
-		"--for=condition=Ready",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--timeout", "5m",
-	)); err != nil {
-		t.Fatalf("Error waiting for job: %v", err)
-	}
-
-	var stdout, stderr bytes.Buffer
-	command := exec.Command(
-		"kubectl", "exec", "test-secret-mounter-rotate",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--",
-		"cat", "/var/gcp-test-secrets/rotate")
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if got := stdout.Bytes(); !bytes.Equal(got, secretA) {
-		t.Fatalf("Secret value is %v, want: %v", got, secretA)
-	}
-
-	// Rotate the secret.
-	secretFileB := filepath.Join(f.tempDir, "secretValue-B")
-	check(os.WriteFile(secretFileB, secretB, 0644))
-	check(execCmd(exec.Command(
-		"gcloud", "secrets", "versions", "add", f.testRotateSecretID,
-		"--data-file", secretFileB,
-		"--project", f.testProjectID,
-	)))
-
-	// Wait for update. Keep in sync with driver's --rotation-poll-interval to
-	// ensure enough time.
-	time.Sleep(30 * time.Second)
-
-	// Verify update.
-	stdout.Reset()
-	stderr.Reset()
-	command = exec.Command(
-		"kubectl", "exec", "test-secret-mounter-rotate",
-		"--kubeconfig", f.kubeconfigFile,
-		"--namespace", "default",
-		"--",
-		"cat", "/var/gcp-test-secrets/rotate",
-	)
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		fmt.Println("Stdout:", stdout.String())
-		fmt.Println("Stderr:", stderr.String())
-		t.Fatalf("Could not read secret from container: %v", err)
-	}
-	if got := stdout.Bytes(); !bytes.Equal(got, secretB) {
-		t.Fatalf("Secret value is %v, want: %v", got, secretB)
-	}
 }

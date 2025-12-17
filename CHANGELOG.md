@@ -6,6 +6,104 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.11.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+
+Digest: `sha256:c506476df12f50d6749167562cfb18af935ce8dd7a5b1006a313519dd021ecfd`
+
+### Changes & Security Fixes
+
+* Add support for connection through proxy [603](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/603)
+
+## v1.10.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.10.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.10.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.10.0`
+
+Digest: `sha256:05bea4c2732eeba048278e6ea89e16cbb45f260f88b2ccb79f91ba189acfde51`
+
+### Changes & Security Fixes
+
+* Fix e2e Tests [568](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/568)
+* Add support to add custom go proxy [583](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/583)
+* Reduce logs noise if fleetWorkloadIdentity is used  [602](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/602)
+* Update Go Dependencies for gRPC bugfix [608](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/608)
+* Update go dependencies [610](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/610)
+
+## v1.9.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+
+Digest: `sha256:183c92fbe7905ebe09ccec6496e91b7b615b1e88096576bc100d46fe97fe9770`
+
+### Changes & Security Fixes
+
+* Support for ParameterManager versions [548](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/548)
+* Update go dependencies [565](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/565)
+* Support for the YAML [555](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/555)
+* Added better log visibility [561](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/561)
+
+## v1.8.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.8.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.8.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.8.0`
+
+Digest: `sha256:430b629bc757e5e6aa667793645b64af232519003a976dd4046c050b1ac8acbb`
+
+### Changes & Security Fixes
+
+* Allow using delegated IAM with Pod Workload Identity [425](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/425)
+* Upgrade base image to static-debian12 [523](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/523)
+* Dependencies upgrade [538](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/538)
+
+## v1.7.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.7.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.7.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.7.0`
+
+Digest: `sha256:16206089381c7f9b70442b4ed97e65bc34daec1ee26a5c5de7453a24f0f1de13`
+
+### Changes & Security Fixes
+
+* Enable Workload Identity Federation with Kubernetes and add docs [459](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/459)
+* Add flag to allow nodepublishsecretref [486](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/486)
+* Dependencies upgrade [495](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/495)
+
+## v1.6.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.6.0`
+
+Digest: `sha256:cb0cb5e7abf9487619f2a55acf4c608c8c17599d1b889cc88cb73356740f846b`
+
+### Changes & Security Fixes
+
+* Support for regional secrets [447](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/447)
+* Dependencies upgrade - golang version to 1.23 [458](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/458)
+* Protobuf encoding for core K8s APIs [455](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/455) 
+
+
 ## v1.5.0
 
 Images:

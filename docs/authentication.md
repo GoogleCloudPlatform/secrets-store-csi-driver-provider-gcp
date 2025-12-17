@@ -13,6 +13,33 @@ a Google authentication token using the Kubernetes Service Account [Workload
 Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity)
 annotations.
 
+### Preferred
+
+Grant the K8s pod service account permission to access the secret though Workload
+Identity
+
+```shell
+gcloud secrets add-iam-policy-binding <secret-name> \
+    --role=roles/secretmanager.secretAccessor \
+    --member=principal://iam.googleapis.com/projects/<project-number>/locations/global/workloadIdentityPools/<project-id>.svc.id.goog/subject/ns/<namespace>/sa/<pod-service-account>
+```
+
+### Alternative
+
+The `iam.gke.io/gcp-service-account-delegates` annotation can be used to [impersonate a chain of service accounts](https://cloud.google.com/iam/docs/create-short-lived-credentials-delegated) to be able to authenitcate as the service account in `iam.gke.io/gcp-service-account`.
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    iam.gke.io/gcp-service-account: final-sa@project-a.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account-delegates: '["intermediate-sa@project-b.iam.gserviceaccount.com"]'
+  ...
+```
+
+In this case, the pod must have the permissions to authenticate as `intermediate-sa@project-b.iam.gserviceaccount.com` and that service account must have the `roles/iam.serviceAccountTokenCreator` role granted on `final-sa@project-a.iam.gserviceaccount.com`.
+
 ## `provider-adc` - GCP Provider Identity
 
 In the `SecretProviderClass` you can set

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,23 @@ package vars
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type EnvVar struct {
 	envVarName   string
 	defaultValue string
 	isRequired   bool
+}
+
+// HasProxyConfigured returns true if proxy configured for provider.
+func HasProxyConfigured() bool {
+	for _, v := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
+		if _, ok := os.LookupEnv(v); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (ev EnvVar) GetValue() (string, error) {
@@ -40,6 +51,27 @@ func (ev EnvVar) GetValue() (string, error) {
 
 	// Return default endpoint
 	return ev.defaultValue, nil
+}
+
+func (ev EnvVar) GetBooleanValue() (bool, error) {
+	oEnvValue, isPresent := os.LookupEnv(ev.envVarName)
+
+	if isPresent {
+		boolValue, err := strconv.ParseBool(oEnvValue)
+		if err != nil {
+			return false, fmt.Errorf("error parsing the boolean value: %v", err)
+		}
+		return boolValue, nil
+	}
+
+	if ev.isRequired {
+		return false, fmt.Errorf("%s: a required OS environment is not present", ev.envVarName)
+	}
+	defaultBoolValue, err := strconv.ParseBool(ev.defaultValue)
+	if err != nil {
+		return false, fmt.Errorf("error parsing default value: %v", err)
+	}
+	return defaultBoolValue, nil
 }
 
 var IdentityBindingTokenEndPoint = EnvVar{
@@ -63,5 +95,29 @@ var ProviderName = EnvVar{
 var UserAgentIdentifier = EnvVar{
 	envVarName:   "USER_AGENT",
 	defaultValue: "secrets-store-csi-driver-provider-gcp",
+	isRequired:   false,
+}
+
+var AllowNodepublishSecretRef = EnvVar{
+	envVarName:   "ALLOW_NODE_PUBLISH_SECRET",
+	defaultValue: "false",
+	isRequired:   false,
+}
+
+var Project = EnvVar{
+	envVarName:   "PROJECT",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var ClusterName = EnvVar{
+	envVarName:   "CLUSTER_NAME",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var ClusterLocation = EnvVar{
+	envVarName:   "CLUSTER_LOCATION",
+	defaultValue: "",
 	isRequired:   false,
 }

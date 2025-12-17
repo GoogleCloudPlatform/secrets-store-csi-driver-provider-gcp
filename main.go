@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import (
 
 	"cloud.google.com/go/compute/metadata"
 	iam "cloud.google.com/go/iam/credentials/apiv1"
+	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/infra"
@@ -42,6 +43,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -101,6 +103,7 @@ func main() {
 		klog.ErrorS(err, "failed to read kubeconfig")
 		klog.Fatal("failed to read kubeconfig")
 	}
+	rc.ContentType = runtime.ContentTypeProtobuf
 
 	clientset, err := kubernetes.NewForConfig(rc)
 	if err != nil {
@@ -112,7 +115,7 @@ func main() {
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
 	// basis for each mount
-	smOpts := []option.ClientOption{
+	clientOptions := []option.ClientOption{
 		option.WithUserAgent(ua),
 		// tell the secretmanager library to not add transport-level ADC since
 		// we need to override on a per call basis
@@ -126,13 +129,27 @@ func main() {
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
 	}
-
-	sc, err := secretmanager.NewClient(ctx, smOpts...)
+	if !vars.HasProxyConfigured() {
+		clientOptions = append(clientOptions, option.WithEndpoint("dns:///secretmanager.googleapis.com:443"))
+	}
+	sc, err := secretmanager.NewClient(ctx, clientOptions...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
 	}
 
+	pmClientOptions := append(clientOptions, option.WithEndpoint("dns:///parametermanager.googleapis.com:443"))
+	pmClient, err := parametermanager.NewClient(ctx, pmClientOptions...)
+	if err != nil {
+		klog.ErrorS(err, "failed to create parametermanager client")
+		klog.Fatal("failed to create parametermanager client")
+	}
+
+	// Used to store regional clients inside map
+	regionalSmClientMap := make(map[string]*secretmanager.Client)
+
+	// To cache the clients for parameter manager regional endpoints
+	regionalPmClientMap := make(map[string]*parametermanager.Client)
 	// IAM client
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
@@ -165,6 +182,7 @@ func main() {
 				Timeout:   2 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).Dial,
+			Proxy: http.ProxyFromEnvironment,
 		},
 		Timeout: 60 * time.Second,
 	}
@@ -178,8 +196,12 @@ func main() {
 
 	// setup provider grpc server
 	s := &server.Server{
-		SecretClient: sc,
-		AuthClient:   c,
+		SecretClient:                    sc,
+		ParameterManagerClient:          pmClient,
+		AuthClient:                      c,
+		RegionalSecretClients:           regionalSmClientMap,
+		RegionalParameterManagerClients: regionalPmClientMap,
+		ServerClientOptions:             clientOptions,
 	}
 
 	p, err := vars.ProviderName.GetValue()

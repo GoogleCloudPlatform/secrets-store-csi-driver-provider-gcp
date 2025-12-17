@@ -1,0 +1,178 @@
+name: Bump Helm Charts Versions
+
+on:
+  pull_request:
+    types:
+      - closed  # Trigger when the PR is closed (merged or declined)
+    branches:
+      - main # When merged branch is main
+
+jobs:
+  bump_charts_version:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    # Skip the job if the PR source branch does not start with 'release-'
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release-')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Extract latest version
+        run: |
+          # Extract the version from the branch name (e.g., release-1.2 or release-1.2.3)
+          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | sed -E 's/^release-([0-9]+\.[0-9]+(\.[0-9]+)?)$/\1/')
+          
+          # Check if the version matches the expected format
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "The PR was merged from a release branch with version: $VERSION"
+            # Ensure the version follows x.x.x format for binary release
+            if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+              VERSION="${VERSION}.0"
+            fi
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+            echo $VERSION
+          else
+            echo "Invalid branch name format. The release branch must match 'release-X.X' or 'release-X.X.X'."
+            exit 1
+          fi
+
+      - name: Validate version
+        run: |
+          if [[ -z "$VERSION" ]]; then
+            echo "Error: Version not found. Branch should follow 'release-<version>' pattern."
+            exit 1
+          fi
+
+      - name: Fetch tags
+        run: git fetch --tags
+          
+      - name: Get second last release versions
+        id: second_last_release_version
+        run: |
+          # Extract Second last release TAG for update in Main Helm Chart
+          SECOND_LAST_RELEASE_TAG=$(git tag -l --sort=-creatordate | head -n 2 | tail -n 1)
+          SECOND_LAST_RELEASE_TAG=$(echo "$SECOND_LAST_RELEASE_TAG" | sed 's/^v//')
+          echo "Second last release version: $SECOND_LAST_RELEASE_TAG"
+          echo "SECOND_LAST_RELEASE_TAG=$SECOND_LAST_RELEASE_TAG" >> $GITHUB_ENV
+
+      - name: Install yq
+        run: |
+          # Install yq to parse YAML files
+          wget https://github.com/mikefarah/yq/releases/download/v4.16.1/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+      
+      - name: Set up Git user identity
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update main helm chart with second last version
+        run: |
+          # Update the version in the /charts/secrets-store-csi-driver-provider-gcp/Chart.yaml file
+          VERSION_TO_UPDATE=$SECOND_LAST_RELEASE_TAG
+          if [[ -z "$SECOND_LAST_RELEASE_TAG" ]]; then
+            echo "No last release tag found. Skipping version update."
+          else
+            VERSION_TO_UPDATE=$SECOND_LAST_RELEASE_TAG
+          fi
+
+          echo "Updating /charts/secrets-store-csi-driver-provider-gcp/Chart.yaml with version $VERSION_TO_UPDATE"
+
+          yq e ".appVersion = \"$VERSION_TO_UPDATE\"" -i charts/secrets-store-csi-driver-provider-gcp/Chart.yaml
+
+          git add charts/secrets-store-csi-driver-provider-gcp/Chart.yaml
+          git commit -m "Update Chart.yaml with version $VERSION_TO_UPDATE"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Update staging helm chart with latest version
+        run: |
+          # Update the version in the manifest_staging/charts/secrets-store-csi-driver-provider-gcp/Chart.yaml file
+          LAST_VERSION_TO_UPDATE=$VERSION
+          if [[ -z "$VERSION" ]]; then
+            echo "No last release tag found. Skipping version update."
+          else
+            LAST_VERSION_TO_UPDATE=$VERSION
+          fi
+
+          echo "Updating manifest_staging/charts/secrets-store-csi-driver-provider-gcp/Chart.yaml with version $LAST_VERSION_TO_UPDATE"
+          
+          yq e ".appVersion = \"$LAST_VERSION_TO_UPDATE\"" -i manifest_staging/charts/secrets-store-csi-driver-provider-gcp/Chart.yaml
+
+          git add manifest_staging/charts/secrets-store-csi-driver-provider-gcp/Chart.yaml
+          git commit -m "Update Staging Chart.yaml with version $LAST_VERSION_TO_UPDATE"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract latest release image digest
+        id: extract_latest_digest
+        run: |
+          # Extract the image digest from the `deploy/provider-gcp-plugin.yaml` file
+          IMAGE_PATH=$(yq e '.spec.template.spec.containers[].image' deploy/provider-gcp-plugin.yaml)
+          echo "Docker image with digest: $IMAGE_PATH"
+
+          # Split the IMAGE_PATH to extract the digest part
+          # Example image format: 'gcr.io/my-project/my-image@sha256:<digest>'
+          DIGEST=$(echo $IMAGE_PATH | awk -F'@' '{print $2}')
+          echo "Extracted digest: $DIGEST"
+
+          # Save the digest to an environment variable
+          echo "DIGEST=$DIGEST" >> $GITHUB_ENV
+      
+      - name: Extract second last release image digest
+        id: extract_second_last_digest
+        run: |
+          # Extracting last release image from staging chart as it should be pointing to last/latest release
+          file_path="manifest_staging/charts/secrets-store-csi-driver-provider-gcp/values.yaml"
+          
+          image_hash=$(yq e '.image.hash' "$file_path" | xargs)
+
+          if [[ -z "$image_hash" ]]; then
+            echo "Invalid/Empty digest found: $image_hash"
+            exit 1
+          fi
+
+          echo "Extracted second last release digest: $image_hash"
+          # Export the digest as an environment variable
+          echo "SECOND_LAST_RELEASE_DIGEST=$image_hash" >> $GITHUB_ENV
+      
+      - name: Update Main Helm Chart with Last Image digest value
+        run: |
+          # Ensure the SECOND_LAST_RELEASE_DIGEST environment variable is set
+          if [ -z "$SECOND_LAST_RELEASE_DIGEST" ]; then
+            echo "SECOND_LAST_RELEASE_DIGEST environment variable is not set"
+            exit 1
+          fi
+
+          # Use yq to update the image.hash field in values.yaml with the DIGEST value
+          yq eval ".image.hash = \"$SECOND_LAST_RELEASE_DIGEST\"" -i charts/secrets-store-csi-driver-provider-gcp/values.yaml
+
+          git add charts/secrets-store-csi-driver-provider-gcp/values.yaml
+          git commit -m "Update Chart.yaml with DIGEST $SECOND_LAST_RELEASE_DIGEST"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+      - name: Update Staging Helm Chart with New Image digest value
+        run: |
+          # Ensure the DIGEST environment variable is set
+          if [ -z "$DIGEST" ]; then
+            echo "DIGEST environment variable is not set"
+            exit 1
+          fi
+
+          # Use yq to update the image.hash field in values.yaml with the DIGEST value
+          yq eval ".image.hash = \"$DIGEST\"" -i manifest_staging/charts/secrets-store-csi-driver-provider-gcp/values.yaml
+
+          git add manifest_staging/charts/secrets-store-csi-driver-provider-gcp/values.yaml
+          git commit -m "Update manifest_staging value.yaml with DIGEST $DIGEST"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
