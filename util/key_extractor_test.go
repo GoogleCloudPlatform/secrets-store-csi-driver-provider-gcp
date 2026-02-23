@@ -299,3 +299,83 @@ func TestExtractContentUsingYAMLKey(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeBase64Content(t *testing.T) {
+	tests := []struct {
+		name          string
+		payload       []byte
+		want          []byte
+		wantErr       bool
+		wantErrSubstr string
+	}{
+		{
+			name:    "valid_base64_simple_text",
+			payload: []byte("aGVsbG8gd29ybGQ="), // "hello world"
+			want:    []byte("hello world"),
+			wantErr: false,
+		},
+		{
+			name:    "valid_base64_empty_string",
+			payload: []byte(""), // empty string is valid base64
+			want:    []byte(""),
+			wantErr: false,
+		},
+		{
+			name:    "valid_base64_json_content",
+			payload: []byte("eyJ1c2VyIjoiYWRtaW4iLCJwYXNzd29yZCI6InNlY3JldCJ9"), // {"user":"admin","password":"secret"}
+			want:    []byte("{\"user\":\"admin\",\"password\":\"secret\"}"),
+			wantErr: false,
+		},
+		{
+			name:    "valid_base64_binary_content",
+			payload: []byte("AQIDBA=="), // [1, 2, 3, 4]
+			want:    []byte{1, 2, 3, 4},
+			wantErr: false,
+		},
+		{
+			name:    "valid_base64_with_newlines",
+			payload: []byte("SGVsbG8gV29ybGQ="), // "Hello World"
+			want:    []byte("Hello World"),
+			wantErr: false,
+		},
+		{
+			name:          "invalid_base64_bad_padding",
+			payload:       []byte("aGVsbG8gd29ybGQ"), // missing padding
+			want:          nil,
+			wantErr:       true,
+			wantErrSubstr: "failed to decode base64 content",
+		},
+		{
+			name:          "invalid_base64_invalid_characters",
+			payload:       []byte("aGVsbG8@d29ybGQ="), // invalid character @
+			want:          nil,
+			wantErr:       true,
+			wantErrSubstr: "failed to decode base64 content",
+		},
+		{
+			name:          "invalid_base64_incomplete",
+			payload:       []byte("aGVsbG"), // incomplete base64
+			want:          nil,
+			wantErr:       true,
+			wantErrSubstr: "failed to decode base64 content",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := DecodeBase64Content(tt.payload)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DecodeBase64Content() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantErr && tt.wantErrSubstr != "" {
+				if !strings.Contains(err.Error(), tt.wantErrSubstr) {
+					t.Errorf("DecodeBase64Content() error = %q, wantErrSubstr %q", err.Error(), tt.wantErrSubstr)
+				}
+			}
+			if !bytes.Equal(got, tt.want) {
+				t.Errorf("DecodeBase64Content() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
