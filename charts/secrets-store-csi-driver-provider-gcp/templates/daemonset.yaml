@@ -23,7 +23,7 @@ spec:
       serviceAccountName: {{ include "secrets-store-csi-driver-provider-gcp.serviceAccountName" . }}
       initContainers:
       - name: chown-provider-mount
-        image: busybox
+        image: "{{ .Values.initImage.repository }}"
         command:
         - chown
         - "1000:1000"
