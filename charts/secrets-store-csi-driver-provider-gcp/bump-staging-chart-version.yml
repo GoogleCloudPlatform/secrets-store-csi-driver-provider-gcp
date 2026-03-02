@@ -1,0 +1,107 @@
+name: Bump Staging Helm Charts Version
+
+on:
+  pull_request:
+    types:
+      - closed # Trigger when the PR is closed (merged or declined)
+    branches:
+      - main # When merged branch is main
+
+jobs:
+  bump_staging_chart_version:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    # Skip the job if the PR is not merged into 'main'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && !startsWith(github.event.pull_request.head.ref, 'release-')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set latest tag
+        run: |
+          # Use 'latest' as the tag for staging helm chart
+          VERSION="latest"
+          echo "Using latest tag: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install yq
+        run: |
+          # Install yq to parse YAML files
+          wget https://github.com/mikefarah/yq/releases/download/v4.16.1/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
+      - name: Set up Git user identity
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Auth to GCP exist env
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: "secretmanager-csi"
+
+      - name: Build and push docker image
+        run: |
+          gcloud builds submit --config scripts/cloudbuild-release.yaml --substitutions=_VERSION=latest,_BRANCH_NAME=main --no-source
+
+      - name: Pull latest changes from remote
+        run: |
+          git pull --rebase origin main
+
+      - name: Extract latest image digest
+        id: extract_latest_digest
+        run: |
+          # Extract the image digest from the build process
+          IMAGE=asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:${VERSION}
+          IMAGE_DIGEST=$(gcloud artifacts docker images describe "$IMAGE" --format='get(image_summary.digest)')
+
+          if [[ -z "$IMAGE_DIGEST" ]]; then
+            echo "Failed to get image digest."
+            exit 1
+          fi
+
+          echo "Extracted digest: $IMAGE_DIGEST"
+
+          # Save the digest to an environment variable
+          echo "DIGEST=$IMAGE_DIGEST" >> $GITHUB_ENV
+
+      - name: Update staging helm chart with latest version and image digest
+        run: |
+          # Update the version in the manifest_staging/charts/secrets-store-csi-driver-provider-gcp/Chart.yaml file
+          VERSION_TO_UPDATE=${{ env.VERSION }}
+          echo "Updating manifest_staging/charts/secrets-store-csi-driver-provider-gcp/Chart.yaml with version $VERSION_TO_UPDATE"
+          yq e ".appVersion = \"$VERSION_TO_UPDATE\"" -i manifest_staging/charts/secrets-store-csi-driver-provider-gcp/Chart.yaml
+
+          # Ensure the DIGEST environment variable is set
+          if [ -z "$DIGEST" ]; then
+            echo "DIGEST environment variable is not set"
+            exit 1
+          fi
+
+          # Use yq to update the image.hash field in values.yaml with the DIGEST value
+          yq eval ".image.hash = \"$DIGEST\"" -i manifest_staging/charts/secrets-store-csi-driver-provider-gcp/values.yaml
+
+          git add manifest_staging/charts/secrets-store-csi-driver-provider-gcp/Chart.yaml
+          git add manifest_staging/charts/secrets-store-csi-driver-provider-gcp/values.yaml
+
+          # Check if there are any changes
+          if git diff --cached --exit-code; then
+            echo "No changes detected. Skipping commit."
+          else
+            echo "Changes detected. Committing and pushing."
+            # Stage and commit all changes in a single step
+           
+            git commit -m "Update Chart.yaml with version $VERSION_TO_UPDATE and values.yaml with digest $DIGEST"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
