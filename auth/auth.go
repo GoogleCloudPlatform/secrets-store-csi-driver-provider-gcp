@@ -77,6 +77,8 @@ func (c *Client) TokenSource(ctx context.Context, cfg *config.MountConfig) (oaut
 		klog.Fatal("failed to get ALLOW_NODE_PUBLISH_SECRET flag")
 	}
 	if cfg.AuthNodePublishSecret && allowSecretRef {
+		//lint:ignore SA1019 CredentialsFromJSON is deprecated but kept for backwards compatibility
+		// and we don't know how customer has configured the authentication in their existing workflows.
 		creds, err := google.CredentialsFromJSON(ctx, cfg.AuthKubeSecret, cloudScope)
 		if err != nil {
 			return nil, fmt.Errorf("unable to generate credentials from key.json: %w", err)
