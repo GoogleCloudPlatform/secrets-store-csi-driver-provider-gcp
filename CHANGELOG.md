@@ -6,6 +6,23 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.12.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.12.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.12.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.12.0`
+
+Digest: `sha256:0a6a474769a0c450c94f2d131fae78e3179d81dd059df8f922a40f7b229530c0`
+
+### Changes & Security Fixes
+
+* Update golang version to 1.25.5 [619](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/619)
+* Refactor Github Action per b/485167538 [622] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/622)
+* build(deps): bump go.opentelemetry.io/otel/sdk from 1.39.0 to 1.40.0 [623] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/623)
+* Upgrade go to 1.25.8 and dependencies [626] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/626)
+
 ## v1.11.0
 
 Images:
