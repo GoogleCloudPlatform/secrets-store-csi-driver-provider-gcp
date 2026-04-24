@@ -1,6 +1,6 @@
 module github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/tools
 
-go 1.25.8
+go 1.26.2
 
 require (
 	github.com/client9/misspell v0.3.4
