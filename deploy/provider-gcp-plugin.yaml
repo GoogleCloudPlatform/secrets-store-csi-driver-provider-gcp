@@ -83,7 +83,7 @@ spec:
       hostIPC: false
       containers:
         - name: provider
-          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:0a6a474769a0c450c94f2d131fae78e3179d81dd059df8f922a40f7b229530c0
+          image: us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin@sha256:023a38e6f95a95db74082034c53a06731382931e8b83ae2ed84954a6f34a259a
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
