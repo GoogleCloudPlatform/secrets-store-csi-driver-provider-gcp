@@ -6,6 +6,21 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.14.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.14.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.14.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.14.0`
+
+Digest: `sha256:023a38e6f95a95db74082034c53a06731382931e8b83ae2ed84954a6f34a259a`
+
+### Changes & Security Fixes
+
+* Add pragyass as human admin for gcp project and remove arpan [631](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/631)
+* Updating go version to v1.26.2 from v1.25.8 [630] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/630)
+
 ## v1.12.0
 
 Images:
