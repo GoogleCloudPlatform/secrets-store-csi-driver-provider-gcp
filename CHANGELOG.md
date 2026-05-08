@@ -6,6 +6,23 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.15.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.15.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.15.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.15.0`
+
+Digest: `sha256:c87cfa3e8be097c0034f136fb56e37d76966430b69223c12d179398ea0584576`
+
+### Changes & Security Fixes
+
+* Update go version to v1.26.3 from v1.26.2 and opentelemetry version [634] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/634)
+* Add pragyass as human admin for gcp project and remove arpan [631](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/631)
+* Updating go version to v1.26.2 from v1.25.8 [630] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/630)
+
+
 ## v1.12.0
 
 Images:
