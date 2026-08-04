@@ -6,6 +6,22 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.16.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.16.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.16.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.16.0`
+
+Digest: `sha256:68d388881ec9445a873763fe6a39f9a8276970ed7478fbc8776565d16667af1e`
+
+### Changes & Security Fixes
+
+* Updated go version to 1.26.5 from 1.26.3 [647] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/647)
+* build(deps): bump google.golang.org/grpc from 1.79.3 to 1.82.1 in /tools [646] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/646)
+
+
 ## v1.15.0
 
 Images:
