@@ -4,7 +4,7 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
-None
+* Updated go version to 1.26.6 from 1.26.5 and updated dependencies to fix Go stdlib vulnerabilities (CVE-2026-39821, CVE-2026-56865, CVE-2026-56864, CVE-2026-56862, CVE-2026-56859, CVE-2026-56853, CVE-2026-46600, CVE-2026-33818, CVE-2026-56860, CVE-2026-56858)
 
 ## v1.16.0
 
