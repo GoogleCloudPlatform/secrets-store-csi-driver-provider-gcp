@@ -4,7 +4,21 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
-* Updated go version to 1.26.6 from 1.26.5 and updated dependencies to fix Go stdlib vulnerabilities (CVE-2026-39821, CVE-2026-56865, CVE-2026-56864, CVE-2026-56862, CVE-2026-56859, CVE-2026-56853, CVE-2026-46600, CVE-2026-33818, CVE-2026-56860, CVE-2026-56858)
+None
+
+## v1.17.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.17.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.17.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.17.0`
+
+Digest: `sha256:459a0c5542d1ef355babafa004cde3937f7a4bbdaeea3f9be71a8f044f8c2544`
+
+### Changes & Security Fixes
+
+* Updated go version to 1.26.5 from 1.26.3 (#651)
 
 ## v1.16.0
 
