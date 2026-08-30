@@ -106,6 +106,10 @@ spec:
           env:
             - name: TARGET_DIR
               value: "/etc/kubernetes/secrets-store-csi-providers"
+            - name: K8S_CLIENT_QPS
+              value: "20.0"
+            - name: K8S_CLIENT_BURST
+              value: "50"
           volumeMounts:
             - mountPath: "/etc/kubernetes/secrets-store-csi-providers"
               name: providervol

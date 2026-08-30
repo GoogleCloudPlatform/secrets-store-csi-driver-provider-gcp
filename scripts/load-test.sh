@@ -22,12 +22,23 @@ set -x          # Print each command as it is run
 # Usage ./scripts/load-test.sh <COMMAND>
 #
 # See docs/testing-notes.md for full details
-if [ "$1" == "many"  ]; then
-    sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$TEST_SECRET_ID/${TEST_SECRET_ID}/g" test/e2e/templates/load-many-secrets.yaml.tmpl | kubectl apply -f -
+if [ "$1" == "many_50"  ]; then
+    sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$TEST_SECRET_ID/${TEST_SECRET_ID}/g" test/e2e/templates/load-50-secrets.yaml.tmpl | kubectl apply -f -
+elif [ "$1" == "many_100" ]; then
+    sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$TEST_SECRET_ID/${TEST_SECRET_ID}/g" test/e2e/templates/load-100-secrets.yaml.tmpl | kubectl apply -f -
 elif [ "$1" == "single" ]; then
     sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$TEST_SECRET_ID/${TEST_SECRET_ID}/g" test/e2e/templates/load-one-secret.yaml.tmpl | kubectl apply -f -
-elif [ "$1" == "seed" ]; then
+elif [ "$1" == "seed_with_50" ]; then
     for i in {1..50}; do
+        printf "s3cr3t" | gcloud secrets create ${TEST_SECRET_ID}-${i} --data-file=- || true
+        gcloud secrets add-iam-policy-binding ${TEST_SECRET_ID}-${i} \
+           --member=serviceAccount:$PROJECT_ID.svc.id.goog[default/test-cluster-sa] \
+           --role=roles/secretmanager.secretAccessor
+        # give the API a rest between creates
+        sleep 1
+    done    
+elif [ "$1" == "seed_with_100" ]; then
+    for i in {1..100}; do
         printf "s3cr3t" | gcloud secrets create ${TEST_SECRET_ID}-${i} --data-file=- || true
         gcloud secrets add-iam-policy-binding ${TEST_SECRET_ID}-${i} \
            --member=serviceAccount:$PROJECT_ID.svc.id.goog[default/test-cluster-sa] \
