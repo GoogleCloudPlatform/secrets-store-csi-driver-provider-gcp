@@ -33,6 +33,7 @@ type resourceFetcher struct {
 	Mode           *int32
 	ExtractJSONKey string
 	ExtractYAMLKey string
+	DecodeBase64   bool
 }
 
 // Resource represents the Resource that is fetched.

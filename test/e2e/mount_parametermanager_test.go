@@ -19,6 +19,7 @@ package test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"math/rand"
@@ -46,6 +47,11 @@ func setupPmTestSuite() {
 	f.pmReferenceGlobalSecret2 = fmt.Sprintf("pmReferenceGlobalSecret2-%d", rand.Int31())
 	f.pmReferenceRegionalSecret1 = fmt.Sprintf("pmReferenceRegionalSecret1-%d", rand.Int31())
 	f.pmReferenceRegionalSecret2 = fmt.Sprintf("pmReferenceRegionalSecret2-%d", rand.Int31())
+
+	f.decodeBase64ParameterId = fmt.Sprintf("testdecodebase64parameter-%d", rand.Int31())
+	f.decodeBase64ParameterVersionId = fmt.Sprintf("testdecodebase64version-%d", rand.Int31())
+	f.regionalDecodeBase64ParameterId = fmt.Sprintf("testregionaldecodebase64parameter-%d", rand.Int31())
+	f.regionalDecodeBase64ParameterVersionId = fmt.Sprintf("testregionaldecodebase64version-%d", rand.Int31())
 
 	// Create global test secrets to be referred for parametermanager
 	// Path where data-files for secrets are stored
@@ -126,6 +132,21 @@ backup_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/secrets/%s/versio
 	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.parameterVersionIdJSON,
 		"--parameter", f.parameterIdJson, "--location", "global",
 		"--payload-data-from-file", parameterVersionFileJson, // And here
+		"--project", f.testProjectID)))
+
+	// Create global UNFORMATTED parameter + version with base64-encoded payload
+	// for the decodeBase64 e2e test. We use UNFORMATTED so the rendered payload
+	// is the raw base64 string, no parsing/__REF__ substitution needed.
+	decodeBase64GlobalPlain := f.decodeBase64ParameterId + "-payload"
+	decodeBase64GlobalEncoded := base64.StdEncoding.EncodeToString([]byte(decodeBase64GlobalPlain))
+	decodeBase64ParameterVersionFile := filepath.Join(f.tempDir, "decodeBase64ParameterValue")
+	check(os.WriteFile(decodeBase64ParameterVersionFile, []byte(decodeBase64GlobalEncoded), 0644))
+
+	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.decodeBase64ParameterId,
+		"--location", "global", "--parameter-format", "UNFORMATTED", "--project", f.testProjectID)))
+	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.decodeBase64ParameterVersionId,
+		"--parameter", f.decodeBase64ParameterId, "--location", "global",
+		"--payload-data-from-file", decodeBase64ParameterVersionFile,
 		"--project", f.testProjectID)))
 
 	// Create regional parameter and regional parameter version
@@ -220,6 +241,20 @@ backup_regional_pwd: __REF__(//secretmanager.googleapis.com/projects/%s/location
 		"--payload-data-from-file", parameterVersionFileJsonRegional, // And here
 		"--project", f.testProjectID)))
 
+	// Create regional UNFORMATTED parameter + version with base64-encoded payload
+	// for the decodeBase64 e2e test (regional endpoint already set above).
+	decodeBase64RegionalPlain := f.regionalDecodeBase64ParameterId + "-payload"
+	decodeBase64RegionalEncoded := base64.StdEncoding.EncodeToString([]byte(decodeBase64RegionalPlain))
+	decodeBase64RegionalParameterVersionFile := filepath.Join(f.tempDir, "decodeBase64RegionalParameterValue")
+	check(os.WriteFile(decodeBase64RegionalParameterVersionFile, []byte(decodeBase64RegionalEncoded), 0644))
+
+	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "create", f.regionalDecodeBase64ParameterId,
+		"--location", f.location, "--parameter-format", "UNFORMATTED", "--project", f.testProjectID)))
+	check(execCmd(exec.Command("gcloud", "parametermanager", "parameters", "versions", "create", f.regionalDecodeBase64ParameterVersionId,
+		"--parameter", f.regionalDecodeBase64ParameterId, "--location", f.location,
+		"--payload-data-from-file", decodeBase64RegionalParameterVersionFile,
+		"--project", f.testProjectID)))
+
 	// Add a delay to allow IAM changes for Parameter Manager service identities to propagate.
 	// This is to mitigate potential 'context deadline exceeded' errors during parameter version rendering
 	// if the Parameter's service identity doesn't yet have permissions to access referenced secrets.
@@ -255,6 +290,21 @@ func teardownPmTestSuite() {
 	))
 	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "delete", f.parameterIdJson,
+		"--location", "global",
+		"--project", f.testProjectID,
+		"--quiet",
+	))
+
+	// Delete the global decodeBase64 parameter + version
+	execCmd(exec.Command(
+		"gcloud", "parametermanager", "parameters", "versions", "delete", f.decodeBase64ParameterVersionId,
+		"--parameter", f.decodeBase64ParameterId,
+		"--location", "global",
+		"--project", f.testProjectID,
+		"--quiet",
+	))
+	execCmd(exec.Command(
+		"gcloud", "parametermanager", "parameters", "delete", f.decodeBase64ParameterId,
 		"--location", "global",
 		"--project", f.testProjectID,
 		"--quiet",
@@ -302,6 +352,21 @@ func teardownPmTestSuite() {
 	))
 	execCmd(exec.Command(
 		"gcloud", "parametermanager", "parameters", "delete", f.regionalParameterIdJSON,
+		"--location", f.location,
+		"--project", f.testProjectID,
+		"--quiet",
+	))
+
+	// Delete the regional decodeBase64 parameter + version (regional endpoint already set above)
+	execCmd(exec.Command(
+		"gcloud", "parametermanager", "parameters", "versions", "delete", f.regionalDecodeBase64ParameterVersionId,
+		"--parameter", f.regionalDecodeBase64ParameterId,
+		"--location", f.location,
+		"--project", f.testProjectID,
+		"--quiet",
+	))
+	execCmd(exec.Command(
+		"gcloud", "parametermanager", "parameters", "delete", f.regionalDecodeBase64ParameterId,
 		"--location", f.location,
 		"--project", f.testProjectID,
 		"--quiet",
@@ -576,5 +641,56 @@ func TestMountParameterVersionFileMode(t *testing.T) {
 		"440", // expected mode
 	); err != nil {
 		t.Fatalf("Error while testing regional json parameter version filemode: %v", err)
+	}
+}
+
+// TestMountDecodeBase64ParameterVersion verifies that parameter versions whose
+// rendered payload is base64-encoded are transparently decoded when
+// decodeBase64: true is set (both global and regional), and that the same
+// rendered payload mounted on a sibling path without the flag is left alone.
+func TestMountDecodeBase64ParameterVersion(t *testing.T) {
+	podFile := filepath.Join(f.tempDir, "test-decode-base64-pm.yaml")
+	if err := replaceTemplate("templates/test-decode-base64-pm.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-parameter-version-mounter-decode-base64", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for pod test-parameter-version-mounter-decode-base64: %v", err)
+	}
+
+	wantGlobalPlain := f.decodeBase64ParameterId + "-payload"
+	wantGlobalEncoded := base64.StdEncoding.EncodeToString([]byte(wantGlobalPlain))
+
+	if err := checkMountedParameterVersion(
+		"test-parameter-version-mounter-decode-base64",
+		"/var/gcp-test-parameter-version/decoded",
+		wantGlobalPlain,
+	); err != nil {
+		t.Fatalf("Error while testing global decoded parameter version: %v", err)
+	}
+
+	// Negative control: same rendered payload, no decodeBase64 flag.
+	if err := checkMountedParameterVersion(
+		"test-parameter-version-mounter-decode-base64",
+		"/var/gcp-test-parameter-version/encoded",
+		wantGlobalEncoded,
+	); err != nil {
+		t.Fatalf("Error while testing global raw (non-decoded) parameter version: %v", err)
+	}
+
+	wantRegionalPlain := f.regionalDecodeBase64ParameterId + "-payload"
+	if err := checkMountedParameterVersion(
+		"test-parameter-version-mounter-decode-base64",
+		"/var/gcp-test-parameter-version/decoded-regional",
+		wantRegionalPlain,
+	); err != nil {
+		t.Fatalf("Error while testing regional decoded parameter version: %v", err)
 	}
 }
