@@ -6,7 +6,7 @@ require (
 	github.com/client9/misspell v0.3.4
 	github.com/google/go-licenses v1.6.0
 	github.com/securego/gosec/v2 v2.22.11
-	golang.org/x/tools v0.49.0
+	golang.org/x/tools v0.50.0
 	honnef.co/go/tools v0.7.0
 )
 
@@ -63,7 +63,7 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
+	golang.org/x/telemetry v0.0.0-20260908163034-4bcc4b2ee518 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/api v0.278.0 // indirect
 	google.golang.org/genai v1.51.0 // indirect
