@@ -6,6 +6,119 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.17.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.17.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.17.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.17.0`
+
+Digest: `sha256:459a0c5542d1ef355babafa004cde3937f7a4bbdaeea3f9be71a8f044f8c2544`
+
+### Changes & Security Fixes
+
+* Updated go version to 1.26.5 from 1.26.3 (#651)
+
+## v1.16.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.16.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.16.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.16.0`
+
+Digest: `sha256:68d388881ec9445a873763fe6a39f9a8276970ed7478fbc8776565d16667af1e`
+
+### Changes & Security Fixes
+
+* Updated go version to 1.26.5 from 1.26.3 [647] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/647)
+* build(deps): bump google.golang.org/grpc from 1.79.3 to 1.82.1 in /tools [646] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/646)
+
+
+## v1.15.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.15.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.15.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.15.0`
+
+Digest: `sha256:c87cfa3e8be097c0034f136fb56e37d76966430b69223c12d179398ea0584576`
+
+### Changes & Security Fixes
+
+* Update go version to v1.26.3 from v1.26.2 and opentelemetry version [634] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/634)
+* Add pragyass as human admin for gcp project and remove arpan [631](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/631)
+* Updating go version to v1.26.2 from v1.25.8 [630] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/630)
+
+
+## v1.12.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.12.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.12.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.12.0`
+
+Digest: `sha256:0a6a474769a0c450c94f2d131fae78e3179d81dd059df8f922a40f7b229530c0`
+
+### Changes & Security Fixes
+
+* Update golang version to 1.25.5 [619](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/619)
+* Refactor Github Action per b/485167538 [622] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/622)
+* build(deps): bump go.opentelemetry.io/otel/sdk from 1.39.0 to 1.40.0 [623] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/623)
+* Upgrade go to 1.25.8 and dependencies [626] (https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/626)
+
+## v1.11.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.11.0`
+
+Digest: `sha256:c506476df12f50d6749167562cfb18af935ce8dd7a5b1006a313519dd021ecfd`
+
+### Changes & Security Fixes
+
+* Add support for connection through proxy [603](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/603)
+
+## v1.10.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.10.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.10.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.10.0`
+
+Digest: `sha256:05bea4c2732eeba048278e6ea89e16cbb45f260f88b2ccb79f91ba189acfde51`
+
+### Changes & Security Fixes
+
+* Fix e2e Tests [568](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/568)
+* Add support to add custom go proxy [583](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/583)
+* Reduce logs noise if fleetWorkloadIdentity is used  [602](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/602)
+* Update Go Dependencies for gRPC bugfix [608](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/608)
+* Update go dependencies [610](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/610)
+
+## v1.9.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.9.0`
+
+Digest: `sha256:183c92fbe7905ebe09ccec6496e91b7b615b1e88096576bc100d46fe97fe9770`
+
+### Changes & Security Fixes
+
+* Support for ParameterManager versions [548](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/548)
+* Update go dependencies [565](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/565)
+* Support for the YAML [555](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/555)
+* Added better log visibility [561](https://github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/pull/561)
+
 ## v1.8.0
 
 Images:

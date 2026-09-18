@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,23 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Usage: from the root directory run:
-#
-# $ gcloud builds submit --config scripts/cloudbuild-dev.yaml
-timeout: 2400s
-options:
-  machineType: N1_HIGHCPU_8
-steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['buildx', 'create', '--use']
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['buildx', 'build',
-         '--platform=linux/amd64',
-         '--build-arg',
-         'VERSION=$TAG_NAME',
-         '-t',
-         'gcr.io/$PROJECT_ID/secrets-store-csi-driver-provider-gcp:$TAG_NAME',
-         '--push',
-         '.']
-         
+
+set -o errexit  # Exit with error on non-zero exit codes
+set -o pipefail # Check the exit code of *all* commands in a pipeline
+set -o nounset  # Error if accessing an unbound variable
+set -x          # Print each command as it is run
+
+sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/\$LOCATION_ID/${LOCATION_ID}/g" examples/app-parameters.yaml.tmpl | kubectl apply -f -
+sed "s/\$PROJECT_ID/${PROJECT_ID}/g;s/app-secrets/app-parameters/g" examples/mypod.yaml.tmpl | kubectl apply -f -

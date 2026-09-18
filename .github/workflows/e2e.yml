@@ -28,18 +28,20 @@ on:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     environment:
       name: e2e-test
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v3
-      # TODO: replace with https://github.com/google-github-actions/auth and
-      # workload identity instead of an exported SA credential.
-      - name: "Auth to GCP exist env"
-        uses: google-github-actions/auth@v1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: "Authenticate to Google Cloud via Workload Identity"
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
-          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-      - uses: google-github-actions/setup-gcloud@v1
+          workload_identity_provider: 'projects/735463103342/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'gh-e2e-runner@secretmanager-csi-build.iam.gserviceaccount.com'
+      - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
         with:
           project_id: "secretmanager-csi-build"
           install_components: 'gke-gcloud-auth-plugin'

@@ -28,6 +28,8 @@ steps](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation
 
 ## Usage
 
+### Secret Manager
+
 The provider will use the workload identity of the pod that a secret is mounted
 onto when authenticating to the Google Secret Manager API. For this to work the
 workload identity of the pod must be configured and appropriate IAM bindings
@@ -38,14 +40,7 @@ must be applied.
 ```shell
 $ export PROJECT_ID=<your gcp project>
 $ gcloud config set project $PROJECT_ID
-# Create a service account for workload identity
-$ gcloud iam service-accounts create gke-workload
-
-# Allow "default/mypod" to act as the new service account
-$ gcloud iam service-accounts add-iam-policy-binding \
-    --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:$PROJECT_ID.svc.id.goog[default/mypodserviceaccount]" \
-    gke-workload@$PROJECT_ID.iam.gserviceaccount.com
+$ export PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
 ```
 
 * Create a secret that the workload identity service account can access
@@ -58,8 +53,8 @@ $ rm secret.data
 
 # grant the new service account permission to access the secret
 $ gcloud secrets add-iam-policy-binding testsecret \
-    --member=serviceAccount:gke-workload@$PROJECT_ID.iam.gserviceaccount.com \
-    --role=roles/secretmanager.secretAccessor
+    --role=roles/secretmanager.secretAccessor \
+    --member=principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/default/sa/mypodserviceaccount
 ```
 
 * Note: Regional secrets are also supported from v1.6.0, Please see [Regional Secret Documentation](https://cloud.google.com/secret-manager/regional-secrets/config-sm-rs).
@@ -70,6 +65,46 @@ $ gcloud secrets add-iam-policy-binding testsecret \
 $ ./scripts/example.sh
 $ kubectl exec -it mypod /bin/bash
 root@mypod:/# ls /var/secrets
+```
+
+
+### Parameter Manager
+
+From version 1.9.0, secrets-store-csi-driver-provider-gcp also supports mounting the parameter version from [Google Parameter Version](https://cloud.google.com/secret-manager/parameter-manager/docs/overview)
+
+Parameter Manager is an extension to the Secret Manager service and provides a centralized storage for all configuration parameters related to your workload deployments.
+
+* Setup the workload identity service account if not done already for secret manager example.
+
+```shell
+$ export PROJECT_ID=<your gcp project>
+$ gcloud config set project $PROJECT_ID
+$ export PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
+```
+
+* Create a parameter that the workload identity service account can access in the supported [location](https://cloud.google.com/secret-manager/docs/locations#parameter_manager_locations).
+
+```shell
+# set the  location
+$ export LOCATION_ID=<location>
+$ gcloud config set api_endpoint_overrides/parametermanager https://parametermanager.${LOCATION_ID}.rep.googleapis.com/
+$ echo "server_port: 8080" > parameter.data
+$  gcloud parametermanager parameters  create testparameter --location ${LOCATION_ID} --parameter-format=YAML --project ${PROJECT_ID}
+$ gcloud parametermanager parameters versions create testversion --parameter=testparameter --location=${LOCATION_ID} --payload-data-from-file=parameter.data
+$ rm parameter.data
+
+# grant the new service account permission to access the secret
+$ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+    --role=roles/parametermanager.parameterAccessor \
+    --member=principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/default/sa/mypodserviceaccount
+```
+
+* Try it out the [example](./examples) which attempts to mount the parameterversions
+
+```shell
+$ ./scripts/pm_example.sh
+# wait for pod to be in running state
+$ kubectl exec -it mypod -- cat /var/secrets/good1.txt
 ```
 
 ## Security Considerations

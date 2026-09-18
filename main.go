@@ -129,8 +129,10 @@ func main() {
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
 	}
-	smClientOptions := append(clientOptions, option.WithEndpoint("dns:///secretmanager.googleapis.com:443"))
-	sc, err := secretmanager.NewClient(ctx, smClientOptions...)
+	if !vars.HasProxyConfigured() {
+		clientOptions = append(clientOptions, option.WithEndpoint("dns:///secretmanager.googleapis.com:443"))
+	}
+	sc, err := secretmanager.NewClient(ctx, clientOptions...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
@@ -180,6 +182,7 @@ func main() {
 				Timeout:   2 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).Dial,
+			Proxy: http.ProxyFromEnvironment,
 		},
 		Timeout: 60 * time.Second,
 	}

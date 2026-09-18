@@ -27,6 +27,16 @@ type EnvVar struct {
 	isRequired   bool
 }
 
+// HasProxyConfigured returns true if proxy configured for provider.
+func HasProxyConfigured() bool {
+	for _, v := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
+		if _, ok := os.LookupEnv(v); ok {
+			return true
+		}
+	}
+	return false
+}
+
 func (ev EnvVar) GetValue() (string, error) {
 	osEnv := ev.envVarName
 	osEnvValue, isPresent := os.LookupEnv(osEnv)
@@ -91,5 +101,23 @@ var UserAgentIdentifier = EnvVar{
 var AllowNodepublishSecretRef = EnvVar{
 	envVarName:   "ALLOW_NODE_PUBLISH_SECRET",
 	defaultValue: "false",
+	isRequired:   false,
+}
+
+var Project = EnvVar{
+	envVarName:   "PROJECT",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var ClusterName = EnvVar{
+	envVarName:   "CLUSTER_NAME",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var ClusterLocation = EnvVar{
+	envVarName:   "CLUSTER_LOCATION",
+	defaultValue: "",
 	isRequired:   false,
 }
