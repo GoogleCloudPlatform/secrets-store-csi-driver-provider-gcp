@@ -4,7 +4,23 @@ updates:
   directory: "/"
   schedule:
     interval: "weekly"
-- package-ecosystem: github-actions
-  directory: /
+  cooldown:
+    default-days: 7
+- package-ecosystem: "gomod"
+  directory: "/tools"
   schedule:
-    interval: weekly
+    interval: "weekly"
+  cooldown:
+    default-days: 7
+- package-ecosystem: "docker"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+  cooldown:
+    default-days: 7
+- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+  cooldown:
+    default-days: 7
