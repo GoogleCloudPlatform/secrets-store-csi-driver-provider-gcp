@@ -6,6 +6,24 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.18.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.18.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.18.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.18.0`
+
+Digest: `sha256:243989324e95935e55b469803ad03791b2f25fcb0dc673cf34844cdf8f10d622`
+
+### Changes & Security Fixes
+
+* Update dependabot config for tools and docker (#662)
+* bump google.golang.org/grpc to resolve vulnerabilities (#661)
+* bump google.golang.org/grpc from 1.83.1 to 1.83.2 in /tools (#660)
+* ci: authenticate to GCP via Workload Identity Federation in e2e workflow (#657)
+* bump google.golang.org/grpc from 1.82.1 to 1.83.1 in /tools (#656)
+
 ## v1.17.0
 
 Images:
