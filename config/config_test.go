@@ -313,6 +313,77 @@ func TestParse(t *testing.T) {
 				AuthPodADC:  true,
 			},
 		},
+		{
+			name: "secrets with decodeBase64",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  decodeBase64: true\n",
+					"csi.storage.k8s.io/pod.namespace": "default",
+					"csi.storage.k8s.io/pod.name": "mypod",
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
+				}
+				`,
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+			want: &MountConfig{
+				Secrets: []*Secret{
+					{
+						ResourceName: "projects/project/secrets/test/versions/latest",
+						FileName:     "good1.txt",
+						DecodeBase64: true,
+					},
+				},
+				PodInfo: &PodInfo{
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
+				},
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+				AuthPodADC:  true,
+			},
+		},
+		{
+			name: "secrets with extractJSONKey and decodeBase64",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  extractJSONKey: data\n  decodeBase64: true\n",
+					"csi.storage.k8s.io/pod.namespace": "default",
+					"csi.storage.k8s.io/pod.name": "mypod",
+					"csi.storage.k8s.io/pod.uid": "123",
+					"csi.storage.k8s.io/serviceAccount.name": "mysa"
+				}
+				`,
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+			want: &MountConfig{
+				Secrets: []*Secret{
+					{
+						ResourceName:   "projects/project/secrets/test/versions/latest",
+						FileName:       "good1.txt",
+						ExtractJSONKey: "data",
+						DecodeBase64:   true,
+					},
+				},
+				PodInfo: &PodInfo{
+					Namespace:      "default",
+					Name:           "mypod",
+					UID:            "123",
+					ServiceAccount: "mysa",
+				},
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+				AuthPodADC:  true,
+			},
+		},
 	}
 	t.Setenv("ALLOW_NODE_PUBLISH_SECRET", "true")
 	for _, tc := range tests {

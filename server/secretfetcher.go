@@ -42,44 +42,41 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 		)
 		return
 	}
+	var content []byte
 	if len(r.ExtractJSONKey) > 0 { // ExtractJSONKey populated
-		content, err := util.ExtractContentUsingJSONKey(response.Payload.Data, r.ExtractJSONKey)
+		var err error
+		content, err = util.ExtractContentUsingJSONKey(response.Payload.Data, r.ExtractJSONKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
 		}
-		resultChan <- &Resource{
-			ID:       r.ResourceURI,
-			FileName: r.FileName,
-			Path:     r.Path,
-			Version:  response.GetName(),
-			Payload:  content,
-			Err:      nil,
-		}
-		return
-	}
-	if len(r.ExtractYAMLKey) > 0 { // ExtractYAMLKey populated
-		content, err := util.ExtractContentUsingYAMLKey(response.Payload.Data, r.ExtractYAMLKey)
+	} else if len(r.ExtractYAMLKey) > 0 { // ExtractYAMLKey populated
+		var err error
+		content, err = util.ExtractContentUsingYAMLKey(response.Payload.Data, r.ExtractYAMLKey)
 		if err != nil {
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
 		}
-		resultChan <- &Resource{
-			ID:       r.ResourceURI,
-			FileName: r.FileName,
-			Path:     r.Path,
-			Version:  response.GetName(),
-			Payload:  content,
-			Err:      nil,
-		}
-		return
+	} else {
+		content = response.Payload.Data
 	}
+
+	// Apply base64 decoding if requested
+	if r.DecodeBase64 {
+		decoded, err := util.DecodeBase64Content(content)
+		if err != nil {
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
+			return
+		}
+		content = decoded
+	}
+
 	resultChan <- &Resource{
 		ID:       r.ResourceURI,
 		FileName: r.FileName,
 		Path:     r.Path,
 		Version:  response.GetName(),
-		Payload:  response.Payload.Data,
+		Payload:  content,
 		Err:      nil,
 	}
 }
