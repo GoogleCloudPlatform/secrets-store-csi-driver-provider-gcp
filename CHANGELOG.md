@@ -4,7 +4,7 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 ## unreleased
 
-None
+* Add `WORKLOAD_IDENTITY_POOL` to override the GKE workload identity pool, needed outside the default universe (#655)
 
 ## v1.18.0
 
