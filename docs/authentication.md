@@ -40,6 +40,19 @@ metadata:
 
 In this case, the pod must have the permissions to authenticate as `intermediate-sa@project-b.iam.gserviceaccount.com` and that service account must have the `roles/iam.serviceAccountTokenCreator` role granted on `final-sa@project-a.iam.gserviceaccount.com`.
 
+### Non-default universes
+
+Outside of the default universe (`googleapis.com`), for example in sovereign
+clouds, the cluster workload identity pool is not `<project-id>.svc.id.goog`.
+Set the `WORKLOAD_IDENTITY_POOL` environment variable on the provider to the
+pool of the cluster, along with the universe specific endpoints
+(`GAIA_TOKEN_EXCHANGE_ENDPOINT`, `GKE_WORKLOAD_IDENTITY_ENDPOINT`):
+
+```shell
+gcloud container clusters describe <cluster-name> --location <location> \
+    --format='value(workloadIdentityConfig.workloadPool)'
+```
+
 ## `provider-adc` - GCP Provider Identity
 
 In the `SecretProviderClass` you can set

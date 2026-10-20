@@ -263,7 +263,10 @@ func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfi
 			return "", "", fmt.Errorf("unable to get project id: %w", err)
 		}
 	}
-	idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
+	idPool, err := gkeWorkloadIdentityPool(projectID)
+	if err != nil {
+		return "", "", err
+	}
 
 	clusterLocation, err := vars.ClusterLocation.GetValue()
 	if err != nil {
@@ -294,6 +297,20 @@ func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfi
 	idProvider := fmt.Sprintf("%s/projects/%s/locations/%s/clusters/%s", gkeWorkloadIdentityProviderEndpoint, projectID, clusterLocation, clusterName)
 
 	return idPool, idProvider, nil
+}
+
+// gkeWorkloadIdentityPool returns the workload identity pool of the cluster.
+// WORKLOAD_IDENTITY_POOL takes precedence so that clusters outside of the
+// default universe, whose pool is not "<project>.svc.id.goog", can be used.
+func gkeWorkloadIdentityPool(projectID string) (string, error) {
+	idPool, err := vars.WorkloadIdentityPool.GetValue()
+	if err != nil {
+		return "", fmt.Errorf("unable to read workload identity pool from environment: %w", err)
+	}
+	if idPool != "" {
+		return idPool, nil
+	}
+	return fmt.Sprintf("%s.svc.id.goog", projectID), nil
 }
 
 func (c *Client) fleetWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, string, error) {
