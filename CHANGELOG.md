@@ -6,6 +6,20 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.19.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.19.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.19.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.19.0`
+
+Digest: `sha256:d75de980398bf14f07088ac36dea472b7b4d4cdc11b6335723020cc6ab0c8c28`
+
+### Changes & Security Fixes
+
+* build(deps): bump golang from 1.26.6 to 1.27.2 (#675)
+
 ## v1.18.0
 
 Images:
