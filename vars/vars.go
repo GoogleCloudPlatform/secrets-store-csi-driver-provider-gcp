@@ -121,3 +121,12 @@ var ClusterLocation = EnvVar{
 	defaultValue: "",
 	isRequired:   false,
 }
+
+// WorkloadIdentityPool overrides the GKE workload identity pool. When empty,
+// the pool defaults to "<project>.svc.id.goog", which is only valid in the
+// default universe (googleapis.com).
+var WorkloadIdentityPool = EnvVar{
+	envVarName:   "WORKLOAD_IDENTITY_POOL",
+	defaultValue: "",
+	isRequired:   false,
+}
