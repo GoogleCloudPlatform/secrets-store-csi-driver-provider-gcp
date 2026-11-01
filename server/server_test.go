@@ -256,6 +256,56 @@ func TestHandleMountBothSMKeyJSONYAMLKeyProvided(t *testing.T) {
 	}
 }
 
+// The resource name must not be used as a format string: a name containing
+// "%" would otherwise mangle the error message.
+func TestHandleMountBothSMKeyJSONYAMLKeyProvidedPercentInName(t *testing.T) {
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName:   "projects/project/secrets/100%25/versions/latest",
+				FileName:       "good1.txt",
+				ExtractJSONKey: "user",
+				ExtractYAMLKey: "password",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	client := mock(t, &mockSecretServer{
+		accessFn: func(ctx context.Context, _ *secretmanagerpb.AccessSecretVersionRequest) (*secretmanagerpb.AccessSecretVersionResponse, error) {
+			return &secretmanagerpb.AccessSecretVersionResponse{
+				Name: "projects/project/secrets/100%25/versions/2",
+				Payload: &secretmanagerpb.SecretPayload{
+					Data: []byte("user: admin\npassword: password@1234"),
+				},
+			}, nil
+		},
+	})
+
+	server := &Server{
+		SecretClient:          client,
+		RegionalSecretClients: make(map[string]*secretmanager.Client),
+		ServerClientOptions:   []option.ClientOption{},
+	}
+	_, got := handleMountEvent(context.Background(), NewFakeCreds(), cfg, server)
+	if got == nil {
+		t.Fatal("handleMountEvent() got err = nil, want an error")
+	}
+	if !strings.Contains(got.Error(), "projects/project/secrets/100%25/versions/latest") {
+		t.Errorf("handleMountEvent() got err = %v, want the resource name", got)
+	}
+	if !strings.Contains(got.Error(), "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings") {
+		t.Errorf("handleMountEvent() got err = %v, want the message", got)
+	}
+	if strings.Contains(got.Error(), "%!") {
+		t.Errorf("handleMountEvent() got err = %v, want no formatting artifacts", got)
+	}
+}
+
 func TestHandleMountBothPMKeyJSONYAMLKeyProvided(t *testing.T) {
 	cfg := &config.MountConfig{
 		Secrets: []*config.Secret{
