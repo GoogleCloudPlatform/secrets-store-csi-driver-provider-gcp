@@ -199,3 +199,21 @@ func TestGetRegionalParameterManagerClient(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRegionalClientsDoNotMutateCallerOptions(t *testing.T) {
+	ctx := context.Background()
+	// Spare capacity makes an in-place append visible to the caller.
+	base := make([]option.ClientOption, 1, 2)
+	base[0] = option.WithoutAuthentication()
+
+	if c := GetRegionalSecretManagerClient(ctx, "us-central1", base); c != nil {
+		defer c.Close()
+	}
+	if c := GetRegionalParameterManagerClient(ctx, "us-central1", base); c != nil {
+		defer c.Close()
+	}
+
+	if got := base[:cap(base)][1]; got != nil {
+		t.Errorf("caller's options backing array was written: %T", got)
+	}
+}

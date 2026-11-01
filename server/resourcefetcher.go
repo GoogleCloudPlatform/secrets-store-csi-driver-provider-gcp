@@ -54,11 +54,10 @@ func (r *resourceFetcher) Orchestrator(ctx context.Context, s *Server, authOptio
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
 		}
-		var smClient *secretmanager.Client
-		if len(location) == 0 {
-			smClient = s.SecretClient
-		} else {
-			smClient = s.RegionalSecretClients[location]
+		smClient, err := s.regionalSecretClient(ctx, location)
+		if err != nil {
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
+			return
 		}
 		r.MetricName = "secretmanager_access_secret_version_requests"
 		r.FetchSecrets(ctx, authOption, smClient, resultChan)
@@ -69,11 +68,10 @@ func (r *resourceFetcher) Orchestrator(ctx context.Context, s *Server, authOptio
 			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
 			return
 		}
-		var pmClient *parametermanager.Client
-		if len(location) == 0 {
-			pmClient = s.ParameterManagerClient
-		} else {
-			pmClient = s.RegionalParameterManagerClients[location]
+		pmClient, err := s.regionalParameterManagerClient(ctx, location)
+		if err != nil {
+			resultChan <- getErrorResource(r.ResourceURI, r.FileName, r.Path, err)
+			return
 		}
 		r.MetricName = "parametermanager_render_parameter_version_requests"
 		r.FetchParameterVersions(ctx, authOption, pmClient, resultChan)
