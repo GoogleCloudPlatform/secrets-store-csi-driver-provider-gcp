@@ -51,6 +51,56 @@ type Server struct {
 	RegionalSecretClients           map[string]*secretmanager.Client
 	RegionalParameterManagerClients map[string]*parametermanager.Client
 	ServerClientOptions             []option.ClientOption
+
+	// mu guards RegionalSecretClients and RegionalParameterManagerClients,
+	// which concurrent Mount calls read and populate.
+	mu sync.Mutex
+}
+
+// regionalSecretClient returns the Secret Manager client for location,
+// creating and caching it on first use. The global client is returned for an
+// empty location.
+func (s *Server) regionalSecretClient(ctx context.Context, location string) (*secretmanager.Client, error) {
+	if location == "" {
+		return s.SecretClient, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if c, ok := s.RegionalSecretClients[location]; ok {
+		return c, nil
+	}
+	c := util.GetRegionalSecretManagerClient(ctx, location, s.ServerClientOptions)
+	if c == nil {
+		return nil, fmt.Errorf("unable to create secret manager client for location %q", location)
+	}
+	if s.RegionalSecretClients == nil {
+		s.RegionalSecretClients = make(map[string]*secretmanager.Client)
+	}
+	s.RegionalSecretClients[location] = c
+	return c, nil
+}
+
+// regionalParameterManagerClient returns the Parameter Manager client for
+// location, creating and caching it on first use. The global client is
+// returned for an empty location.
+func (s *Server) regionalParameterManagerClient(ctx context.Context, location string) (*parametermanager.Client, error) {
+	if location == "" {
+		return s.ParameterManagerClient, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if c, ok := s.RegionalParameterManagerClients[location]; ok {
+		return c, nil
+	}
+	c := util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
+	if c == nil {
+		return nil, fmt.Errorf("unable to create parameter manager client for location %q", location)
+	}
+	if s.RegionalParameterManagerClients == nil {
+		s.RegionalParameterManagerClients = make(map[string]*parametermanager.Client)
+	}
+	s.RegionalParameterManagerClients[location] = c
+	return c, nil
 }
 
 // Keeping it separate as same resource name can be used to
@@ -127,9 +177,9 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
 				continue
 			}
-			_, ok := s.RegionalSecretClients[location]
-			if !ok {
-				s.RegionalSecretClients[location] = util.GetRegionalSecretManagerClient(ctx, location, s.ServerClientOptions)
+			if _, err := s.regionalSecretClient(ctx, location); err != nil {
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
+				continue
 			}
 		} else if util.IsParameterManagerResource(secret.ResourceName) {
 			location, err := util.ExtractLocationFromParameterManagerResource(secret.ResourceName)
@@ -137,9 +187,9 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
 				continue
 			}
-			_, ok := s.RegionalParameterManagerClients[location]
-			if !ok {
-				s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
+			if _, err := s.regionalParameterManagerClient(ctx, location); err != nil {
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
+				continue
 			}
 		} else {
 			resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, fmt.Errorf("unknown resource type"))

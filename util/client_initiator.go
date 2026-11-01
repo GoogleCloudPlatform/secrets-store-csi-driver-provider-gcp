@@ -18,6 +18,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
@@ -32,7 +33,7 @@ var newPMRegionalClientFunc = parametermanager.NewClient
 func GetRegionalSecretManagerClient(ctx context.Context, region string, clientOptions []option.ClientOption) *secretmanager.Client {
 	// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
 	regionalEndpoint := fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", region)
-	allOpts := append(clientOptions, option.WithEndpoint(regionalEndpoint))
+	allOpts := append(slices.Clone(clientOptions), option.WithEndpoint(regionalEndpoint))
 	regionalClient, err := newSMRegionalClientFunc(ctx, allOpts...)
 
 	if err != nil {
@@ -45,7 +46,7 @@ func GetRegionalSecretManagerClient(ctx context.Context, region string, clientOp
 func GetRegionalParameterManagerClient(ctx context.Context, region string, clientOptions []option.ClientOption) *parametermanager.Client {
 	// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
 	regionalEndpoint := fmt.Sprintf("parametermanager.%s.rep.googleapis.com:443", region)
-	allOpts := append(clientOptions, option.WithEndpoint(regionalEndpoint))
+	allOpts := append(slices.Clone(clientOptions), option.WithEndpoint(regionalEndpoint))
 	regionalClient, err := newPMRegionalClientFunc(ctx, allOpts...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create parameter manager client for region", region)
