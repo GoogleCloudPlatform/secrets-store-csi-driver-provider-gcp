@@ -358,12 +358,12 @@ func tradeIDBindToken(ctx context.Context, client *http.Client, k8sToken, audien
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	gcpIamMetricRecorder(csrmetrics.OutboundRPCStatus(strconv.Itoa(resp.StatusCode)))
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("could not get idbindtoken token, status: %v", resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
