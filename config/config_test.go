@@ -356,10 +356,36 @@ func TestParseErrors(t *testing.T) {
 			in: &MountParams{
 				Attributes: `
 				{
-					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  mode: \"-rw-------\"",
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  mode: \"-rw-------\""
 				}
 				`,
-				KubeSecrets: "",
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+		},
+		{
+			name: "secrets mode with setuid bit",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  mode: 8389101"
+				}
+				`,
+				KubeSecrets: "{}",
+				TargetPath:  "/tmp/foo",
+				Permissions: 777,
+			},
+		},
+		{
+			name: "negative secrets mode",
+			in: &MountParams{
+				Attributes: `
+				{
+					"secrets": "- resourceName: \"projects/project/secrets/test/versions/latest\"\n  fileName: \"good1.txt\"\n  mode: -1"
+				}
+				`,
+				KubeSecrets: "{}",
 				TargetPath:  "/tmp/foo",
 				Permissions: 777,
 			},
