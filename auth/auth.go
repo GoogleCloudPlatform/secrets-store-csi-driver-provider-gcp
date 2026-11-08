@@ -251,8 +251,17 @@ func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig
 	return &resp.Status, nil
 }
 
+// metadataTimeout bounds the GCE metadata lookups in gkeWorkloadIdentity.
+// Outside GKE, or behind a proxy that silently drops traffic to
+// metadata.google.internal, the lookups would otherwise consume the whole
+// mount deadline and leave no time for the fleet workload identity fallback.
+var metadataTimeout = 10 * time.Second
+
 func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, error) {
 	// Determine Workload ID parameters from the GCE instance metadata.
+	ctx, cancel := context.WithTimeout(ctx, metadataTimeout)
+	defer cancel()
+
 	projectID, err := vars.Project.GetValue()
 	if err != nil {
 		return "", "", fmt.Errorf("unable to read project name from environment: %w", err)
