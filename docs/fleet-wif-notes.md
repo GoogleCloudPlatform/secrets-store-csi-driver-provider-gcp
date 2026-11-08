@@ -178,3 +178,12 @@ spec:
                 name: default-creds-config
                 optional: false
 ```
+
+## Behind a proxy
+
+Outside GKE the provider first tries the GCE metadata server
+(`metadata.google.internal`, `169.254.169.254`) and falls back to fleet
+workload identity when that fails. A proxy that silently drops traffic to the
+metadata server delays the fallback until the lookup times out (10 seconds),
+on every mount. Add `169.254.169.254` and `metadata.google.internal` to
+`NO_PROXY` on the provider pod so the lookup fails immediately.
