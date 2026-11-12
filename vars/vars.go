@@ -16,10 +16,75 @@
 package vars
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
+
+	"cloud.google.com/go/compute/metadata"
+	"k8s.io/klog/v2"
 )
+
+// DefaultUniverseDomain is the default Google Cloud universe domain (GDU).
+const DefaultUniverseDomain = "googleapis.com"
+
+var (
+	universeDomainMu sync.RWMutex
+	universeDomain   = DefaultUniverseDomain
+)
+
+// SetUniverseDomain sets the provider-wide resolved universe domain.
+func SetUniverseDomain(ud string) {
+	universeDomainMu.Lock()
+	defer universeDomainMu.Unlock()
+	trimmed := strings.TrimSpace(ud)
+	if trimmed == "" {
+		universeDomain = DefaultUniverseDomain
+		return
+	}
+	universeDomain = trimmed
+}
+
+// GetUniverseDomain returns the provider-wide resolved universe domain.
+func GetUniverseDomain() string {
+	universeDomainMu.RLock()
+	defer universeDomainMu.RUnlock()
+	if universeDomain == "" {
+		return DefaultUniverseDomain
+	}
+	return universeDomain
+}
+
+// IsDefaultUniverse returns true if the provider is running in the default
+// Google Cloud universe ("googleapis.com").
+func IsDefaultUniverse() bool {
+	return GetUniverseDomain() == DefaultUniverseDomain
+}
+
+// ResolveUniverseDomain determines the Google Cloud universe domain using:
+// 1. UNIVERSE_DOMAIN environment variable (if set and non-empty),
+// 2. GCE metadata server "universe/universe-domain" attribute,
+// 3. Fallback to DefaultUniverseDomain ("googleapis.com").
+func ResolveUniverseDomain(ctx context.Context, metadataClient *metadata.Client) string {
+	if ud, err := UniverseDomainEnv.GetValue(); err == nil && strings.TrimSpace(ud) != "" {
+		return strings.TrimSpace(ud)
+	}
+	if metadataClient != nil {
+		ud, err := metadataClient.GetWithContext(ctx, "universe/universe-domain")
+		if err == nil && strings.TrimSpace(ud) != "" {
+			return strings.TrimSpace(ud)
+		}
+		klog.V(4).InfoS("metadata server universe-domain lookup failed or empty, falling back to default universe", "err", err)
+	}
+	return DefaultUniverseDomain
+}
+
+// FormatGRPCEndpoint formats the global gRPC endpoint for a service in the active universe.
+func FormatGRPCEndpoint(service string) string {
+	return fmt.Sprintf("dns:///%s.%s:443", service, GetUniverseDomain())
+}
 
 type EnvVar struct {
 	envVarName   string
@@ -42,15 +107,36 @@ func (ev EnvVar) GetValue() (string, error) {
 	osEnvValue, isPresent := os.LookupEnv(osEnv)
 
 	if isPresent {
-		return osEnvValue, nil
+		return resolveEndpointForUniverse(ev.envVarName, osEnvValue), nil
 	}
 
 	if ev.isRequired {
 		return "", fmt.Errorf("%s: a required OS environment is not present", osEnv)
 	}
 
-	// Return default endpoint
-	return ev.defaultValue, nil
+	// Return default endpoint (adapted for active universe domain if applicable)
+	return resolveEndpointForUniverse(ev.envVarName, ev.defaultValue), nil
+}
+
+func resolveEndpointForUniverse(envVarName, val string) string {
+	if IsDefaultUniverse() {
+		return val
+	}
+	ud := GetUniverseDomain()
+	switch envVarName {
+	case "GAIA_TOKEN_EXCHANGE_ENDPOINT":
+		// If GAIA_TOKEN_EXCHANGE_ENDPOINT is unset or still pointing to the GDU
+		// default securetoken endpoint in a non-default (TPC) universe, route token
+		// exchange to the universe's STS endpoint.
+		if val == "" || val == IdentityBindingTokenEndPoint.defaultValue {
+			return fmt.Sprintf("https://sts.%s/v1/token", ud)
+		}
+	case "GKE_WORKLOAD_IDENTITY_ENDPOINT":
+		if val == "" || val == GkeWorkloadIdentityEndPoint.defaultValue {
+			return fmt.Sprintf("https://container.%s/v1", ud)
+		}
+	}
+	return val
 }
 
 func (ev EnvVar) GetBooleanValue() (bool, error) {
@@ -118,6 +204,12 @@ var ClusterName = EnvVar{
 
 var ClusterLocation = EnvVar{
 	envVarName:   "CLUSTER_LOCATION",
+	defaultValue: "",
+	isRequired:   false,
+}
+
+var UniverseDomainEnv = EnvVar{
+	envVarName:   "UNIVERSE_DOMAIN",
 	defaultValue: "",
 	isRequired:   false,
 }

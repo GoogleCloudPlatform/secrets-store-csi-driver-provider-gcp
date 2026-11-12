@@ -251,6 +251,22 @@ func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig
 	return &resp.Status, nil
 }
 
+// formatWorkloadIdentityPool formats a GCP project ID into a GKE Workload
+// Identity pool name. For standard GDU projects ("my-project"), this returns
+// "my-project.svc.id.goog". For universe-prefixed TPC projects
+// ("<universe-prefix>:<project-id>"), this returns
+// "<project-id>.<universe-prefix>.svc.id.goog".
+func formatWorkloadIdentityPool(projectID string) string {
+	projectID = strings.TrimSpace(projectID)
+	if strings.HasSuffix(projectID, ".svc.id.goog") {
+		return projectID
+	}
+	if prefix, proj, ok := strings.Cut(projectID, ":"); ok && prefix != "" && proj != "" {
+		return fmt.Sprintf("%s.%s.svc.id.goog", proj, prefix)
+	}
+	return fmt.Sprintf("%s.svc.id.goog", projectID)
+}
+
 func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfig) (string, string, error) {
 	// Determine Workload ID parameters from the GCE instance metadata.
 	projectID, err := vars.Project.GetValue()
@@ -263,11 +279,14 @@ func (c *Client) gkeWorkloadIdentity(ctx context.Context, cfg *config.MountConfi
 			return "", "", fmt.Errorf("unable to get project id: %w", err)
 		}
 	}
-	idPool := fmt.Sprintf("%s.svc.id.goog", projectID)
+	idPool := formatWorkloadIdentityPool(projectID)
 
 	clusterLocation, err := vars.ClusterLocation.GetValue()
 	if err != nil {
 		return "", "", fmt.Errorf("unable to read cluster location from environment: %w", err)
+	}
+	if clusterLocation == "" {
+		clusterLocation = os.Getenv("LOCATION")
 	}
 	if clusterLocation == "" {
 		clusterLocation, err = c.MetadataClient.InstanceAttributeValueWithContext(ctx, "cluster-location")
