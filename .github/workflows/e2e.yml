@@ -41,7 +41,7 @@ jobs:
         with:
           workload_identity_provider: 'projects/735463103342/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'gh-e2e-runner@secretmanager-csi-build.iam.gserviceaccount.com'
-      - uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
         with:
           project_id: "secretmanager-csi-build"
           install_components: 'gke-gcloud-auth-plugin'
