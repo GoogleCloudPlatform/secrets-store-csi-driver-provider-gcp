@@ -147,10 +147,18 @@ func main() {
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
 	}
-	if !vars.HasProxyConfigured() {
-		clientOptions = append(clientOptions, option.WithEndpoint(vars.FormatGRPCEndpoint("secretmanager")))
+	var sc *secretmanager.Client
+	if vars.IsDefaultUniverse() {
+		smClientOptions := append([]option.ClientOption{}, clientOptions...)
+		if !vars.HasProxyConfigured() {
+			smClientOptions = append(smClientOptions, option.WithEndpoint(vars.FormatGRPCEndpoint("secretmanager")))
+		}
+		sc, err = secretmanager.NewClient(ctx, smClientOptions...)
+	} else {
+		smClientOptions := append([]option.ClientOption{}, clientOptions...)
+		smClientOptions = append(smClientOptions, option.WithEndpoint(fmt.Sprintf("secretmanager.%s:443", universeDomain)))
+		sc, err = secretmanager.NewRESTClient(ctx, smClientOptions...)
 	}
-	sc, err := secretmanager.NewClient(ctx, clientOptions...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
