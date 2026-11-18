@@ -258,12 +258,19 @@ func (c *Client) generatePodSAToken(ctx context.Context, cfg *config.MountConfig
 // "<project-id>.<universe-prefix>.svc.id.goog".
 func formatWorkloadIdentityPool(projectID string) string {
 	projectID = strings.TrimSpace(projectID)
+	// If projectID is already formatted as a Workload Identity pool name
+	// (e.g., "my-project.svc.id.goog" or "<project-id>.<universe-prefix>.svc.id.goog"),
+	// return it as-is without appending ".svc.id.goog" again.
 	if strings.HasSuffix(projectID, ".svc.id.goog") {
 		return projectID
 	}
+	// In TPC universes, project IDs include the universe prefix separated by ":"
+	// (e.g., "tpczero-system:my-project"), which GKE Workload Identity formats as
+	// "<project-id>.<universe-prefix>.svc.id.goog" (e.g., "my-project.tpczero-system.svc.id.goog").
 	if prefix, proj, ok := strings.Cut(projectID, ":"); ok && prefix != "" && proj != "" {
 		return fmt.Sprintf("%s.%s.svc.id.goog", proj, prefix)
 	}
+	// Standard GDU project ID (e.g., "my-project" -> "my-project.svc.id.goog").
 	return fmt.Sprintf("%s.svc.id.goog", projectID)
 }
 
