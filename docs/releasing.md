@@ -20,7 +20,6 @@ Notes on building a release.
 5. Manually test release image
 6. Tag the commit from step 4 as `vX.X.X` by creating a new release
 7. Merge changes from `release-X.X` into `main`
-8. After the changes are merged, ensure the latest tag is updated for the `manifest_staging` Helm chart, along with the main Helm chart being updated with the previous release tag, once the `Bump Helm Charts Versions` job is completed.
 
 ## Release template
 
