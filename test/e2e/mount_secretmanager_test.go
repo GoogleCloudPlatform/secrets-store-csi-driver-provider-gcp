@@ -19,6 +19,7 @@ package test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"os"
@@ -124,12 +125,23 @@ func setupSmTestSuite() {
 
 	f.testRotateSecretID = f.testSecretID + "-rotate"
 	f.testExtractSecretID = f.testSecretID + "-extract"
+	f.testDecodeBase64SecretID = f.testSecretID + "-decode-base64"
 
 	// Create test secret
 	secretFile := filepath.Join(f.tempDir, "secretValue")
 	check(os.WriteFile(secretFile, []byte(f.testSecretID), 0644))
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--replication-policy", "automatic",
 		"--data-file", secretFile, "--project", f.testProjectID)))
+
+	// Create global decodeBase64 test secret. The stored value is base64(plain),
+	// so the pod that mounts with decodeBase64: true should see plain, while a
+	// sibling mount without decodeBase64 should see the encoded value.
+	decodeBase64GlobalPlain := f.testDecodeBase64SecretID
+	decodeBase64GlobalEncoded := base64.StdEncoding.EncodeToString([]byte(decodeBase64GlobalPlain))
+	decodeBase64SecretFile := filepath.Join(f.tempDir, "decodeBase64SecretValue")
+	check(os.WriteFile(decodeBase64SecretFile, []byte(decodeBase64GlobalEncoded), 0644))
+	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testDecodeBase64SecretID, "--replication-policy", "automatic",
+		"--data-file", decodeBase64SecretFile, "--project", f.testProjectID)))
 
 	// Create regional secret
 	secretFile = filepath.Join(f.tempDir, "regionalSecretValue")
@@ -140,6 +152,14 @@ func setupSmTestSuite() {
 		"https://secretmanager."+f.location+".rep.googleapis.com/")))
 	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testSecretID, "--location", f.location,
 		"--data-file", secretFile, "--project", f.testProjectID)))
+
+	// Create regional decodeBase64 test secret with base64(plain) payload.
+	decodeBase64RegionalPlain := f.testDecodeBase64SecretID + "-regional"
+	decodeBase64RegionalEncoded := base64.StdEncoding.EncodeToString([]byte(decodeBase64RegionalPlain))
+	decodeBase64RegionalSecretFile := filepath.Join(f.tempDir, "decodeBase64RegionalSecretValue")
+	check(os.WriteFile(decodeBase64RegionalSecretFile, []byte(decodeBase64RegionalEncoded), 0644))
+	check(execCmd(exec.Command("gcloud", "secrets", "create", f.testDecodeBase64SecretID, "--location", f.location,
+		"--data-file", decodeBase64RegionalSecretFile, "--project", f.testProjectID)))
 
 	// Setting endpoints back to the global defaults
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
@@ -161,6 +181,11 @@ func teardownSmTestSuite() {
 		"--project", f.testProjectID,
 		"--quiet",
 	))
+	execCmd(exec.Command(
+		"gcloud", "secrets", "delete", f.testDecodeBase64SecretID,
+		"--project", f.testProjectID,
+		"--quiet",
+	))
 
 	// Cleanup regional secret
 	check(execCmd(exec.Command("gcloud", "config", "set", "api_endpoint_overrides/secretmanager",
@@ -168,6 +193,8 @@ func teardownSmTestSuite() {
 	execCmd(exec.Command("gcloud", "secrets", "delete", f.testSecretID, "--location", f.location,
 		"--project", f.testProjectID, "--quiet"))
 	execCmd(exec.Command("gcloud", "secrets", "delete", f.testRotateSecretID, "--location", f.location,
+		"--project", f.testProjectID, "--quiet"))
+	execCmd(exec.Command("gcloud", "secrets", "delete", f.testDecodeBase64SecretID, "--location", f.location,
 		"--project", f.testProjectID, "--quiet"))
 	check(execCmd(exec.Command("gcloud", "config", "unset", "api_endpoint_overrides/secretmanager")))
 }
@@ -521,5 +548,77 @@ func TestMountExtractSecret(t *testing.T) {
 	}
 	if got := stdout.Bytes(); !bytes.Equal(got, testExtractSecret) {
 		t.Fatalf("Secret value is %v, want: %v", got, testExtractSecret)
+	}
+}
+
+// readMountedFile reads a file from a running test pod and returns its bytes.
+func readMountedFile(podName, filePath string) ([]byte, error) {
+	var stdout, stderr bytes.Buffer
+	command := exec.Command("kubectl", "exec", podName,
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default",
+		"--",
+		"cat", filePath)
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		fmt.Println("Stdout:", stdout.String())
+		fmt.Println("Stderr:", stderr.String())
+		return nil, fmt.Errorf("could not read %s from container: %w", filePath, err)
+	}
+	return stdout.Bytes(), nil
+}
+
+// TestMountDecodeBase64Secret verifies that secrets stored in GSM as base64 are
+// transparently decoded when decodeBase64: true is set, and that the same
+// secret mounted on a sibling path without the flag remains base64-encoded.
+func TestMountDecodeBase64Secret(t *testing.T) {
+	podFile := filepath.Join(f.tempDir, "test-decode-base64-sm.yaml")
+	if err := replaceTemplate("templates/test-decode-base64-sm.yaml.tmpl", podFile); err != nil {
+		t.Fatalf("Error replacing pod template: %v", err)
+	}
+
+	if err := execCmd(exec.Command("kubectl", "apply", "--kubeconfig", f.kubeconfigFile,
+		"--namespace", "default", "-f", podFile)); err != nil {
+		t.Fatalf("Error creating job: %v", err)
+	}
+
+	// As a workaround for https://github.com/kubernetes/kubernetes/issues/83242, we sleep to
+	// ensure that the job resources exist before attempting to wait for it.
+	time.Sleep(5 * time.Second)
+	if err := execCmd(exec.Command("kubectl", "wait", "pod/test-secret-mounter-decode-base64", "--for=condition=Ready",
+		"--kubeconfig", f.kubeconfigFile, "--namespace", "default", "--timeout", "5m")); err != nil {
+		t.Fatalf("Error waiting for job: %v", err)
+	}
+
+	// Global: stored value is base64(plain). With decodeBase64 we should see plain.
+	wantGlobalPlain := []byte(f.testDecodeBase64SecretID)
+	wantGlobalEncoded := []byte(base64.StdEncoding.EncodeToString(wantGlobalPlain))
+
+	gotGlobalDecoded, err := readMountedFile("test-secret-mounter-decode-base64", "/var/gcp-test-secrets/decoded")
+	if err != nil {
+		t.Fatalf("Error reading global decoded secret: %v", err)
+	}
+	if !bytes.Equal(gotGlobalDecoded, wantGlobalPlain) {
+		t.Fatalf("Global decoded secret = %q, want: %q", string(gotGlobalDecoded), string(wantGlobalPlain))
+	}
+
+	// Negative control: same source secret, mounted without decodeBase64.
+	// Value should still be base64-encoded so we don't accidentally decode by default.
+	gotGlobalRaw, err := readMountedFile("test-secret-mounter-decode-base64", "/var/gcp-test-secrets/encoded")
+	if err != nil {
+		t.Fatalf("Error reading raw global secret: %v", err)
+	}
+	if !bytes.Equal(gotGlobalRaw, wantGlobalEncoded) {
+		t.Fatalf("Raw global secret = %q, want: %q", string(gotGlobalRaw), string(wantGlobalEncoded))
+	}
+
+	// Regional: same shape, regional endpoint.
+	wantRegionalPlain := []byte(f.testDecodeBase64SecretID + "-regional")
+	gotRegionalDecoded, err := readMountedFile("test-secret-mounter-decode-base64", "/var/gcp-test-secrets/decoded-regional")
+	if err != nil {
+		t.Fatalf("Error reading regional decoded secret: %v", err)
+	}
+	if !bytes.Equal(gotRegionalDecoded, wantRegionalPlain) {
+		t.Fatalf("Regional decoded secret = %q, want: %q", string(gotRegionalDecoded), string(wantRegionalPlain))
 	}
 }
