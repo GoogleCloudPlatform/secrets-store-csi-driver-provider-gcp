@@ -21,6 +21,7 @@ import (
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 
 	"google.golang.org/api/option"
 )
@@ -110,6 +111,46 @@ func TestGetRegionalSecretManagerClient(t *testing.T) {
 				t.Errorf("GetRegionalSecretManagerClient() with region '%s' called NewClient with endpoint '%s', want '%s'", tt.region, capturedEndpoint, tt.wantEndpoint)
 			}
 		})
+	}
+}
+
+func TestGetRegionalSecretManagerClientTPCUniverse(t *testing.T) {
+	t.Cleanup(func() {
+		vars.SetUniverseDomain(vars.DefaultUniverseDomain)
+	})
+	vars.SetUniverseDomain("apis-tpczero.goog")
+
+	endpointOptionTypeString := fmt.Sprintf("%T", option.WithEndpoint(""))
+	ctx := context.Background()
+	baseOpts := []option.ClientOption{option.WithoutAuthentication()}
+
+	originalNewSMRESTClientFunc := newSMRegionalRESTClientFunc
+	defer func() { newSMRegionalRESTClientFunc = originalNewSMRESTClientFunc }()
+
+	var capturedEndpoint string
+	var restCalled bool
+	newSMRegionalRESTClientFunc = func(ctx context.Context, opts ...option.ClientOption) (*secretmanager.Client, error) {
+		restCalled = true
+		for _, opt := range opts {
+			if fmt.Sprintf("%T", opt) == endpointOptionTypeString {
+				capturedEndpoint = fmt.Sprintf("%v", opt)
+			}
+		}
+		return secretmanager.NewRESTClient(ctx, option.WithoutAuthentication(), option.WithEndpoint("http://localhost:1"))
+	}
+
+	client := GetRegionalSecretManagerClient(ctx, "u-us-prp1", baseOpts)
+	if client == nil {
+		t.Fatalf("GetRegionalSecretManagerClient() in TPC returned nil, want non-nil")
+	}
+	defer client.Close()
+
+	if !restCalled {
+		t.Errorf("GetRegionalSecretManagerClient() in TPC did not call NewRESTClient")
+	}
+	wantEndpoint := "secretmanager.apis-tpczero.goog:443"
+	if capturedEndpoint != wantEndpoint {
+		t.Errorf("GetRegionalSecretManagerClient() in TPC endpoint = %q, want %q", capturedEndpoint, wantEndpoint)
 	}
 }
 

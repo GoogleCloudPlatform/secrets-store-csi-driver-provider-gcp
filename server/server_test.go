@@ -22,11 +22,14 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"github.com/google/go-cmp/cmp"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -922,6 +925,41 @@ func TestHandleMountEventForMultipleSecretsExtractJSONKey(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
 		t.Errorf("handleMountEvent() returned unexpected response (-want +got):\n%s", diff)
+	}
+}
+
+func TestHandleMountEventParameterManagerRejectedInTPCUniverse(t *testing.T) {
+	t.Cleanup(func() {
+		vars.SetUniverseDomain(vars.DefaultUniverseDomain)
+	})
+	vars.SetUniverseDomain("apis-tpczero.goog")
+
+	cfg := &config.MountConfig{
+		Secrets: []*config.Secret{
+			{
+				ResourceName: globalParameterVersion,
+				FileName:     "pm_tpc.txt",
+			},
+		},
+		Permissions: 777,
+		PodInfo: &config.PodInfo{
+			Namespace: "default",
+			Name:      "test-pod",
+		},
+	}
+
+	server := &Server{
+		RegionalSecretClients:           make(map[string]*secretmanager.Client),
+		RegionalParameterManagerClients: make(map[string]*parametermanager.Client),
+		ServerClientOptions:             []option.ClientOption{},
+	}
+
+	_, err := handleMountEvent(context.Background(), oauth.TokenSource{TokenSource: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"})}, cfg, server)
+	if err == nil {
+		t.Fatalf("handleMountEvent() in TPC with Parameter Manager resource got nil error, want error")
+	}
+	if !strings.Contains(err.Error(), `parameter manager is not supported in universe "apis-tpczero.goog"`) {
+		t.Errorf("handleMountEvent() error = %v, want message containing parameter manager is not supported in universe", err)
 	}
 }
 

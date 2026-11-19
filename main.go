@@ -111,12 +111,30 @@ func main() {
 		klog.Fatal("failed to configure k8s client")
 	}
 
+	// HTTP client & GCE Metadata client (initialized first to resolve universe domain)
+	hc := &http.Client{
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout:   2 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			Proxy: http.ProxyFromEnvironment,
+		},
+		Timeout: 60 * time.Second,
+	}
+	metadataClient := metadata.NewClient(hc)
+
+	universeDomain := vars.ResolveUniverseDomain(ctx, metadataClient)
+	vars.SetUniverseDomain(universeDomain)
+	klog.InfoS("resolved Google Cloud universe domain", "universeDomain", universeDomain)
+
 	// Secret Manager client
 	//
 	// build without auth so that authentication can be re-added on a per-RPC
 	// basis for each mount
 	clientOptions := []option.ClientOption{
 		option.WithUserAgent(ua),
+		option.WithUniverseDomain(universeDomain),
 		// tell the secretmanager library to not add transport-level ADC since
 		// we need to override on a per call basis
 		option.WithoutAuthentication(),
@@ -129,20 +147,33 @@ func main() {
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*smConnectionPoolSize),
 	}
-	if !vars.HasProxyConfigured() {
-		clientOptions = append(clientOptions, option.WithEndpoint("dns:///secretmanager.googleapis.com:443"))
+	var sc *secretmanager.Client
+	if vars.IsDefaultUniverse() {
+		smClientOptions := append([]option.ClientOption{}, clientOptions...)
+		if !vars.HasProxyConfigured() {
+			smClientOptions = append(smClientOptions, option.WithEndpoint(vars.FormatGRPCEndpoint("secretmanager")))
+		}
+		sc, err = secretmanager.NewClient(ctx, smClientOptions...)
+	} else {
+		smClientOptions := append([]option.ClientOption{}, clientOptions...)
+		smClientOptions = append(smClientOptions, option.WithEndpoint(fmt.Sprintf("secretmanager.%s:443", universeDomain)))
+		sc, err = secretmanager.NewRESTClient(ctx, smClientOptions...)
 	}
-	sc, err := secretmanager.NewClient(ctx, clientOptions...)
 	if err != nil {
 		klog.ErrorS(err, "failed to create secretmanager client")
 		klog.Fatal("failed to create secretmanager client")
 	}
 
-	pmClientOptions := append(clientOptions, option.WithEndpoint("dns:///parametermanager.googleapis.com:443"))
-	pmClient, err := parametermanager.NewClient(ctx, pmClientOptions...)
-	if err != nil {
-		klog.ErrorS(err, "failed to create parametermanager client")
-		klog.Fatal("failed to create parametermanager client")
+	var pmClient *parametermanager.Client
+	if vars.IsDefaultUniverse() {
+		pmClientOptions := append(clientOptions, option.WithEndpoint(vars.FormatGRPCEndpoint("parametermanager")))
+		pmClient, err = parametermanager.NewClient(ctx, pmClientOptions...)
+		if err != nil {
+			klog.ErrorS(err, "failed to create parametermanager client")
+			klog.Fatal("failed to create parametermanager client")
+		}
+	} else {
+		klog.InfoS("skipping parameter manager client initialization in non-default universe", "universeDomain", universeDomain)
 	}
 
 	// Used to store regional clients inside map
@@ -156,6 +187,7 @@ func main() {
 	// basis for each mount
 	iamOpts := []option.ClientOption{
 		option.WithUserAgent(ua),
+		option.WithUniverseDomain(universeDomain),
 		// tell the secretmanager library to not add transport-level ADC since
 		// we need to override on a per call basis
 		option.WithoutAuthentication(),
@@ -168,6 +200,9 @@ func main() {
 		// google.golang.org/api/option and not grpc itself.
 		option.WithGRPCConnectionPool(*iamConnectionPoolSize),
 	}
+	if !vars.HasProxyConfigured() {
+		iamOpts = append(iamOpts, option.WithEndpoint(vars.FormatGRPCEndpoint("iamcredentials")))
+	}
 
 	iamc, err := iam.NewIamCredentialsClient(ctx, iamOpts...)
 	if err != nil {
@@ -175,22 +210,10 @@ func main() {
 		klog.Fatal("failed to create iam client")
 	}
 
-	// HTTP client
-	hc := &http.Client{
-		Transport: &http.Transport{
-			Dial: (&net.Dialer{
-				Timeout:   2 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			Proxy: http.ProxyFromEnvironment,
-		},
-		Timeout: 60 * time.Second,
-	}
-
 	c := &auth.Client{
 		KubeClient:     clientset,
 		IAMClient:      iamc,
-		MetadataClient: metadata.NewClient(hc),
+		MetadataClient: metadataClient,
 		HTTPClient:     hc,
 	}
 

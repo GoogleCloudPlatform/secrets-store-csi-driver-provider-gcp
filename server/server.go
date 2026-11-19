@@ -27,7 +27,9 @@ import (
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/auth"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/config"
 	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/util"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"github.com/googleapis/gax-go/v2"
+	"github.com/googleapis/gax-go/v2/callctx"
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
@@ -115,6 +117,11 @@ func (s *Server) Version(ctx context.Context, req *v1alpha1.VersionRequest) (*v1
 func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, cfg *config.MountConfig, s *Server) (*v1alpha1.MountResponse, error) {
 	// need to build a per-rpc call option based of the tokensource
 	callAuth := gax.WithGRPCOptions(grpc.PerRPCCredentials(creds))
+	if gts, ok := creds.(oauth.TokenSource); ok && gts.TokenSource != nil {
+		if tok, err := gts.Token(); err == nil && tok != nil && tok.AccessToken != "" {
+			ctx = callctx.SetHeaders(ctx, "authorization", tok.Type()+" "+tok.AccessToken)
+		}
+	}
 
 	// Storing it as a resultMap to have 1 API call for each resource instead
 	// of de-duplicating API calls for duplicate resources
@@ -127,19 +134,32 @@ func handleMountEvent(ctx context.Context, creds credentials.PerRPCCredentials, 
 				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
 				continue
 			}
-			_, ok := s.RegionalSecretClients[location]
-			if !ok {
-				s.RegionalSecretClients[location] = util.GetRegionalSecretManagerClient(ctx, location, s.ServerClientOptions)
+			if location != "" {
+				_, ok := s.RegionalSecretClients[location]
+				if !ok {
+					s.RegionalSecretClients[location] = util.GetRegionalSecretManagerClient(ctx, location, s.ServerClientOptions)
+				}
 			}
 		} else if util.IsParameterManagerResource(secret.ResourceName) {
+			if !vars.IsDefaultUniverse() {
+				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(
+					secret.ResourceName,
+					secret.FileName,
+					secret.Path,
+					fmt.Errorf("parameter manager is not supported in universe %q", vars.GetUniverseDomain()),
+				)
+				continue
+			}
 			location, err := util.ExtractLocationFromParameterManagerResource(secret.ResourceName)
 			if err != nil {
 				resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, err)
 				continue
 			}
-			_, ok := s.RegionalParameterManagerClients[location]
-			if !ok {
-				s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
+			if location != "" {
+				_, ok := s.RegionalParameterManagerClients[location]
+				if !ok {
+					s.RegionalParameterManagerClients[location] = util.GetRegionalParameterManagerClient(ctx, location, s.ServerClientOptions)
+				}
 			}
 		} else {
 			resultMap[resourceIdentity{secret.ResourceName, secret.FileName, secret.Path}] = getErrorResource(secret.ResourceName, secret.FileName, secret.Path, fmt.Errorf("unknown resource type"))

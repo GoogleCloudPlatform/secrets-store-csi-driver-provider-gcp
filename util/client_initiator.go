@@ -21,15 +21,30 @@ import (
 
 	parametermanager "cloud.google.com/go/parametermanager/apiv1"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"github.com/GoogleCloudPlatform/secrets-store-csi-driver-provider-gcp/vars"
 	"google.golang.org/api/option"
 	"k8s.io/klog/v2"
 )
 
 var newSMRegionalClientFunc = secretmanager.NewClient
 
+var newSMRegionalRESTClientFunc = secretmanager.NewRESTClient
+
 var newPMRegionalClientFunc = parametermanager.NewClient
 
 func GetRegionalSecretManagerClient(ctx context.Context, region string, clientOptions []option.ClientOption) *secretmanager.Client {
+	if !vars.IsDefaultUniverse() {
+		universeDomain := vars.GetUniverseDomain()
+		endpoint := fmt.Sprintf("secretmanager.%s:443", universeDomain)
+		allOpts := append(clientOptions, option.WithUniverseDomain(universeDomain), option.WithEndpoint(endpoint))
+		regionalClient, err := newSMRegionalRESTClientFunc(ctx, allOpts...)
+		if err != nil {
+			klog.ErrorS(err, "failed to create regional REST secret manager client for region", "region", region, "universeDomain", universeDomain)
+			return nil
+		}
+		return regionalClient
+	}
+
 	// See https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
 	regionalEndpoint := fmt.Sprintf("secretmanager.%s.rep.googleapis.com:443", region)
 	allOpts := append(clientOptions, option.WithEndpoint(regionalEndpoint))

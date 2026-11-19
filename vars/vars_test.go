@@ -16,9 +16,15 @@
 package vars
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+
+	"cloud.google.com/go/compute/metadata"
 )
 
 func setTestEnvVars(t *testing.T, envVars map[string]string) {
@@ -166,10 +172,165 @@ func TestHasProxyConfigured(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			for _, proxyVar := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
+				t.Setenv(proxyVar, "")
+				os.Unsetenv(proxyVar)
+			}
 			setTestEnvVars(t, tc.envVars)
 			got := HasProxyConfigured()
 			if got != tc.want {
 				t.Errorf("HasProxyConfigured() = %v, want: %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUniverseDomainHelpers(t *testing.T) {
+	t.Cleanup(func() {
+		SetUniverseDomain(DefaultUniverseDomain)
+	})
+
+	SetUniverseDomain("")
+	if got := GetUniverseDomain(); got != DefaultUniverseDomain {
+		t.Errorf("GetUniverseDomain() = %q, want %q", got, DefaultUniverseDomain)
+	}
+	if !IsDefaultUniverse() {
+		t.Errorf("IsDefaultUniverse() = false, want true")
+	}
+
+	SetUniverseDomain("apis-tpczero.goog")
+	if got := GetUniverseDomain(); got != "apis-tpczero.goog" {
+		t.Errorf("GetUniverseDomain() = %q, want %q", got, "apis-tpczero.goog")
+	}
+	if IsDefaultUniverse() {
+		t.Errorf("IsDefaultUniverse() = true, want false")
+	}
+	if got := FormatGRPCEndpoint("secretmanager"); got != "dns:///secretmanager.apis-tpczero.goog:443" {
+		t.Errorf("FormatGRPCEndpoint(secretmanager) = %q, want %q", got, "dns:///secretmanager.apis-tpczero.goog:443")
+	}
+}
+
+func TestResolveUniverseDomain(t *testing.T) {
+	t.Cleanup(func() {
+		SetUniverseDomain(DefaultUniverseDomain)
+	})
+
+	tests := []struct {
+		name           string
+		envVal         string
+		metadataVal    string
+		metadataStatus int
+		want           string
+	}{
+		{
+			name:        "env var overrides metadata",
+			envVal:      "env-universe.goog",
+			metadataVal: "metadata-universe.goog",
+			want:        "env-universe.goog",
+		},
+		{
+			name:        "metadata fallback when env var empty",
+			envVal:      "",
+			metadataVal: "apis-tpczero.goog\n",
+			want:        "apis-tpczero.goog",
+		},
+		{
+			name:           "default universe fallback when metadata fails",
+			envVal:         "",
+			metadataStatus: http.StatusNotFound,
+			want:           DefaultUniverseDomain,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("UNIVERSE_DOMAIN", tc.envVal)
+			if tc.envVal == "" {
+				os.Unsetenv("UNIVERSE_DOMAIN")
+			}
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Metadata-Flavor", "Google")
+				if tc.metadataStatus != 0 && tc.metadataStatus != http.StatusOK {
+					w.WriteHeader(tc.metadataStatus)
+					return
+				}
+				fmt.Fprint(w, tc.metadataVal)
+			}))
+			defer srv.Close()
+
+			t.Setenv("GCE_METADATA_HOST", strings.TrimPrefix(srv.URL, "http://"))
+			mc := metadata.NewClient(srv.Client())
+
+			got := ResolveUniverseDomain(context.Background(), mc)
+			if got != tc.want {
+				t.Errorf("ResolveUniverseDomain() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestEndpointResolutionByUniverse(t *testing.T) {
+	t.Cleanup(func() {
+		SetUniverseDomain(DefaultUniverseDomain)
+	})
+
+	tests := []struct {
+		name           string
+		universeDomain string
+		envVars        map[string]string
+		wantTokenEP    string
+		wantGkeWIEP    string
+	}{
+		{
+			name:           "GDU defaults",
+			universeDomain: DefaultUniverseDomain,
+			wantTokenEP:    "https://securetoken.googleapis.com/v1/identitybindingtoken",
+			wantGkeWIEP:    "https://container.googleapis.com/v1",
+		},
+		{
+			name:           "TPC universe with unset env vars uses STS and TPC container endpoint",
+			universeDomain: "apis-tpczero.goog",
+			wantTokenEP:    "https://sts.apis-tpczero.goog/v1/token",
+			wantGkeWIEP:    "https://container.apis-tpczero.goog/v1",
+		},
+		{
+			name:           "TPC universe with legacy GDU GAIA_TOKEN_EXCHANGE_ENDPOINT overrides to STS",
+			universeDomain: "apis-tpczero.goog",
+			envVars: map[string]string{
+				"GAIA_TOKEN_EXCHANGE_ENDPOINT": "https://securetoken.googleapis.com/v1/identitybindingtoken",
+			},
+			wantTokenEP: "https://sts.apis-tpczero.goog/v1/token",
+			wantGkeWIEP: "https://container.apis-tpczero.goog/v1",
+		},
+		{
+			name:           "TPC universe with explicit custom GAIA_TOKEN_EXCHANGE_ENDPOINT preserves override",
+			universeDomain: "apis-tpczero.goog",
+			envVars: map[string]string{
+				"GAIA_TOKEN_EXCHANGE_ENDPOINT": "https://custom-sts.apis-tpczero.goog/v1/token",
+			},
+			wantTokenEP: "https://custom-sts.apis-tpczero.goog/v1/token",
+			wantGkeWIEP: "https://container.apis-tpczero.goog/v1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("GAIA_TOKEN_EXCHANGE_ENDPOINT", "")
+			os.Unsetenv("GAIA_TOKEN_EXCHANGE_ENDPOINT")
+			t.Setenv("GKE_WORKLOAD_IDENTITY_ENDPOINT", "")
+			os.Unsetenv("GKE_WORKLOAD_IDENTITY_ENDPOINT")
+			setTestEnvVars(t, tc.envVars)
+			SetUniverseDomain(tc.universeDomain)
+
+			gotTokenEP, err := IdentityBindingTokenEndPoint.GetValue()
+			if err != nil || gotTokenEP != tc.wantTokenEP {
+				t.Errorf("IdentityBindingTokenEndPoint.GetValue() = %q, %v; want %q, nil", gotTokenEP, err, tc.wantTokenEP)
+			}
+
+			gotGkeWIEP, err := GkeWorkloadIdentityEndPoint.GetValue()
+			if err != nil || gotGkeWIEP != tc.wantGkeWIEP {
+				t.Errorf("GkeWorkloadIdentityEndPoint.GetValue() = %q, %v; want %q, nil", gotGkeWIEP, err, tc.wantGkeWIEP)
 			}
 		})
 	}
