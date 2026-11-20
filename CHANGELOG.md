@@ -6,6 +6,21 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.20.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.20.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.20.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.20.0`
+
+Digest: `sha256:bfc510a5b660c62aeefeba24ac213e8096cb8acb6f24fa4fbe9ccdc9f11240d0`
+
+### Changes & Security Fixes
+
+* Add dynamic universe domain and TPC support (#687)
+* chore(deps): bump go.opentelemetry.io/otel to v1.47.0 to fix CVE-2026-128085 (#692)
+
 ## v1.19.0
 
 Images:
