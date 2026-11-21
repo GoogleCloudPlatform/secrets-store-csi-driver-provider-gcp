@@ -7,7 +7,7 @@ require (
 	github.com/google/go-licenses v1.6.0
 	github.com/securego/gosec/v2 v2.22.11
 	golang.org/x/tools v0.49.0
-	honnef.co/go/tools v0.7.0
+	honnef.co/go/tools v0.8.1
 )
 
 require (
