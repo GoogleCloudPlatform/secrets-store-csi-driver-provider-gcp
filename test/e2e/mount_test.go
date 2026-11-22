@@ -35,31 +35,36 @@ import (
 const zone = "us-central1-c"
 
 type testFixture struct {
-	tempDir             string
-	gcpProviderBranch   string
-	testClusterName     string
-	testSecretID        string
-	testRotateSecretID  string
-	testExtractSecretID string
-	kubeconfigFile      string
-	testProjectID       string
-	secretStoreVersion  string
-	gkeVersion          string
-	location            string
+	tempDir                  string
+	gcpProviderBranch        string
+	testClusterName          string
+	testSecretID             string
+	testRotateSecretID       string
+	testExtractSecretID      string
+	testDecodeBase64SecretID string
+	kubeconfigFile           string
+	testProjectID            string
+	secretStoreVersion       string
+	gkeVersion               string
+	location                 string
 
 	// below fields explicitly used for parameter manager
-	pmReferenceGlobalSecret1       string
-	pmReferenceGlobalSecret2       string
-	pmReferenceRegionalSecret1     string
-	pmReferenceRegionalSecret2     string
-	parameterIdYaml                string
-	parameterIdJson                string
-	parameterVersionIdYAML         string
-	parameterVersionIdJSON         string
-	regionalParameterIdYAML        string
-	regionalParameterIdJSON        string
-	regionalParameterVersionIdYAML string
-	regionalParameterVersionIdJSON string
+	pmReferenceGlobalSecret1               string
+	pmReferenceGlobalSecret2               string
+	pmReferenceRegionalSecret1             string
+	pmReferenceRegionalSecret2             string
+	parameterIdYaml                        string
+	parameterIdJson                        string
+	parameterVersionIdYAML                 string
+	parameterVersionIdJSON                 string
+	regionalParameterIdYAML                string
+	regionalParameterIdJSON                string
+	regionalParameterVersionIdYAML         string
+	regionalParameterVersionIdJSON         string
+	decodeBase64ParameterId                string
+	decodeBase64ParameterVersionId         string
+	regionalDecodeBase64ParameterId        string
+	regionalDecodeBase64ParameterVersionId string
 }
 
 var f testFixture
@@ -111,6 +116,12 @@ func replaceTemplate(templateFile string, destFile string) error {
 	template = strings.ReplaceAll(template, "$TEST_REGIONAL_PARAMETER_ID_JSON", f.regionalParameterIdJSON)
 	template = strings.ReplaceAll(template, "$TEST_REGIONAL_VERSION_ID_YAML", f.regionalParameterVersionIdYAML)
 	template = strings.ReplaceAll(template, "$TEST_REGIONAL_VERSION_ID_JSON", f.regionalParameterVersionIdJSON)
+
+	template = strings.ReplaceAll(template, "$TEST_DECODE_BASE64_SECRET_ID", f.testDecodeBase64SecretID)
+	template = strings.ReplaceAll(template, "$TEST_DECODE_BASE64_PARAMETER_ID", f.decodeBase64ParameterId)
+	template = strings.ReplaceAll(template, "$TEST_DECODE_BASE64_VERSION_ID", f.decodeBase64ParameterVersionId)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_DECODE_BASE64_PARAMETER_ID", f.regionalDecodeBase64ParameterId)
+	template = strings.ReplaceAll(template, "$TEST_REGIONAL_DECODE_BASE64_VERSION_ID", f.regionalDecodeBase64ParameterVersionId)
 	return os.WriteFile(destFile, []byte(template), 0644)
 }
 
