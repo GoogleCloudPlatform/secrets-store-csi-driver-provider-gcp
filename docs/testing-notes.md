@@ -41,8 +41,11 @@ kubectl scale --replicas=0 deployment/test-load-one-secret
 Additional subcommands:
 
 * `./script/load-test.sh single` - a deployment where the pod references a `SecretProviderClass` with only 1 secret.
-* `./script/load-test.sh many` - a deployment where the pod references a `SecretProviderClass` with 50 secrets.
-* `./script/load-test.sh seed` - creates 50 secrets for use with `many`
+* `./script/load-test.sh many_50` - a deployment where the pod references a `SecretProviderClass` with 50 secrets.
+* `./script/load-test.sh many_100` - a deployment where the pod references a `SecretProviderClass` with 100 secrets.
+* `./script/load-test.sh seed_with_50` - creates 50 secrets for use with `many_50`
+* `./script/load-test.sh seed_with_100` - creates 100 secrets for use with `many_100`
+
 
 Metric of interest:
 
