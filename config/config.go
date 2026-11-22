@@ -196,6 +196,11 @@ func Parse(in *MountParams) (*MountConfig, error) {
 	if err := yaml.Unmarshal([]byte(attrib["secrets"]), &out.Secrets); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal secrets attribute: %v", err)
 	}
+	for _, s := range out.Secrets {
+		if s.Mode != nil && (*s.Mode < 0 || *s.Mode > 0o777) {
+			return nil, fmt.Errorf("invalid mode %d for %q: must be between 0000 and 0777", *s.Mode, s.PathString())
+		}
+	}
 
 	return out, nil
 }
