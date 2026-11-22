@@ -9,6 +9,12 @@ image:
   pullPolicy: IfNotPresent
   hash: sha256:bfc510a5b660c62aeefeba24ac213e8096cb8acb6f24fa4fbe9ccdc9f11240d0
 
+initContainer:
+  image:
+    repository: busybox
+    tag: latest
+    pullPolicy: IfNotPresent
+
 app: csi-secrets-store-provider-gcp
 
 podAnnotations: {}
