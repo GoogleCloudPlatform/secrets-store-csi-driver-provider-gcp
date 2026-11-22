@@ -38,7 +38,7 @@ func (r *resourceFetcher) FetchSecrets(ctx context.Context, authOption *gax.Call
 			r.ResourceURI,
 			r.FileName,
 			r.Path,
-			fmt.Errorf(r.ResourceURI, "both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
+			fmt.Errorf("both ExtractJSONKey and ExtractYAMLKey can't be simultaneously non empty strings"),
 		)
 		return
 	}
