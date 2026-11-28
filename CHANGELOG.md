@@ -6,6 +6,20 @@ All notable changes to secrets-store-csi-driver-provider-gcp will be documented 
 
 None
 
+## v1.21.0
+
+Images:
+
+* `asia-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.21.0`
+* `europe-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.21.0`
+* `us-docker.pkg.dev/secretmanager-csi/secrets-store-csi-driver-provider-gcp/plugin:v1.21.0`
+
+Digest: `sha256:838234d4c1d6c5f899ec52c90ef74e345d1f8515a5deae77c7af03000072f8af`
+
+### Changes & Security Fixes
+
+* build(deps): bump golang from 1.27.2 to 1.27.4 and replace deprecated `Transport.Dial` with `DialContext` (#695)
+
 ## v1.20.0
 
 Images:
